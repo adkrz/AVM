@@ -3,7 +3,7 @@ using AVM;
 using System.Diagnostics;
 
 
-var programName = "snake";
+var programName = "avmfuck";
 var path = @$"..\..\..\programs\{programName}.asm";
 var dbgInfo = @$"..\..\..\programs\{programName}.dbg";
 
@@ -11,8 +11,8 @@ var dbgInfo = @$"..\..\..\programs\{programName}.dbg";
 var program = Compiler.ReadAndCompile(new StreamReader(path), new StreamWriter(dbgInfo));
 
 // The bytecode can be either loaded to machine directly, or saved to disk
-//var binaryPath = @$"..\..\..\programs\{programName}.avm";
-//Compiler.WriteBinary(binaryPath, program);
+var binaryPath = @$"..\..\..\programs\{programName}.avm";
+Compiler.WriteBinary(binaryPath, program);
 // If loading from disk, there is ready to use procedure to read it:
 //var program2 = Compiler.ReadBinary(binaryPath);
 

@@ -527,7 +527,7 @@ namespace AVM
                         break;
                     case I.INTERRUPT_HANDLER:
                         arg = read_next_program_byte(ref skip);
-                        address = read_next_program_byte(ref skip, 2);
+                        address = read_addr_from_program(ref skip, 2);
                         skip = 2 + ADDRESS_SIZE;
                         if (address>0)
                             handlers[(InterruptCodes)arg] = address;

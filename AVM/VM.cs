@@ -1,25 +1,31 @@
-﻿#define REGISTERS_ON_STACK_X
+﻿#define UNSAFE
 using word = System.Byte;
 using addr = System.UInt16;
 using System.Runtime.CompilerServices;
 
 namespace AVM
 {
+#if UNSAFE
+    public unsafe class VM
+#else
     public class VM
+#endif
     {
+#if UNSAFE
+        private word[] memoryBuffer = Array.Empty<word>();
+        private addr[] registersBuffer = Array.Empty<addr>();
+        private word* memory;
+        private addr* registers;
+#else
         private word[] memory = Array.Empty<word>();
-#if !REGISTERS_ON_STACK
+        private addr[] registers = new addr[3];
+#endif
+
         private const int IP_REGISTER = 0;
         private const int SP_REGISTER = 1;
         private const int FP_REGISTER = 2;
         public const int PROGRAM_BEGIN = 0;
-        private addr[] registers = new addr[3];
-#else // experiment: make the registers available to the program inside VM as normal memory addresses for load_global
-        private const int IP_REGISTER = 0;
-        private const int SP_REGISTER = 2;
-        private const int FP_REGISTER = 4;
-        public const int PROGRAM_BEGIN = 6;
-#endif
+
         private const word WORD_SIZE = 1;  // size in array, not in bytes
         public const word ADDRESS_SIZE = 2;
         private int max_sp = 0;
@@ -41,21 +47,23 @@ namespace AVM
             list[pos+1] = (word)(value >> 8);
         }
 
-#if !REGISTERS_ON_STACK
+#if UNSAFE
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static addr read16(word* list, int pos) => (addr)(list[pos + 1] * 256 + list[pos]); // BitConverter.ToUInt16(list, pos)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void write16(word* list, int pos, addr value)
+        {
+            list[pos] = (word)(value);
+            list[pos + 1] = (word)(value >> 8);
+        }
+#endif
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         addr READ_REGISTER(int r) => registers[r];
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void WRITE_REGISTER(int r, addr value) => registers[r] = value;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void ADD_TO_REGISTER(int r, int value) => registers[r] = (addr)(registers[r] + value);
-#else
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        addr READ_REGISTER(int r) => read16(memory, r);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void WRITE_REGISTER(int r, addr value) => write16(memory, r, value);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void ADD_TO_REGISTER(int r, int value) => WRITE_REGISTER(r, (addr)(READ_REGISTER(r) + value));
-#endif
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void PUSH(word arg) { xic++; var sp_val = READ_REGISTER(SP_REGISTER); memory[sp_val] = arg; ADD_TO_REGISTER(SP_REGISTER, 1); if (sp_val + 1 > max_sp) max_sp = sp_val + 1; }
@@ -108,13 +116,27 @@ namespace AVM
             {
                 memory_size = program.Length + 3;
             }
-            memory = new word[memory_size]; // fills with zeros in C#, careful with other impls!
+
+#if UNSAFE
+            memoryBuffer = GC.AllocateUninitializedArray<word>(memory_size, true);
+            registersBuffer = GC.AllocateUninitializedArray<addr>(3, true);
+            fixed (word* w = memoryBuffer)
+                memory = w;
+            fixed (addr* w = registersBuffer)
+                registers = w;
+#else
+            memory = new word[memory_size];
+            registers = new addr[3];
+#endif
+
 
             WRITE_REGISTER(IP_REGISTER, PROGRAM_BEGIN);
             for (int i = 0; i < program.Length; i++)
             {
                 memory[i + PROGRAM_BEGIN] = program[i];
             }
+
+#if !UNSAFE
             if (fillRemainingMemoryWithRandom)
             {
                 for (int i = program.Length; i < memory_size; i++)
@@ -122,6 +144,7 @@ namespace AVM
                     memory[i] = (word)random.Next(0, 255);
                 }
             }
+#endif
             programStartPos = (addr)(program.Length + PROGRAM_BEGIN);
             WRITE_REGISTER(SP_REGISTER, programStartPos);
             WRITE_REGISTER(FP_REGISTER, programStartPos);
@@ -753,7 +776,12 @@ namespace AVM
 
         public List<word> ReadMemory(int address, int length)
         {
-            return memory.Skip(address).Take(length).ToList();
+            List<word> ret = new List<word>(length);
+            for (int i = 0; i < length; i++)
+            {
+                ret.Add(memory[address + i]);
+            }
+            return ret;
         }
 
         /// <summary>

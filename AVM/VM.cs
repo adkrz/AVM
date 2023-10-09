@@ -744,7 +744,8 @@ namespace AVM
                         chr = memory[address + offs++];
                     }
                     while (chr != 0);
-                    PUSHI(offs);
+                    offs--;
+                    PUSHI_ADDR(offs);
                     break;
                 case Stdlib.Sleep:
                     address = POP_ADDR(); // not really an address :)
@@ -808,11 +809,12 @@ namespace AVM
                 var ip = READ_REGISTER(IP_REGISTER);
                 var fp = READ_REGISTER(FP_REGISTER);
                 bt.Add(ip);
-                while (fp <= programStartPos)
+                while (fp > programStartPos)
                 {
                     ip = read16(memory, fp - 2 * ADDRESS_SIZE);
                     fp = read16(memory, fp - ADDRESS_SIZE);
-                    bt.Add(ip);
+                    if (ip > 0)
+                        bt.Add(ip);
                 }
                 
                 return bt;

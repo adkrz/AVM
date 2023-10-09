@@ -506,7 +506,7 @@ enum class Stdlib
     MemCmp,
     /// <summary>
     /// pushes length of string at address from stack, does not count null terminator
-    /// pop: address16bit push: val8bit
+    /// pop: address16bit push: address16bit
     /// </summary>
     Strlen,
     /// <summary>

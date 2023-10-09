@@ -647,7 +647,8 @@ void VM::STDLIB(int callNumber)
         {
             arg = memory[address + result++];
         } while (arg != 0);
-        PUSHI(result);
+        result--;
+        PUSHI_ADDR(result);
         break;
     case Stdlib::Sleep:
         address = POP_ADDR(); // not really an address :)

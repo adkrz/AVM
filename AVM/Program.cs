@@ -64,7 +64,8 @@ else
     {
         var avmFile = Path.Combine(directory, baseName + ".avm");
         var dbgFile = Path.Combine(directory, baseName + ".dbg");
-        program = Compiler.ReadAndCompile(new StreamReader(inputFile), new StreamWriter(dbgFile));
+        using (var writer = new StreamWriter(dbgFile))
+            program = Compiler.ReadAndCompile(new StreamReader(inputFile), writer);
         Compiler.WriteBinary(avmFile, program);
 
         Console.WriteLine($"Output file: {avmFile}");

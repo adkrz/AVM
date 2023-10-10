@@ -7,6 +7,8 @@ Despite its simplicity, it is capable of running quite complex programs written 
 
 Aim of the project was also to create simple assembler for convenient program writing and debugging aid for Visual Studio.
 
+For the brave souls, there is also a working Brainfuck language interpreter, written using this virtual machine - see Examples folder.
+
 # Machine architecture
 - 8 bit instructions, with 16 bit addressing = 64KiB of usable memory
 - stack based architecture, no general purpose registers. All operands and operation results are using the stack top.

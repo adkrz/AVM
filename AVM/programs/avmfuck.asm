@@ -25,43 +25,17 @@ JT @halt
 LOAD_LOCAL16 0
 LOAD_GLOBAL
 
-DUP
-PUSH 43
-EQ
-JT @plus
-DUP
-PUSH 45
-EQ
-JT @minus
-DUP
-PUSH 60
-EQ
-JT @left
-DUP
-PUSH 62
-EQ
-JT @right
-DUP
-PUSH 46
-EQ
-JT @dot
-DUP
-PUSH 44
-EQ
-JT @comma
-DUP
-PUSH 91
-EQ
-JT @open
-DUP
-PUSH 93
-EQ
-JT @close
-POP
-JMP @next
+CASE 43 @plus
+CASE 45 @minus
+CASE 60 @left
+CASE 62 @right
+CASE 46 @dot
+CASE 44 @comma
+CASE 91 @open
+CASE 93 @close
+ELSE @next
 
 :plus
-POP
 LOAD_LOCAL16 6
 LOAD_GLOBAL
 INC
@@ -70,7 +44,6 @@ STORE_GLOBAL
 jmp @next
 
 :minus
-POP
 LOAD_LOCAL16 6
 LOAD_GLOBAL
 DEC
@@ -79,28 +52,24 @@ STORE_GLOBAL
 jmp @next
 
 :left
-POP
 LOAD_LOCAL16 6
 DEC16
 STORE_LOCAL16 6
 jmp @next
 
 :right
-POP
 LOAD_LOCAL16 6
 INC16
 STORE_LOCAL16 6
 jmp @next
 
 :dot
-POP
 LOAD_LOCAL16 6
 LOAD_GLOBAL
 SYSCALL Std.PrintCharPop
 jmp @next
 
 :comma
-POP
 LOAD_LOCAL16 2
 LOAD_GLOBAL
 LOAD_LOCAL16 6
@@ -111,7 +80,6 @@ STORE_LOCAL16 2
 jmp @next
 
 :open
-POP
 	LOAD_LOCAL16 6
 	LOAD_GLOBAL
 	ZERO
@@ -125,16 +93,11 @@ POP
 	; check the instruction
 	LOAD_LOCAL16 0
 	LOAD_GLOBAL
-	PUSH 91
-	EQ
-	JT @increment_counter1
-	LOAD_LOCAL16 0
-	LOAD_GLOBAL
-	PUSH 93
-	EQ
-	JT @decrement_counter1
-	JMP @loop_openbracket_cont
 
+	CASE 91 @increment_counter1
+	CASE 93 @decrement_counter1
+	ELSE @loop_openbracket_cont
+	
 		:increment_counter1
 		INC
 		JMP @loop_openbracket_cont
@@ -150,7 +113,6 @@ POP
 	jmp @next
 
 :close
-POP
 	PUSH 1 ; count open braces [8]
 	:loop_closebracket
 	; decrement program ptr
@@ -160,15 +122,10 @@ POP
 	; check the instruction
 	LOAD_LOCAL16 0
 	LOAD_GLOBAL
-	PUSH 91
-	EQ
-	JT @decrement_counter2
-	LOAD_LOCAL16 0
-	LOAD_GLOBAL
-	PUSH 93
-	EQ
-	JT @increment_counter2
-	JMP @loop_closebracket_cont
+
+	CASE 91 @decrement_counter2
+	CASE 93 @increment_counter2
+	ELSE @loop_closebracket_cont
 
 		:increment_counter2
 		INC

@@ -326,6 +326,24 @@ I VM::StepProgram()
                 skip = 0;
             }
             break;
+        case I::CASE:
+            arg = read_next_program_byte(skip);
+            address = read_addr_from_program(skip, 2);
+            skip = 2 + ADDRESS_SIZE;
+            sp_value = READ_REGISTER(SP_REGISTER);
+            if (memory[sp_value - 1] == arg)
+            {
+                POP();
+                WRITE_REGISTER(IP_REGISTER, address);
+                skip = 0;
+            }
+            break;
+        case I::ELSE:
+            POP();
+            address = read_addr_from_program(skip);
+            WRITE_REGISTER(IP_REGISTER, address);
+            skip = 0;
+            break;
         case I::LOAD_GLOBAL:
             address = POP_ADDR();
             PUSH(memory[address]);

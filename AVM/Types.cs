@@ -206,6 +206,18 @@
         /// pop: val8bit, address16bit
         /// </summary>
         JT2,
+        /// <summary>
+        /// If value on stack is equal the constant value, pops it and jumps to the address.
+        /// Otherwise, leaves the value on stack so subsequent CASE or ELSE can consume it
+        /// read: val8bit, address16bit, pop optional val8bit
+        /// </summary>
+        CASE,
+        /// <summary>
+        /// Pops the value on top of stack and unconditionally jumps to an address.
+        /// To be used as a final jump after all CASEs.
+        /// read: address16bit, pop val8bit
+        /// </summary>
+        ELSE,
 
 
         // Function calls

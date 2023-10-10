@@ -1,24 +1,87 @@
 ﻿# nullable disable
 using AVM;
 using System.Diagnostics;
+using System.IO;
 
 
-var programName = "avmfuck";
-var path = @$"..\..\..\programs\{programName}.asm";
-var dbgInfo = @$"..\..\..\programs\{programName}.dbg";
+if (args.Length == 0)
+{
+    Console.WriteLine("Arguments: program_file.(asm|avm) -c [-r]\n" +
+        "Option -c compiles the ASM to AVM file\n" +
+        "Option -r runs the file in addition to compilation");
+    return;
+}
 
-//Read the ASM file and produce binary bytecode + debug info text file
-var program = Compiler.ReadAndCompile(new StreamReader(path), new StreamWriter(dbgInfo));
+var run = false;
+var compile = false;
+var fromBinary = false;
+var inputFile = args[0];
 
-// The bytecode can be either loaded to machine directly, or saved to disk
-var binaryPath = @$"..\..\..\programs\{programName}.avm";
-Compiler.WriteBinary(binaryPath, program);
-// If loading from disk, there is ready to use procedure to read it:
-//var program2 = Compiler.ReadBinary(binaryPath);
+if (!File.Exists(inputFile))
+{
+    Console.WriteLine("Invalid input file!");
+    return;
+}
+
+var ext = Path.GetExtension(inputFile).ToLower();
+var directory = Path.GetDirectoryName(inputFile);
+var baseName = Path.GetFileNameWithoutExtension(inputFile);
+var nvramFile = Path.Combine(directory, baseName + "_nvram.bin");
+
+if (ext == ".asm")
+{
+    if (args.Contains("-c"))
+    {
+        compile = true;
+    }
+    if (args.Contains("-r"))
+    { 
+        run = true;
+    }
+}
+else if (ext == ".avm")
+{
+    compile = false;
+    run = true;
+    fromBinary = true;
+}
+else
+{
+    Console.WriteLine("Unsupported file format!");
+    return;
+}
+
+
+byte[] program;
+
+if (fromBinary)
+{
+    program = Compiler.ReadBinary(inputFile);
+}
+else
+{
+    if (compile)
+    {
+        var avmFile = Path.Combine(directory, baseName + ".avm");
+        var dbgFile = Path.Combine(directory, baseName + ".dbg");
+        program = Compiler.ReadAndCompile(new StreamReader(inputFile), new StreamWriter(dbgFile));
+        Compiler.WriteBinary(avmFile, program);
+
+        Console.WriteLine($"Output file: {avmFile}");
+        Console.WriteLine($"Debug file: {dbgFile}");
+
+        if (!run)
+            return;
+    }
+    else
+    {
+        program = Compiler.ReadAndCompile(new StreamReader(inputFile));
+    }
+}
 
 var machine = new VM();
 
-machine.LoadProgram(program, nvram_file: @$"..\..\..\programs\{programName}_nvram.bin");
+machine.LoadProgram(program, nvram_file: nvramFile);
 Stopwatch sw = Stopwatch.StartNew();
 try
 {

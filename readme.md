@@ -9,6 +9,12 @@ Aim of the project was also to create simple assembler for convenient program wr
 
 For the brave souls, there is also a working Brainfuck language interpreter, written using this virtual machine - see Examples folder.
 
+# Running examples
+- From text file: `AVM.exe program.asm`
+- From binary file: `AVM.exe program.avm`
+- Compile binary from text: `AVM.exe program.asm -c`. Optionally add -r to run afterwards.
+
+
 # Machine architecture
 - 8 bit instructions, with 16 bit addressing = 64KiB of usable memory
 - stack based architecture, no general purpose registers. All operands and operation results are using the stack top.

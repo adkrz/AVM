@@ -231,7 +231,8 @@ I VM::StepProgram()
             PUSHI(POP() <= POP() ? 1 : 0);
             break;
         case I::ZERO:
-            PUSHI(POP() == 0 ? 1 : 0);
+            sp_value = READ_REGISTER(SP_REGISTER);
+            memory[sp_value - 1] = (word)(memory[sp_value - 1] == 0 ? 1 : 0);
             break;
 
         case I::EQ16:
@@ -266,20 +267,24 @@ I VM::StepProgram()
             PUSHI(~POP());
             break;
         case I::NOT:
-            arg = POP();
-            PUSH(arg ? 0 : 1);
+            sp_value = READ_REGISTER(SP_REGISTER);
+            memory[sp_value - 1] = (word)(memory[sp_value - 1] ? 0 : 1);
             break;
         case I::INC:
-            PUSHI(POP() + 1);
+            sp_value = READ_REGISTER(SP_REGISTER);
+            memory[sp_value - 1]++;
             break;
         case I::DEC:
-            PUSHI(POP() - 1);
+            sp_value = READ_REGISTER(SP_REGISTER);
+            memory[sp_value - 1]--;
             break;
         case I::INC16:
-            PUSHI_ADDR(POP_ADDR() + 1);
+            offset = READ_REGISTER(SP_REGISTER) - ADDRESS_SIZE;
+            write16(memory, offset, (addr)(read16(memory, offset) + 1));
             break;
         case I::DEC16:
-            PUSHI_ADDR(POP_ADDR() - 1);
+            offset = READ_REGISTER(SP_REGISTER) - ADDRESS_SIZE;
+            write16(memory, offset, (addr)(read16(memory, offset) - 1));
             break;
         case I::EXTEND:
             PUSH_ADDR(POP());

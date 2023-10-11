@@ -29,6 +29,7 @@ CONST16 DELAY 200
 
 PUSH 0
 Syscall Std.ShowConsoleCursor
+Syscall Std.ConsoleClear
 call @memset
 call @drawborders
 call @initial_draw

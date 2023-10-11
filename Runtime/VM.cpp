@@ -167,11 +167,11 @@ I VM::StepProgram()
             break;
         case I::PUSH_REG:
             arg = read_next_program_byte(skip);
-            PUSHI_ADDR(READ_REGISTER(arg / ADDRESS_SIZE));
+            PUSHI_ADDR(READ_REGISTER(arg));
             break;
         case I::POP_REG:
             arg = read_next_program_byte(skip);
-            WRITE_REGISTER(arg / ADDRESS_SIZE, POP_ADDR());
+            WRITE_REGISTER(arg, POP_ADDR());
             break;
         case I::ADD:
             PUSHI((POP() + POP()));

@@ -33,6 +33,7 @@ CASE 46 @dot
 CASE 44 @comma
 CASE 91 @open
 CASE 93 @close
+CASE 0 @halt
 ELSE @next
 
 :plus
@@ -155,6 +156,7 @@ jmp @loop
 :halt
 HALT
 
+0 ; sentinel
 :program
 ; Hello World
 ;"++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>."

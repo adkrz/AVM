@@ -449,7 +449,9 @@ I VM::StepProgram()
         case I::NOP:
             break;
         case I::DEBUGGER:
+#ifdef _WIN32
             DebugBreak();
+#endif
             break;
         case I::INTERRUPT_HANDLER:
             arg = read_next_program_byte(skip);
@@ -582,22 +584,23 @@ void VM::STDLIB(int callNumber)
     case Stdlib::SetConsoleCursorPosition:
         arg = POP() + 1; // top
         arg2 = POP() + 1; // left
-        wprintf((std::wstring(L"\x1b[") + std::to_wstring(arg) + L";" + std::to_wstring(arg2) + L"H").c_str());
+        std::cout << std::string("\x1b[") + std::to_string(arg) + ";" + std::to_string(arg2) + "H";
         break;
     case Stdlib::ShowConsoleCursor:
         arg = POP();
         if (arg)
-            wprintf(L"\x1b[?25h");
+            std::cout << "\x1b[?25h";
         else
-            wprintf(L"\x1b[?25l");
+            std::cout << "\x1b[?25l";
         break;
     case Stdlib::SetConsoleColors:
         arg = POP(); // fg
         arg2 = POP(); // bg
-        wprintf((std::wstring(L"\x1b[") + std::to_wstring(BgColorToVT100((Colors)arg2)) + L";" + std::to_wstring(FgColorToVT100((Colors)arg)) + L"m").c_str());
+        std::cout << std::string("\x1b[") + std::to_string(BgColorToVT100((Colors)arg2)) + ";" + std::to_string(FgColorToVT100((Colors)arg)) + "m";
         break;
+
     case Stdlib::ConsoleClear:
-        wprintf(L"\x1b[2J");
+        std::cout << "\x1b[2J";
         break;
     case Stdlib::StringToInt:
         address = POP_ADDR();

@@ -12,6 +12,7 @@
 #else
     #include <termios.h>
     #include <unistd.h>
+    #include <sys/ioctl.h>
 #endif
 
 VM::VM() : memory(nullptr), registers{ 0, 0, 0 }, mt(rd())
@@ -573,9 +574,13 @@ void VM::STDLIB(int callNumber)
         }
         else PUSH(0);
 #else
-        if (result = kbhit()) // TODO
+        if (kbhit())
         {
-            PUSHI(result);
+            result = getchar2();
+            if (result != EOF)
+            {
+                PUSHI(result);
+            }
         }
         else PUSH(0);
 #endif
@@ -678,6 +683,7 @@ void VM::STDLIB(int callNumber)
         break;
     case Stdlib::Sleep:
         address = POP_ADDR(); // not really an address :)
+        std::cout << std::flush; // especially needed for Linux
         std::this_thread::sleep_for(std::chrono::milliseconds(address));
         break;
     case Stdlib::GetRandomNumber:
@@ -724,23 +730,39 @@ void VM::OpenNvramFile()
 
 #ifndef _WIN32
 // https://stackoverflow.com/questions/29335758/using-kbhit-and-getch-on-linux
-int VM::kbhit()
+bool VM::kbhit()
 {
-    unsigned char ch;
-    int nread;
-
+    disableEcho(); // todo: dirty solution
     termios term;
     tcgetattr(0, &term);
-
     termios term2 = term;
     term2.c_lflag &= ~ICANON;
     tcsetattr(0, TCSANOW, &term2);
-
-    nread = read(0,&ch,1);
-    if (nread == 1){
-        return ch;
-    }
-    return 0;
+    int byteswaiting;
+    ioctl(0, FIONREAD, &byteswaiting);
+    tcsetattr(0, TCSANOW, &term);
+    return byteswaiting > 0;
+}
+char VM::getchar2()
+{
+    char c;
+    termios term;
+    tcgetattr(0, &term);
+    termios term2 = term;
+    term2.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(0, TCSANOW, &term2);
+    c = getchar();
+    tcsetattr(0, TCSANOW, &term);
+    return c;
+}
+void VM::disableEcho()
+{
+    char c;
+    termios term;
+    tcgetattr(0, &term);
+    termios term2 = term;
+    term2.c_lflag &= ~ECHO;
+    tcsetattr(0, TCSANOW, &term2);
 }
 #endif
 

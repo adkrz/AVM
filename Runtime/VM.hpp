@@ -70,7 +70,9 @@ private:
     int BgColorToVT100(Colors color);
 
 #ifndef _WIN32
-    int kbhit();
+    bool kbhit();
+    char getchar2();
+    void disableEcho();
 #endif
 };
 

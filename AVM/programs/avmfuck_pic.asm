@@ -153,7 +153,6 @@ INC16
 STORE_LOCAL16 0
 JMP_REL @loop
 
-NOP ; TODO: without it crashes at exit, figure out why
 :halt
 HALT
 

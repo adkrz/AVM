@@ -397,7 +397,7 @@ I VM::StepProgram()
             if (memory[sp_value - 1] == arg)
             {
                 POP();
-                ADD_TO_REGISTER(IP_REGISTER, offset);
+                ADD_TO_REGISTER(IP_REGISTER, offset + 1);
                 skip = 0;
             }
             break;

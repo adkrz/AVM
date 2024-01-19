@@ -1,6 +1,7 @@
 ﻿#define UNSAFE
 using word = System.Byte;
 using addr = System.UInt16;
+using offs = System.Int16;
 using System.Runtime.CompilerServices;
 
 namespace AVM
@@ -46,6 +47,11 @@ namespace AVM
             list[pos] = (word)(value);
             list[pos+1] = (word)(value >> 8);
         }
+        public static void write16(IList<word> list, int pos, offs value)
+        {
+            list[pos] = (word)(value);
+            list[pos + 1] = (word)(value >> 8);
+        }
 
 #if UNSAFE
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -56,6 +62,8 @@ namespace AVM
             list[pos] = (word)(value);
             list[pos + 1] = (word)(value >> 8);
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static offs readoffs(word* list, int pos) => (offs)(list[pos + 1] * 256 + list[pos]); // BitConverter.ToUInt16(list, pos)
 #endif
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -94,6 +102,15 @@ namespace AVM
             return targ;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        offs read_offs_from_program(ref word skip, int offset = 1)
+        {
+            var instr = READ_REGISTER(IP_REGISTER);
+            var targ = readoffs(memory, instr + offset);
+            skip += ADDRESS_SIZE;
+            return targ;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void CALL(addr address, int offset = 0) // offset used in interrupts because we have no real "call" instruction in code
         {
             PUSHI_ADDR((READ_REGISTER(IP_REGISTER) + offset));
@@ -110,7 +127,8 @@ namespace AVM
         /// <param name="memory_size"></param>
         /// <param name="nvram_file"></param>
         /// <param name="fillRemainingMemoryWithRandom">To catch bugs when memory is assumed to be zero but is not ;) </param>
-        public void LoadProgram(word[] program, int memory_size=65535, string nvram_file="nvr.bin", bool fillRemainingMemoryWithRandom = true)
+        /// <param name="loadFrom">To play with PIC code</param>
+        public void LoadProgram(word[] program, int memory_size=65535, string nvram_file="nvr.bin", bool fillRemainingMemoryWithRandom = true, addr loadFrom = PROGRAM_BEGIN)
         {
             if (memory_size < program.Length + 3) // plus registers
             {
@@ -130,10 +148,10 @@ namespace AVM
 #endif
 
 
-            WRITE_REGISTER(IP_REGISTER, PROGRAM_BEGIN);
+            WRITE_REGISTER(IP_REGISTER, loadFrom);
             for (int i = 0; i < program.Length; i++)
             {
-                memory[i + PROGRAM_BEGIN] = program[i];
+                memory[i + loadFrom] = program[i];
             }
 
 #if !UNSAFE
@@ -145,7 +163,7 @@ namespace AVM
                 }
             }
 #endif
-            programStartPos = (addr)(program.Length + PROGRAM_BEGIN);
+            programStartPos = (addr)(program.Length + loadFrom);
             WRITE_REGISTER(SP_REGISTER, programStartPos);
             WRITE_REGISTER(FP_REGISTER, programStartPos);
             max_sp = READ_REGISTER(SP_REGISTER);
@@ -228,6 +246,11 @@ namespace AVM
                         break;
                     case I.PUSH16:
                         address = read_addr_from_program(ref skip);
+                        PUSH_ADDR(address);
+                        break;
+                    case I.PUSH16_REL:
+                        offset = read_offs_from_program(ref skip);
+                        address = (addr)(READ_REGISTER(IP_REGISTER) + offset);
                         PUSH_ADDR(address);
                         break;
                     case I.PUSHN:
@@ -323,6 +346,9 @@ namespace AVM
                     case I.EQ:
                         PUSHI(POP() == POP() ? 1 : 0);
                         break;
+                    case I.NE:
+                        PUSHI(POP() == POP() ? 0 : 1);
+                        break;
                     case I.LESS:
                         PUSHI(POP() < POP() ? 1 : 0);
                         break;
@@ -393,6 +419,11 @@ namespace AVM
                         WRITE_REGISTER(IP_REGISTER, address);
                         skip = 0;
                         break;
+                    case I.JMP_REL:
+                        offset = read_offs_from_program(ref skip);
+                        ADD_TO_REGISTER(IP_REGISTER, offset);
+                        skip = 0;
+                        break;
                     case I.JF:
                         address = read_addr_from_program(ref skip);
                         if (POP() == 0)
@@ -406,6 +437,22 @@ namespace AVM
                         if (POP() != 0)
                         {
                             WRITE_REGISTER(IP_REGISTER, address);
+                            skip = 0;
+                        }
+                        break;
+                    case I.JF_REL:
+                        offset = read_offs_from_program(ref skip);
+                        if (POP() == 0)
+                        {
+                            ADD_TO_REGISTER(IP_REGISTER, offset);
+                            skip = 0;
+                        }
+                        break;
+                    case I.JT_REL:
+                        offset = read_offs_from_program(ref skip);
+                        if (POP() != 0)
+                        {
+                            ADD_TO_REGISTER(IP_REGISTER, offset);
                             skip = 0;
                         }
                         break;
@@ -446,6 +493,24 @@ namespace AVM
                         POP();
                         address = read_addr_from_program(ref skip);
                         WRITE_REGISTER(IP_REGISTER, address);
+                        skip = 0;
+                        break;
+                    case I.CASE_REL:
+                        arg = read_next_program_byte(ref skip);
+                        offset = read_offs_from_program(ref skip, 2);
+                        skip = 2 + ADDRESS_SIZE;
+                        sp_value = READ_REGISTER(SP_REGISTER);
+                        if (memory[sp_value - 1] == arg)
+                        {
+                            POP();
+                            ADD_TO_REGISTER(IP_REGISTER, offset);
+                            skip = 0;
+                        }
+                        break;
+                    case I.ELSE_REL:
+                        POP();
+                        offset = read_offs_from_program(ref skip);
+                        ADD_TO_REGISTER(IP_REGISTER, offset);
                         skip = 0;
                         break;
                     case I.LOAD_GLOBAL:
@@ -514,7 +579,16 @@ namespace AVM
                         break;
                     case I.CALL:
                     case I.CALL2:
-                        address = instr == I.CALL ? read_addr_from_program(ref skip) : POP_ADDR();
+                    case I.CALL_REL:
+                        if (instr == I.CALL_REL)
+                        {
+                            offset = read_offs_from_program(ref skip);
+                            address = (addr)(READ_REGISTER(IP_REGISTER) + offset);
+                        }
+                        else
+                        {
+                            address = instr == I.CALL ? read_addr_from_program(ref skip) : POP_ADDR();
+                        }
                         CALL(address);
                         skip = 0;
                         break;

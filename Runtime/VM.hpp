@@ -1,6 +1,7 @@
 #pragma once
 typedef unsigned char word;
 typedef unsigned short int addr;
+typedef short int offs;
 
 #include<vector>
 #include <map>
@@ -40,7 +41,8 @@ private:
     std::map<InterruptCodes, addr> handlers;
 
 
-    static inline addr read16(word* list, int pos);;
+    static inline addr read16(word* list, int pos);
+    static inline offs readoffs(word* list, int pos);
     static inline void write16(word* list, int pos, addr value);
     inline addr READ_REGISTER(int r);
     inline void WRITE_REGISTER(int r, addr value);
@@ -56,6 +58,7 @@ private:
     inline word read_next_program_byte(word& skip, int offset = 1);
     
     inline addr read_addr_from_program(word&, int offset = 1);
+    inline offs read_offs_from_program(word&, int offset = 1);
     
     
     inline void CALL(addr address, int offset = 0);

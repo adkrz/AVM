@@ -56,6 +56,8 @@ void VM::LoadProgram(word* program, int program_length, int memory_size, const c
 
 addr VM::read16(word* list, int pos) { return list[pos + 1] * 256 + list[pos]; }
 
+offs VM::readoffs(word* list, int pos) { return list[pos + 1] * 256 + list[pos]; }
+
 void VM::write16(word* list, int pos, addr value) {
     list[pos] = (word)(value);
     list[pos + 1] = (word)(value >> 8);
@@ -92,6 +94,14 @@ addr VM::read_addr_from_program(word& skip, int offset)
 {
     auto instr = READ_REGISTER(IP_REGISTER);
     auto targ = read16(memory, instr + offset);
+    skip += ADDRESS_SIZE;
+    return targ;
+}
+
+offs VM::read_offs_from_program(word& skip, int offset)
+{
+    auto instr = READ_REGISTER(IP_REGISTER);
+    auto targ = readoffs(memory, instr + offset);
     skip += ADDRESS_SIZE;
     return targ;
 }
@@ -139,6 +149,11 @@ I VM::StepProgram()
             break;
         case I::PUSH16:
             address = read_addr_from_program(skip);
+            PUSH_ADDR(address);
+            break;
+        case I::PUSH16_REL:
+            offset = read_offs_from_program(skip);
+            address = (addr)(READ_REGISTER(IP_REGISTER) + offset);
             PUSH_ADDR(address);
             break;
         case I::PUSHN:
@@ -225,6 +240,9 @@ I VM::StepProgram()
         case I::EQ:
             PUSHI(POP() == POP() ? 1 : 0);
             break;
+        case I::NE:
+            PUSHI(POP() == POP() ? 0 : 1);
+            break;
         case I::LESS:
             PUSHI(POP() < POP() ? 1 : 0);
             break;
@@ -295,6 +313,11 @@ I VM::StepProgram()
             WRITE_REGISTER(IP_REGISTER, address);
             skip = 0;
             break;
+        case I::JMP_REL:
+            offset = read_offs_from_program(skip);
+            ADD_TO_REGISTER(IP_REGISTER, offset);
+            skip = 0;
+            break;
         case I::JF:
             address = read_addr_from_program(skip);
             if (!POP())
@@ -308,6 +331,22 @@ I VM::StepProgram()
             if (POP())
             {
                 WRITE_REGISTER(IP_REGISTER, address);
+                skip = 0;
+            }
+            break;
+        case I::JF_REL:
+            offset = read_offs_from_program(skip);
+            if (POP() == 0)
+            {
+                ADD_TO_REGISTER(IP_REGISTER, offset);
+                skip = 0;
+            }
+            break;
+        case I::JT_REL:
+            offset = read_offs_from_program(skip);
+            if (POP() != 0)
+            {
+                ADD_TO_REGISTER(IP_REGISTER, offset);
                 skip = 0;
             }
             break;
@@ -348,6 +387,24 @@ I VM::StepProgram()
             POP();
             address = read_addr_from_program(skip);
             WRITE_REGISTER(IP_REGISTER, address);
+            skip = 0;
+            break;
+        case I::CASE_REL:
+            arg = read_next_program_byte(skip);
+            offset = read_offs_from_program(skip, 2);
+            skip = 2 + ADDRESS_SIZE;
+            sp_value = READ_REGISTER(SP_REGISTER);
+            if (memory[sp_value - 1] == arg)
+            {
+                POP();
+                ADD_TO_REGISTER(IP_REGISTER, offset);
+                skip = 0;
+            }
+            break;
+        case I::ELSE_REL:
+            POP();
+            offset = read_offs_from_program(skip);
+            ADD_TO_REGISTER(IP_REGISTER, offset);
             skip = 0;
             break;
         case I::LOAD_GLOBAL:
@@ -416,7 +473,16 @@ I VM::StepProgram()
             break;
         case I::CALL:
         case I::CALL2:
-            address = instr == I::CALL ? read_addr_from_program(skip) : POP_ADDR();
+        case I::CALL_REL:
+            if (instr == I::CALL_REL)
+            {
+                offset = read_offs_from_program(skip);
+                address = (addr)(READ_REGISTER(IP_REGISTER) + offset);
+            }
+            else
+            {
+                address = instr == I::CALL ? read_addr_from_program(skip) : POP_ADDR();
+            }
             CALL(address);
             skip = 0;
             break;

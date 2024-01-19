@@ -1,5 +1,6 @@
 ﻿using word = System.Byte;
 using addr = System.UInt16;
+using offs = System.Int16;
 
 namespace AVM
 {
@@ -17,9 +18,11 @@ namespace AVM
 
             Dictionary<string, addr> labels = new();
             Dictionary<addr, string> labelsToFill = new();
+            Dictionary<addr, string> relLabelsToFill = new();
 
             Dictionary<string, int> constants = new ();
             Dictionary<string, UInt16> constants16 = new ();
+            bool relativeMode = false;
 
             while ((line = reader.ReadLine()!) != null)
             {
@@ -109,12 +112,16 @@ namespace AVM
                     if (token.StartsWith("@"))
                     {
                         // Label usage: collect it to fill later
-                        labelsToFill[address] = token.Substring(1);
+                        if (relativeMode)
+                            relLabelsToFill[address] = token.Substring(1);
+                        else
+                            labelsToFill[address] = token.Substring(1);
                         for (int ii = 0; ii < VM.ADDRESS_SIZE; ii++)
                         {
                             prg.Add(0);
                             address++;
                         }
+                        relativeMode = false;
                         continue;
                     }
 
@@ -198,6 +205,8 @@ namespace AVM
                     ok = Enum.TryParse(tokenU, true, out I instruction);
                     if (ok)
                     {
+                        if (instruction.ToString().EndsWith("_REL"))
+                            relativeMode = true;
                         prg.Add((word)instruction);
                         address++;
                         continue;
@@ -210,6 +219,10 @@ namespace AVM
             foreach (var kvp in labelsToFill)
             {
                 VM.write16(prg, kvp.Key - VM.PROGRAM_BEGIN, labels[kvp.Value]);
+            }
+            foreach (var kvp in relLabelsToFill)
+            {
+                VM.write16(prg, kvp.Key - VM.PROGRAM_BEGIN, (offs)(labels[kvp.Value] - kvp.Key + 1));
             }
 
             prg.Add((word)I.HALT);

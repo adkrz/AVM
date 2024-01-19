@@ -21,6 +21,7 @@ For the brave souls, there is also a working Brainfuck language interpreter, wri
 - 3 16bit system registers (instruction pointer IP, frame pointer FP, stack pointer SP), not directly programmed by the user. This follows usual CALL/RET architecture found in other systems.
 - program and stack is in the same memory, stack grows up from the last instruction of loaded program. Instructions can read directly data from program area without extra copying. This also makes it a great tool for playing with self modifying code
 - variables of type word (uchar) or addr (uint16), no support for negative numbers (numbers will overflow)
+- additionally, signed offs data type (int16) to support REL opcodes and Position Independent Code
 - random access to reach values outside the top of the stack, like local variables, function arguments, memory on heap -> using LOAD\*/STORE\* instructions
 - set of all required operations: aritmetic, logic, control flow + subset of 16 bit instructions to compute addresses
 - exception handling via interrupt handlers

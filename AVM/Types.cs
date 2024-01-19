@@ -156,10 +156,15 @@
         // Comparison operations
 
         /// <summary>
-        /// Combine with NOT to get not eq
+        /// Check if equal
         /// pop: 2x val8bit, push: val8bit 0 or 1
         /// </summary>
         EQ,
+        /// <summary>
+        /// Check if not equal
+        /// pop: 2x val8bit, push: val8bit 0 or 1
+        /// </summary>
+        NE,
         /// <summary>
         /// pop: 2x val8bit, push: val8bit 0 or 1
         /// </summary>
@@ -438,6 +443,46 @@
         /// pop: address16bit, value8bit (address on top of stack)
         /// </summary>
         STORE_NVRAM,
+
+        // The opcodes below support position independent code:
+
+        /// <summary>
+        /// Pushes address relative to current location in program
+        /// read: offset16bit, push: address16bit
+        /// </summary>
+        PUSH16_REL,
+        /// <summary>
+        /// Relative uncoditional jump
+        /// pop: offset16bit
+        /// </summary>
+        JMP_REL,
+        /// <summary>
+        /// Jump if value on stack is false (=0). Combine with NOT to get JT
+        /// read: offset16bit, pop: val8bit
+        /// </summary>
+        JF_REL,
+        /// <summary>
+        /// Jump if value on stack is true (!=0). Combine with NOT to get JT
+        /// read: offset16bit, pop: val8bit
+        /// </summary>
+        JT_REL,
+        /// <summary>
+        /// If value on stack is equal the constant value, pops it and jumps to the address.
+        /// Otherwise, leaves the value on stack so subsequent CASE or ELSE can consume it
+        /// read: val8bit, offset16bit, pop optional val8bit
+        /// </summary>
+        CASE_REL,
+        /// <summary>
+        /// Pops the value on top of stack and unconditionally jumps to an address.
+        /// To be used as a final jump after all CASEs.
+        /// read: offset16bit, pop val8bit
+        /// </summary>
+        ELSE_REL,
+        /// <summary>
+        /// Call the function at address relative to current location
+        /// read: offset16bit
+        /// </summary>
+        CALL_REL,
 
         /// <summary>
         /// Stop execution.

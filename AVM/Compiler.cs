@@ -222,7 +222,10 @@ namespace AVM
             }
             foreach (var kvp in relLabelsToFill)
             {
-                VM.write16(prg, kvp.Key - VM.PROGRAM_BEGIN, (offs)(labels[kvp.Value] - kvp.Key + 1));
+                checked
+                {
+                    VM.write16(prg, kvp.Key - VM.PROGRAM_BEGIN, (offs)(labels[kvp.Value] - kvp.Key + 1));
+                }
             }
 
             prg.Add((word)I.HALT);

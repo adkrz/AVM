@@ -75,7 +75,7 @@
         // Direct operations on registers (careful!)
 
         /// <summary>
-        /// Read the register (1-IP, 2-SP 3-FP) to the stack
+        /// Read the register (0-IP, 1-SP 2-FP) to the stack
         /// read: val8bit, push: address16bit
         /// </summary>
         PUSH_REG,

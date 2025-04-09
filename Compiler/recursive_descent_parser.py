@@ -1,12 +1,13 @@
 from enum import Enum
 
 # TODO:
-# conditionals: negate, AND/OR
+# while
+# general bool expression (to negate it, parentheses etc)
 # functions and their arguments + return values
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 #input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
-input_string = "if (A>=3) then X=2; ELSE X=4;"
+input_string = "if A>=3 then X=2; ELSE X=4;"
 position = 0
 line_number = 1
 current_number = 0
@@ -38,7 +39,7 @@ class Symbol(Enum):
     Ge = 264
     Lt = 265
     Le = 266
-    Negate = 267
+    #Negate = 267
     If = 268
     Then = 269
     Else = 270
@@ -178,8 +179,8 @@ def next_symbol():
             if peek() == "=":
                 current = Symbol.NotEqual
                 getchar()
-            else:
-                current = Symbol.Negate
+            #else:
+            #    current = Symbol.Negate
             return
         elif t == "&" and peek() == "&":
             current = Symbol.And
@@ -300,11 +301,16 @@ def parse_statement():
         expect(Symbol.Semicolon)
     elif accept(Symbol.If):
         # TODO: optimize unnecessary jumps if IF without ELSE
-        if accept(Symbol.LParen):
-            parse_condition()
-            expect(Symbol.RParen)
-        else:
-            parse_condition()
+
+        parse_condition()
+        while current in (Symbol.And, Symbol.Or):
+            # TODO: precedence
+            if accept(Symbol.Or):
+                parse_condition()
+                code += "OR\n"
+            if accept(Symbol.And):
+                parse_condition()
+                code += "AND\n"
 
         code += f"JF @if{if_counter}_else\n"
 

@@ -50,6 +50,12 @@ def rewind():
         position -= 1
 
 
+def peek() -> str:
+    if position < len(input_string):
+        return input_string[position]
+    return ""
+
+
 def next_symbol():
     global current
     global current_number
@@ -89,7 +95,7 @@ def next_symbol():
         elif t == '\n':
             line_number += 1
             continue
-        elif t.isdigit() or t == '.':
+        elif t.isdigit() or t == '.' or (t == '-' and peek().isdigit()):
             current = Symbol.Number
             buffer += t
             buffer_mode = 1
@@ -138,7 +144,6 @@ def expect(s: Symbol) -> bool:
     error(f"Expected {s}")
     return False
 
-
 def error(what: str):
     print(code)
     print(f"Error in line {line_number}: {what}")
@@ -162,9 +167,6 @@ def parse_factor():
         code += f"LOAD_LOCAL {get_variable_offset(current_identifier)} ; {current_identifier}\n"
     elif accept(Symbol.Number):
         code += f"PUSH {current_number}\n"
-    elif accept(Symbol.Minus):
-        code += f"PUSH -{current_number}\n"
-        next_symbol()
     elif accept(Symbol.LParen):
         parse_expression()
         expect(Symbol.RParen)
@@ -185,8 +187,13 @@ def parse_term():
 
 def parse_expression():
     global code
-
+    um = False
+    if current == Symbol.Plus or current == Symbol.Minus:
+        um = True
+        next_symbol()
     parse_term()
+    if um:
+        code += "NEG\n"
     while current == Symbol.Plus or current == Symbol.Minus:
         v = current
         next_symbol()

@@ -342,33 +342,34 @@ def parse_statement():
         # expect(Symbol.End)
     elif accept(Symbol.If):
         # TODO: optimize unnecessary jumps if IF without ELSE
-
+        no = if_counter
+        if_counter += 1  # increment right away, because we may nest code
         parse_condition_chain()
 
-        code += f"JF @if{if_counter}_else\n"
+        code += f"JF @if{no}_else\n"
 
         expect(Symbol.Then)
         parse_statement()
-        code += f"JMP @if{if_counter}_endif\n"
-        code += f":if{if_counter}_else\n"
+        code += f"JMP @if{no}_endif\n"
+        code += f":if{no}_else\n"
 
         if accept(Symbol.Else):
             parse_statement()
 
-        code += f":if{if_counter}_endif\n"
-        if_counter += 1
+        code += f":if{no}_endif\n"
 
     elif accept(Symbol.While):
-        code += f":while{while_counter}_begin\n"
+        no = while_counter
+        while_counter += 1
+        code += f":while{no}_begin\n"
         parse_condition_chain()
-        code += f"JF @if{while_counter}_endwhile\n"
+        code += f"JF @if{no}_endwhile\n"
 
         expect(Symbol.Do)
 
         parse_statement()
 
-        code += f":while{while_counter}_endwhile\n"
-        while_counter += 1
+        code += f":while{no}_endwhile\n"
     else:
         error("parse statement")
 

@@ -6,7 +6,7 @@ from enum import Enum
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 #input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
-input_string = "if A>3 then X=2;\nX=3;"
+input_string = "if A>3 then X=2; ELSE X=4;"
 position = 0
 line_number = 1
 current_number = 0
@@ -285,12 +285,19 @@ def parse_statement():
         code += f"STORE_LOCAL {get_variable_offset(var)} ; {var}\n"
         expect(Symbol.Semicolon)
     elif accept(Symbol.If):
+        # TODO: optimize unnecessary jumps if IF without ELSE
         parse_condition()
-        lbl = f"endif{if_counter}"
-        code += f"JF @{lbl}\n"
+        code += f"JF @if{if_counter}_else\n"
+
         expect(Symbol.Then)
         parse_statement()
-        code += f":{lbl}\n"
+        code += f"JMP @if{if_counter}_endif\n"
+        code += f":if{if_counter}_else\n"
+
+        if accept(Symbol.Else):
+            parse_statement()
+
+        code += f":if{if_counter}_endif\n"
         if_counter += 1
     else:
         error("parse statement")

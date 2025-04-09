@@ -367,3 +367,6 @@ FodyWeavers.xsd
 *.bin
 *.dbg
 *.dis
+
+# Pycharm:
+.idea/

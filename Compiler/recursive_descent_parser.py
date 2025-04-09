@@ -1,18 +1,16 @@
+import sys
 from enum import Enum
 
 # TODO:
-# while
+# break/continue
 # general bool expression (to negate it, parentheses etc)
 # functions and their arguments + return values
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
-#input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
-input_string = ("if A>=3 then begin\n"
-                "X=2;\n"
-                "Y=4;\n"
-                "end\n ELSE begin\n"
-                "X=5;\n"
-                "Y=6; end\n")
+# input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
+input_string = ("A=5;\n"
+                "while A<10 do begin\n"
+                "A = A + 1;\nend\n")
 position = 0
 line_number = 1
 current_number = 0
@@ -21,6 +19,7 @@ code = ""
 
 local_variables = {}  # name-length, in order of occurrence
 if_counter = 1
+while_counter = 1
 
 
 class Symbol(Enum):
@@ -44,7 +43,7 @@ class Symbol(Enum):
     Ge = 264
     Lt = 265
     Le = 266
-    #Negate = 267
+    # Negate = 267
     If = 268
     Then = 269
     Else = 270
@@ -52,6 +51,8 @@ class Symbol(Enum):
     Or = 272
     Begin = 273
     End = 274
+    While = 275
+    Do = 276
 
 
 current = Symbol.Nothing
@@ -120,6 +121,12 @@ def next_symbol():
                     return
                 elif buffer_l == "end":
                     current = Symbol.End
+                    return
+                elif buffer_l == "while":
+                    current = Symbol.While
+                    return
+                elif buffer_l == "do":
+                    current = Symbol.Do
                     return
 
                 current_identifier = buffer
@@ -192,7 +199,7 @@ def next_symbol():
             if peek() == "=":
                 current = Symbol.NotEqual
                 getchar()
-            #else:
+            # else:
             #    current = Symbol.Negate
             return
         elif t == "&" and peek() == "&":
@@ -221,7 +228,7 @@ def expect(s: Symbol) -> bool:
 
 def error(what: str):
     print(code)
-    print(f"Error in line {line_number}: {what}")
+    print(f"Error in line {line_number}: {what}", file=sys.stderr)
     exit(1)
 
 
@@ -286,6 +293,19 @@ def parse_condition():
         error("Condition: invalid operator")
 
 
+def parse_condition_chain():
+    global code
+    parse_condition()
+    while current in (Symbol.And, Symbol.Or):
+        # TODO: precedence
+        if accept(Symbol.Or):
+            parse_condition()
+            code += "OR\n"
+        if accept(Symbol.And):
+            parse_condition()
+            code += "AND\n"
+
+
 def parse_expression():
     global code
     um = False
@@ -306,6 +326,7 @@ def parse_expression():
 def parse_statement():
     global code
     global if_counter
+    global while_counter
     if accept(Symbol.Identifier):
         var = current_identifier
         expect(Symbol.Becomes)
@@ -318,19 +339,11 @@ def parse_statement():
             parse_statement()
             if accept(Symbol.End):
                 break
-        #expect(Symbol.End)
+        # expect(Symbol.End)
     elif accept(Symbol.If):
         # TODO: optimize unnecessary jumps if IF without ELSE
 
-        parse_condition()
-        while current in (Symbol.And, Symbol.Or):
-            # TODO: precedence
-            if accept(Symbol.Or):
-                parse_condition()
-                code += "OR\n"
-            if accept(Symbol.And):
-                parse_condition()
-                code += "AND\n"
+        parse_condition_chain()
 
         code += f"JF @if{if_counter}_else\n"
 
@@ -344,6 +357,18 @@ def parse_statement():
 
         code += f":if{if_counter}_endif\n"
         if_counter += 1
+
+    elif accept(Symbol.While):
+        code += f":while{while_counter}_begin\n"
+        parse_condition_chain()
+        code += f"JF @if{while_counter}_endwhile\n"
+
+        expect(Symbol.Do)
+
+        parse_statement()
+
+        code += f":while{while_counter}_endwhile\n"
+        while_counter += 1
     else:
         error("parse statement")
 
@@ -370,4 +395,4 @@ if __name__ == '__main__':
     parse_block()
     generate_preamble()
     print(code)
-    #expect(Symbol.Semicolon)
+    # expect(Symbol.Semicolon)

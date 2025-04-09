@@ -1,11 +1,12 @@
 from enum import Enum
 
 # TODO:
-# conditionals
+# conditionals: ELSE, negate
 # functions and their arguments + return values
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
-input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
+#input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
+input_string = "if A>3 then X=2;\nX=3;"
 position = 0
 line_number = 1
 current_number = 0
@@ -13,6 +14,7 @@ current_identifier = ""
 code = ""
 
 local_variables = {}  # name-length, in order of occurrence
+if_counter = 1
 
 
 class Symbol(Enum):
@@ -30,6 +32,16 @@ class Symbol(Enum):
     Mod = 258
     Identifier = 259
     EOF = 260
+    Equals = 261
+    NotEqual = 262
+    Gt = 263
+    Ge = 264
+    Lt = 265
+    Le = 266
+    Negate = 267
+    If = 268
+    Then = 269
+    Else = 270
 
 
 current = Symbol.Nothing
@@ -81,10 +93,23 @@ def next_symbol():
                 buffer += t
                 continue
             else:
+                rewind()
+
+                buffer_l = buffer.lower()
+                if buffer_l == "if":
+                    current = Symbol.If
+                    return
+                elif buffer_l == "then":
+                    current = Symbol.Then
+                    return
+                elif buffer_l == "else":
+                    current = Symbol.Else
+                    return
+
                 current_identifier = buffer
                 if current_identifier not in local_variables:
                     local_variables[current_identifier] = 1
-                rewind()
+
                 return
 
         if not t:
@@ -106,7 +131,10 @@ def next_symbol():
             buffer_mode = 2
             continue
         elif t == "=":
-            current = Symbol.Becomes
+            if peek() == "=":
+                current = Symbol.Equals
+            else:
+                current = Symbol.Becomes
             return
         elif t == "+":
             current = Symbol.Plus
@@ -129,6 +157,24 @@ def next_symbol():
         elif t == ")":
             current = Symbol.RParen
             return
+        elif t == ">":
+            if peek() == "=":
+                current = Symbol.Ge
+            else:
+                current = Symbol.Gt
+            return
+        elif t == "<":
+            if peek() == "=":
+                current = Symbol.Le
+            else:
+                current = Symbol.Lt
+            return
+        elif t == "!":
+            if peek() == "=":
+                current = Symbol.NotEqual
+            else:
+                current = Symbol.Negate
+            return
 
 
 def accept(t: Symbol) -> bool:
@@ -143,6 +189,7 @@ def expect(s: Symbol) -> bool:
         return True
     error(f"Expected {s}")
     return False
+
 
 def error(what: str):
     print(code)
@@ -185,6 +232,32 @@ def parse_term():
         code += '\n'
 
 
+def parse_condition():
+    global code
+    parse_expression()
+    if current in (Symbol.Equals, Symbol.NotEqual, Symbol.Gt, Symbol.Ge, Symbol.Lt, Symbol.Le):
+        v = current
+        next_symbol()
+        parse_expression()
+        if v == Symbol.Equals:
+            opcode = "EQ"
+        elif v == Symbol.NotEqual:
+            opcode = "NE"
+        elif v == Symbol.Gt:
+            opcode = "GT"
+        elif v == Symbol.Ge:
+            opcode = "GE"
+        elif v == Symbol.Lt:
+            opcode = "LT"
+        elif v == Symbol.Le:
+            opcode = "LE"
+        else:
+            raise NotImplementedError()
+        code += opcode + "\n"
+    else:
+        error("Condition: invalid operator")
+
+
 def parse_expression():
     global code
     um = False
@@ -204,12 +277,21 @@ def parse_expression():
 
 def parse_statement():
     global code
+    global if_counter
     if accept(Symbol.Identifier):
         var = current_identifier
         expect(Symbol.Becomes)
         parse_expression()
         code += f"STORE_LOCAL {get_variable_offset(var)} ; {var}\n"
         expect(Symbol.Semicolon)
+    elif accept(Symbol.If):
+        parse_condition()
+        lbl = f"endif{if_counter}"
+        code += f"JF @{lbl}\n"
+        expect(Symbol.Then)
+        parse_statement()
+        code += f":{lbl}\n"
+        if_counter += 1
     else:
         error("parse statement")
 
@@ -227,6 +309,7 @@ def generate_preamble():
     for k, length in local_variables.items():
         txt += f"PUSHN {length} ; {k}\n"
     # todo: optimize into one big block
+    # todo: initial value instead of just push
     code = txt + code
 
 

@@ -7,7 +7,12 @@ from enum import Enum
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 #input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
-input_string = "if A>=3 then X=2; ELSE X=4;"
+input_string = ("if A>=3 then begin\n"
+                "X=2;\n"
+                "Y=4;\n"
+                "end\n ELSE begin\n"
+                "X=5;\n"
+                "Y=6; end\n")
 position = 0
 line_number = 1
 current_number = 0
@@ -45,6 +50,8 @@ class Symbol(Enum):
     Else = 270
     And = 271
     Or = 272
+    Begin = 273
+    End = 274
 
 
 current = Symbol.Nothing
@@ -107,6 +114,12 @@ def next_symbol():
                     return
                 elif buffer_l == "else":
                     current = Symbol.Else
+                    return
+                elif buffer_l == "begin":
+                    current = Symbol.Begin
+                    return
+                elif buffer_l == "end":
+                    current = Symbol.End
                     return
 
                 current_identifier = buffer
@@ -299,6 +312,13 @@ def parse_statement():
         parse_expression()
         code += f"STORE_LOCAL {get_variable_offset(var)} ; {var}\n"
         expect(Symbol.Semicolon)
+    elif accept(Symbol.Begin):
+        cont = True
+        while cont:
+            parse_statement()
+            if accept(Symbol.End):
+                break
+        #expect(Symbol.End)
     elif accept(Symbol.If):
         # TODO: optimize unnecessary jumps if IF without ELSE
 

@@ -1,12 +1,12 @@
 from enum import Enum
 
 # TODO:
-# conditionals: ELSE, negate
+# conditionals: negate, AND/OR
 # functions and their arguments + return values
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 #input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
-input_string = "if A>3 then X=2; ELSE X=4;"
+input_string = "if (A>=3) then X=2; ELSE X=4;"
 position = 0
 line_number = 1
 current_number = 0
@@ -42,6 +42,8 @@ class Symbol(Enum):
     If = 268
     Then = 269
     Else = 270
+    And = 271
+    Or = 272
 
 
 current = Symbol.Nothing
@@ -133,6 +135,7 @@ def next_symbol():
         elif t == "=":
             if peek() == "=":
                 current = Symbol.Equals
+                getchar()
             else:
                 current = Symbol.Becomes
             return
@@ -160,20 +163,31 @@ def next_symbol():
         elif t == ">":
             if peek() == "=":
                 current = Symbol.Ge
+                getchar()
             else:
                 current = Symbol.Gt
             return
         elif t == "<":
             if peek() == "=":
                 current = Symbol.Le
+                getchar()
             else:
                 current = Symbol.Lt
             return
         elif t == "!":
             if peek() == "=":
                 current = Symbol.NotEqual
+                getchar()
             else:
                 current = Symbol.Negate
+            return
+        elif t == "&" and peek() == "&":
+            current = Symbol.And
+            getchar()
+            return
+        elif t == "|" and peek() == "|":
+            current = Symbol.Or
+            getchar()
             return
 
 
@@ -286,7 +300,12 @@ def parse_statement():
         expect(Symbol.Semicolon)
     elif accept(Symbol.If):
         # TODO: optimize unnecessary jumps if IF without ELSE
-        parse_condition()
+        if accept(Symbol.LParen):
+            parse_condition()
+            expect(Symbol.RParen)
+        else:
+            parse_condition()
+
         code += f"JF @if{if_counter}_else\n"
 
         expect(Symbol.Then)

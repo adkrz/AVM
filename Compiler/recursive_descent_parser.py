@@ -53,6 +53,8 @@ class Symbol(Enum):
     End = 274
     While = 275
     Do = 276
+    Continue = 277
+    Break = 278
 
 
 current = Symbol.Nothing
@@ -129,6 +131,12 @@ def next_symbol():
                     return
                 elif buffer_l == "do":
                     current = Symbol.Do
+                    return
+                elif buffer_l == "continue":
+                    current = Symbol.Continue
+                    return
+                elif buffer_l == "break":
+                    current = Symbol.Break
                     return
 
                 current_identifier = buffer
@@ -299,7 +307,7 @@ def parse_condition_chain():
     global code
     parse_condition()
     while current in (Symbol.And, Symbol.Or):
-        # TODO: precedence
+        # TODO: precedence, shortcut evaluation
         if accept(Symbol.Or):
             parse_condition()
             code += "OR\n"
@@ -325,7 +333,7 @@ def parse_expression():
         code += '\n'
 
 
-def parse_statement():
+def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
     global code
     global if_counter
     global while_counter
@@ -338,7 +346,7 @@ def parse_statement():
     elif accept(Symbol.Begin):
         cont = True
         while cont:
-            parse_statement()
+            parse_statement(inside_loop=inside_loop, inside_if=inside_if, inside_function=inside_function)
             if accept(Symbol.End):
                 break
         # expect(Symbol.End)
@@ -351,12 +359,14 @@ def parse_statement():
         code += f"JF @if{no}_else\n"
 
         expect(Symbol.Then)
-        parse_statement()
+        parse_statement(inside_loop=inside_loop, inside_if=True, inside_function=inside_function)
         code += f"JMP @if{no}_endif\n"
         code += f":if{no}_else\n"
 
         if accept(Symbol.Else):
-            parse_statement()
+            if not inside_if:
+                error("Else outside IF")
+            parse_statement(inside_loop=inside_loop, inside_if=True, inside_function=inside_function)
 
         code += f":if{no}_endif\n"
 
@@ -369,9 +379,24 @@ def parse_statement():
 
         expect(Symbol.Do)
 
-        parse_statement()
+        parse_statement(inside_loop=True, inside_if=inside_if, inside_function=inside_function)
 
         code += f":while{no}_endwhile\n"
+
+    elif accept(Symbol.Break):
+        expect(Symbol.Semicolon)
+        if not inside_loop:
+            error("Break outside loop")
+        no = while_counter
+        code += f"JMP @while{no}_endwhile\n"
+
+    elif accept(Symbol.Continue):
+        expect(Symbol.Semicolon)
+        if not inside_loop:
+            error("Continue outside loop")
+        no = while_counter
+        code += f"JMP @while{no}_begin\n"
+
     else:
         error("parse statement")
 

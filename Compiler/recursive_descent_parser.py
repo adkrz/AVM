@@ -8,10 +8,22 @@ from enum import Enum
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
 input_string = ("""
+A = 5;
+B = 3;
+
 function dodaj()
 begin
 A=3;
 end
+
+function inna()
+begin
+X=5;
+Y = 2;
+Y = Y + X;
+end
+
+Z = 2;
 
 call dodaj();
 
@@ -300,8 +312,7 @@ def expect(s: Symbol) -> bool:
 
 
 def error(what: str):
-    for c in codes.values():
-        print(c)
+    print_code()
     print(f"Error in line {line_number}: {what}", file=sys.stderr)
     exit(1)
 
@@ -462,12 +473,19 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
 
 
 def parse_block():
+    global current_context
     while 1:
         if accept(Symbol.Function):
             expect(Symbol.Identifier)
+            old_ctx = current_context
+            current_context = current_identifier
             expect(Symbol.LParen)
             expect(Symbol.RParen)
             parse_block()
+            append_code("RET")
+            generate_preamble()
+            prepend_code(f":function_{current_identifier}")
+            current_context = old_ctx
         else:
             parse_statement()
         if accept(Symbol.EOF):
@@ -485,10 +503,16 @@ def generate_preamble():
     prepend_code(txt, False)
 
 
+def print_code():
+    for ctx, code in codes.items():
+        print(code)
+
+
 if __name__ == '__main__':
     next_symbol()
     parse_block()
+    current_context = ""
+    append_code("HALT")
     generate_preamble()
-    for _, code in codes.items():
-        print(code)
+    print_code()
     # expect(Symbol.Semicolon)

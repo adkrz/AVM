@@ -489,7 +489,7 @@ def parse_block():
             parse_block()
             append_code("RET")
             generate_preamble()
-            prepend_code(f":function_{current_identifier}")
+            prepend_code(f":function_{current_context}")
             current_context = old_ctx
         else:
             parse_statement()

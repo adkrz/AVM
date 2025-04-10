@@ -4,6 +4,7 @@ from enum import Enum
 # TODO:
 # general bool expression (to negate it, parentheses etc)
 # functions and their arguments + return values
+# arrays
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
@@ -23,6 +24,7 @@ Y = 2;
 Y = Y + X;
 end
 
+// TODO: does not go back to global scope
 Z = 2;
 
 call dodaj();
@@ -223,7 +225,7 @@ def next_symbol():
         if not t:
             current = Symbol.EOF
             return
-        elif t in (' ', '\t'):
+        elif t in (' ', '\t', '\r'):
             continue
         elif t == '\n':
             line_number += 1
@@ -254,7 +256,7 @@ def next_symbol():
         elif t == "*":
             current = Symbol.Mult
             return
-        elif t == "/":
+        elif t == "/" and peek() != "/":  # divide vs comment
             current = Symbol.Divide
             return
         elif t == ";":
@@ -295,6 +297,9 @@ def next_symbol():
             current = Symbol.Or
             getchar()
             return
+        elif t == "/" and peek() == "/":
+            while peek() != '\n':
+                getchar()
 
 
 def accept(t: Symbol) -> bool:

@@ -97,14 +97,16 @@ def next_symbol():
                 continue
             else:
                 current_number = int(buffer) if '.' not in buffer else float(buffer)
-                rewind()
+                if t != "":
+                    rewind()
                 return
         elif buffer_mode == 2:
             if t.isalnum() or t == '_':
                 buffer += t
                 continue
             else:
-                rewind()
+                if t != "":
+                    rewind()
 
                 buffer_l = buffer.lower()
                 if buffer_l == "if":
@@ -363,7 +365,7 @@ def parse_statement():
         while_counter += 1
         code += f":while{no}_begin\n"
         parse_condition_chain()
-        code += f"JF @if{no}_endwhile\n"
+        code += f"JF @while{no}_endwhile\n"
 
         expect(Symbol.Do)
 

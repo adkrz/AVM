@@ -7,19 +7,70 @@ from enum import Enum
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
-input_string = ("A=5;\n"
-                "while A<10 && b<3 do begin\n"
-                "A = A + 1;\nend\n")
+input_string = ("""
+function dodaj()
+begin
+A=3;
+end
+
+call dodaj();
+
+""")
 position = 0
 line_number = 1
 current_number = 0
 current_identifier = ""
-code = ""
 
-local_variables = {}  # name-length, in order of occurrence
 if_counter = 1
 while_counter = 1
 condition_counter = 1
+
+codes = {}  # per context
+local_variables = {}  # per context, then name-length, in order of occurrence
+current_context = ""  # empty = global, otherwise in function
+
+
+def append_code(c: str, newline=True):
+    global codes
+    if newline:
+        c += "\n"
+    if current_context not in codes:
+        codes[current_context] = c
+    else:
+        codes[current_context] += c
+
+
+def prepend_code(c: str, newline=True):
+    global codes
+    if newline:
+        c += "\n"
+    if current_context not in codes:
+        codes[current_context] = c
+    else:
+        codes[current_context] = c + codes[current_context]
+
+
+def register_variable(name: str, length: int):
+    global local_variables
+    if current_context not in local_variables:
+        local_variables[current_context] = {name: length}
+    else:
+        if name not in local_variables[current_context]:
+            local_variables[current_context][name] = length
+
+
+def get_variable_offset(name: str) -> int:
+    global local_variables
+    if current_context not in local_variables:
+        error(f"Current context is empty")
+    offs = 0
+    if name not in local_variables[current_context]:
+        error(f"Unknown variable {name}")
+    for k, v in local_variables[current_context].items():
+        if k == name:
+            break
+        offs += v
+    return offs
 
 
 class Symbol(Enum):
@@ -55,6 +106,9 @@ class Symbol(Enum):
     Do = 276
     Continue = 277
     Break = 278
+    Function = 279
+    Return = 280
+    Call = 281
 
 
 current = Symbol.Nothing
@@ -89,6 +143,7 @@ def next_symbol():
 
     buffer = ""
     buffer_mode = 0  # 1: number 2: identifier
+    previous_mode = current
 
     while 1:
         t = getchar()
@@ -138,11 +193,19 @@ def next_symbol():
                 elif buffer_l == "break":
                     current = Symbol.Break
                     return
+                elif buffer_l == "function":
+                    current = Symbol.Function
+                    return
+                elif buffer_l == "return":
+                    current = Symbol.Return
+                    return
+                elif buffer_l == "call":
+                    current = Symbol.Call
+                    return
 
                 current_identifier = buffer
-                if current_identifier not in local_variables:
-                    local_variables[current_identifier] = 1
-
+                if previous_mode not in (Symbol.Function, Symbol.Call):
+                    register_variable(current_identifier, 1)
                 return
 
         if not t:
@@ -237,28 +300,17 @@ def expect(s: Symbol) -> bool:
 
 
 def error(what: str):
-    print(code)
+    for c in codes.values():
+        print(c)
     print(f"Error in line {line_number}: {what}", file=sys.stderr)
     exit(1)
 
 
-def get_variable_offset(name: str) -> int:
-    offs = 0
-    if name not in local_variables:
-        error(f"Unknown variable {name}")
-    for k, v in local_variables.items():
-        if k == name:
-            break
-        offs += v
-    return offs
-
-
 def parse_factor():
-    global code
     if accept(Symbol.Identifier):
-        code += f"LOAD_LOCAL {get_variable_offset(current_identifier)} ; {current_identifier}\n"
+        append_code(f"LOAD_LOCAL {get_variable_offset(current_identifier)} ; {current_identifier}")
     elif accept(Symbol.Number):
-        code += f"PUSH {current_number}\n"
+        append_code(f"PUSH {current_number}")
     elif accept(Symbol.LParen):
         parse_expression()
         expect(Symbol.RParen)
@@ -267,18 +319,15 @@ def parse_factor():
 
 
 def parse_term():
-    global code
     parse_factor()
     while current == Symbol.Mult or current == Symbol.Divide:
         v = current
         next_symbol()
         parse_factor()
-        code += "MUL" if v == Symbol.Mult else "DIV"
-        code += '\n'
+        append_code("MUL" if v == Symbol.Mult else "DIV")
 
 
 def parse_condition():
-    global code
     parse_expression()
     if current in (Symbol.Equals, Symbol.NotEqual, Symbol.Gt, Symbol.Ge, Symbol.Lt, Symbol.Le):
         v = current
@@ -298,13 +347,12 @@ def parse_condition():
             opcode = "LE"
         else:
             raise NotImplementedError()
-        code += opcode + "\n"
+        append_code(opcode)
     else:
         error("Condition: invalid operator")
 
 
 def parse_condition_chain():
-    global code
     global condition_counter
     parse_condition()
     has_chain = False
@@ -312,45 +360,42 @@ def parse_condition_chain():
         # TODO: precedence
         if accept(Symbol.Or):
             has_chain = True
-            code += f"DUP\nJT cond{condition_counter}_expr_end\n"
+            append_code(f"DUP\nJT cond{condition_counter}_expr_end")
             parse_condition()
-            code += "OR\n"
+            append_code("OR")
         elif accept(Symbol.And):
             has_chain = True
-            code += f"DUP\nJF cond{condition_counter}_expr_end\n"
+            append_code(f"DUP\nJF cond{condition_counter}_expr_end")
             parse_condition()
-            code += "AND\n"
+            append_code("AND")
     if has_chain:
-        code += f":cond{condition_counter}_expr_end\n"
+        append_code(f":cond{condition_counter}_expr_end")
     condition_counter += 1
 
 
 def parse_expression():
-    global code
     um = False
     if current == Symbol.Plus or current == Symbol.Minus:
         um = True
         next_symbol()
     parse_term()
     if um:
-        code += "NEG\n"
+        append_code("NEG")
     while current == Symbol.Plus or current == Symbol.Minus:
         v = current
         next_symbol()
         parse_term()
-        code += "ADD" if v == Symbol.Plus else "SUB"
-        code += '\n'
+        append_code("ADD" if v == Symbol.Plus else "SUB")
 
 
 def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
-    global code
     global if_counter
     global while_counter
     if accept(Symbol.Identifier):
         var = current_identifier
         expect(Symbol.Becomes)
         parse_expression()
-        code += f"STORE_LOCAL {get_variable_offset(var)} ; {var}\n"
+        append_code(f"STORE_LOCAL {get_variable_offset(var)} ; {var}")
         expect(Symbol.Semicolon)
     elif accept(Symbol.Begin):
         cont = True
@@ -365,46 +410,52 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
         if_counter += 1  # increment right away, because we may nest code
         parse_condition_chain()
 
-        code += f"JF @if{no}_else\n"
+        append_code(f"JF @if{no}_else")
 
         expect(Symbol.Then)
         parse_statement(inside_loop=inside_loop, inside_if=True, inside_function=inside_function)
-        code += f"JMP @if{no}_endif\n"
-        code += f":if{no}_else\n"
+        append_code(f"JMP @if{no}_endif")
+        append_code(f":if{no}_else")
 
         if accept(Symbol.Else):
             if not inside_if:
                 error("Else outside IF")
             parse_statement(inside_loop=inside_loop, inside_if=True, inside_function=inside_function)
 
-        code += f":if{no}_endif\n"
+        append_code(f":if{no}_endif")
 
     elif accept(Symbol.While):
         no = while_counter
         while_counter += 1
-        code += f":while{no}_begin\n"
+        append_code(f":while{no}_begin")
         parse_condition_chain()
-        code += f"JF @while{no}_endwhile\n"
+        append_code(f"JF @while{no}_endwhile")
 
         expect(Symbol.Do)
 
         parse_statement(inside_loop=True, inside_if=inside_if, inside_function=inside_function)
 
-        code += f":while{no}_endwhile\n"
+        append_code(f":while{no}_endwhile")
 
     elif accept(Symbol.Break):
         expect(Symbol.Semicolon)
         if not inside_loop:
             error("Break outside loop")
         no = while_counter
-        code += f"JMP @while{no}_endwhile\n"
+        append_code(f"JMP @while{no}_endwhile")
 
     elif accept(Symbol.Continue):
         expect(Symbol.Semicolon)
         if not inside_loop:
             error("Continue outside loop")
         no = while_counter
-        code += f"JMP @while{no}_begin\n"
+        append_code(f"JMP @while{no}_begin")
+
+    elif accept(Symbol.Call):
+        expect(Symbol.Identifier)
+        expect(Symbol.LParen)
+        expect(Symbol.RParen)
+        expect(Symbol.Semicolon)
 
     else:
         error("parse statement")
@@ -412,24 +463,32 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
 
 def parse_block():
     while 1:
-        parse_statement()
+        if accept(Symbol.Function):
+            expect(Symbol.Identifier)
+            expect(Symbol.LParen)
+            expect(Symbol.RParen)
+            parse_block()
+        else:
+            parse_statement()
         if accept(Symbol.EOF):
             break
 
 
 def generate_preamble():
-    global code
     txt = ""
-    for k, length in local_variables.items():
+    if current_context not in local_variables:
+        return
+    for k, length in local_variables[current_context].items():
         txt += f"PUSHN {length} ; {k}\n"
     # todo: optimize into one big block
     # todo: initial value instead of just push
-    code = txt + code
+    prepend_code(txt, False)
 
 
 if __name__ == '__main__':
     next_symbol()
     parse_block()
     generate_preamble()
-    print(code)
+    for _, code in codes.items():
+        print(code)
     # expect(Symbol.Semicolon)

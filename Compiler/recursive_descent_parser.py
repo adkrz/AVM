@@ -307,17 +307,21 @@ def parse_condition_chain():
     global code
     global condition_counter
     parse_condition()
+    has_chain = False
     while current in (Symbol.And, Symbol.Or):
         # TODO: precedence
         if accept(Symbol.Or):
-            code += f"JT cond{condition_counter}_expr_end\n"
+            has_chain = True
+            code += f"DUP\nJT cond{condition_counter}_expr_end\n"
             parse_condition()
             code += "OR\n"
-        if accept(Symbol.And):
-            code += f"JF cond{condition_counter}_expr_end\n"
+        elif accept(Symbol.And):
+            has_chain = True
+            code += f"DUP\nJF cond{condition_counter}_expr_end\n"
             parse_condition()
             code += "AND\n"
-    code += f":cond{condition_counter}_expr_end\n"
+    if has_chain:
+        code += f":cond{condition_counter}_expr_end\n"
     condition_counter += 1
 
 

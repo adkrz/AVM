@@ -2,14 +2,13 @@ import sys
 from enum import Enum
 
 # TODO:
-# break/continue
 # general bool expression (to negate it, parentheses etc)
 # functions and their arguments + return values
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
 input_string = ("A=5;\n"
-                "while A<10 do begin\n"
+                "while A<10 && b<3 do begin\n"
                 "A = A + 1;\nend\n")
 position = 0
 line_number = 1
@@ -20,6 +19,7 @@ code = ""
 local_variables = {}  # name-length, in order of occurrence
 if_counter = 1
 while_counter = 1
+condition_counter = 1
 
 
 class Symbol(Enum):
@@ -305,15 +305,20 @@ def parse_condition():
 
 def parse_condition_chain():
     global code
+    global condition_counter
     parse_condition()
     while current in (Symbol.And, Symbol.Or):
-        # TODO: precedence, shortcut evaluation
+        # TODO: precedence
         if accept(Symbol.Or):
+            code += f"JT cond{condition_counter}_expr_end\n"
             parse_condition()
             code += "OR\n"
         if accept(Symbol.And):
+            code += f"JF cond{condition_counter}_expr_end\n"
             parse_condition()
             code += "AND\n"
+    code += f":cond{condition_counter}_expr_end\n"
+    condition_counter += 1
 
 
 def parse_expression():

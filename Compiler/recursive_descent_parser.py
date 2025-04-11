@@ -404,7 +404,7 @@ def parse_term():
         v = current
         next_symbol()
         parse_factor()
-        append_code("MUL" if v == Symbol.Mult else "DIV")
+        append_code("MUL" if v == Symbol.Mult else "SWAP\nDIV")
 
 
 def parse_condition():
@@ -418,13 +418,13 @@ def parse_condition():
         elif v == Symbol.NotEqual:
             opcode = "NE"
         elif v == Symbol.Gt:
-            opcode = "GT"
+            opcode = "SWAP\nLESS_OR_EQ"
         elif v == Symbol.Ge:
-            opcode = "GE"
+            opcode = "SWAP\nLESS"
         elif v == Symbol.Lt:
-            opcode = "LT"
+            opcode = "LESS"
         elif v == Symbol.Le:
-            opcode = "LE"
+            opcode = "LESS_OR_EQ"
         else:
             raise NotImplementedError()
         append_code(opcode)

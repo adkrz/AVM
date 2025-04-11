@@ -12,8 +12,31 @@ from typing import Dict
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
 input_string = ("""
-PRINT "Hello World";
+function fibonacci(X, &ret)
+begin
+if X == 0 then begin 
+ret=0; 
+return;
+end
+
+if X == 1 then begin
+ret=1;
+return;
+end
+
+A = 0;
+B = 0;
+call fibonacci(X - 2, A);
+call fibonacci(X - 1, B);
+ret = A + B;
+end
+
+
+X = 6;
+call fibonacci(X, X);
+PRINT X;
 PRINTNL;
+
 """)
 position = 0
 line_number = 1
@@ -442,7 +465,7 @@ def parse_expression():
         v = current
         next_symbol()
         parse_term()
-        append_code("ADD" if v == Symbol.Plus else "SUB")
+        append_code("ADD" if v == Symbol.Plus else "SUB2")
 
 
 def parse_statement(inside_loop=False, inside_if=False, inside_function=False):

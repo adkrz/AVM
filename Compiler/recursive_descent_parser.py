@@ -5,7 +5,6 @@ from typing import Dict
 # TODO:
 # general bool expression (to negate it, parentheses etc)
 # call function, use return values
-# functions mutually called (forward decl.)
 # arrays
 # global variables, shadowing by locals etc
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
@@ -14,7 +13,15 @@ from typing import Dict
 input_string = ("""
 A = 1;
 
+function druga(A, &B);
+
 function funkcja(A, &B)
+begin
+B = A * 2;
+call druga(1, B);
+end
+
+function druga(A, &B)
 begin
 B = A * 2;
 end
@@ -140,7 +147,7 @@ class FunctionSignature:
         self.args: Dict[str, FunctionArgument] = {}
 
     def __str__(self):
-        return  "(" + ", ".join(("&" if v.by_ref else "") + name for name, v in self.args.items()) + ")"
+        return "(" + ", ".join(("&" if v.by_ref else "") + name for name, v in self.args.items()) + ")"
 
 
 current = Symbol.Nothing
@@ -505,7 +512,7 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
 
         refs_mapping = {}
         for i, arg in enumerate(signature.args.values()):
-            if i>0:
+            if i > 0:
                 expect(Symbol.Comma)
             if not arg.by_ref:
                 parse_expression()
@@ -547,8 +554,7 @@ def parse_block(inside_function=False):
         expect(Symbol.Identifier)
         old_ctx = current_context
         current_context = current_identifier
-        if current_context in function_signatures:
-            error("Duplicate definition of function " + current_context)
+
         signature = FunctionSignature()
         function_signatures[current_context] = signature
 
@@ -565,13 +571,19 @@ def parse_block(inside_function=False):
                 arg = FunctionArgument(1, True)
                 signature.args[current_identifier] = arg
 
-        parse_block(True)
-        append_code("RET")
-        generate_preamble()
-        prepend_code(f":function_{current_context}\n;{signature}")
+        if accept(Symbol.Semicolon):
+            # just a declaration
+            pass
+        else:
+            # definition
+            parse_block(True)
+            append_code("RET")
+            generate_preamble()
+            prepend_code(f":function_{current_context}\n;{signature}")
         current_context = old_ctx
     else:
         parse_statement(inside_function=inside_function)
+
 
 def generate_preamble():
     txt = ""

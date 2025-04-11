@@ -4,7 +4,6 @@ from typing import Dict
 
 # TODO:
 # general bool expression (to negate it, parentheses etc)
-# operator minus must be with spaces
 # arrays
 # global variables, shadowing by locals etc
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
@@ -20,8 +19,8 @@ ret=1;
 else begin
 A = 0;
 B = 0;
-call fibonacci(X - 2, A);
-call fibonacci(X - 1, B);
+call fibonacci(X-2, A);
+call fibonacci(X-1, B);
 ret = A + B;
 end
 end
@@ -279,7 +278,7 @@ def next_symbol():
         elif t == '\n':
             line_number += 1
             continue
-        elif t.isdigit() or t == '.' or (t == '-' and peek().isdigit()):
+        elif t.isdigit() or t == '.':  # or (t == '-' and peek().isdigit()):
             current = Symbol.Number
             buffer += t
             buffer_mode = 1
@@ -455,7 +454,7 @@ def parse_expression():
         next_symbol()
     parse_term()
     if um:
-        append_code("NEG")
+        append_code("NEG")  # not yet implemented
     while current == Symbol.Plus or current == Symbol.Minus:
         v = current
         next_symbol()

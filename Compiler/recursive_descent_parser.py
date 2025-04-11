@@ -1,34 +1,25 @@
 import sys
 from enum import Enum
+from typing import Dict
 
 # TODO:
 # general bool expression (to negate it, parentheses etc)
-# functions and their arguments + return values
+# call function, use return values
+# functions mutually called (forward decl.)
 # arrays
 # global variables, shadowing by locals etc
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
 input_string = ("""
-A = 5;
-B = 3;
+A = 1;
 
-function dodaj()
+function funkcja(A, &B)
 begin
-A=3;
+B = A * 2;
 end
 
-function inna()
-begin
-X=5;
-Y = 2;
-Y = Y + X;
-end
-
-// TODO: does not go back to global scope
-Z = 2;
-
-call dodaj();
+//call funkcja(1, A);
 
 """)
 position = 0
@@ -66,6 +57,9 @@ def prepend_code(c: str, newline=True):
 
 
 def register_variable(name: str, length: int):
+    if current_context in function_signatures:
+        if name in function_signatures[current_context].args:
+            return
     global local_variables
     if current_context not in local_variables:
         local_variables[current_context] = {name: length}
@@ -74,18 +68,25 @@ def register_variable(name: str, length: int):
             local_variables[current_context][name] = length
 
 
-def get_variable_offset(name: str) -> int:
-    global local_variables
-    if current_context not in local_variables:
-        error(f"Current context is empty")
+def gen_load_store_instruction(name: str, load: bool):
     offs = 0
+    base = "LOAD" if load else "STORE"
+    if current_context in function_signatures and name in function_signatures[current_context].args:
+        for k, v in reversed(function_signatures[current_context].args.items()):
+            offs += v.length
+            if k == name:
+                break
+        append_code(f"{base}_ARG {offs} ; {name}")
+        return
+    if current_context not in local_variables:
+        error(f"Current context is empty: {current_context}")
     if name not in local_variables[current_context]:
         error(f"Unknown variable {name}")
     for k, v in local_variables[current_context].items():
         if k == name:
             break
         offs += v
-    return offs
+    append_code(f"{base}_LOCAL {offs} ; {name}")
 
 
 class Symbol(Enum):
@@ -124,9 +125,27 @@ class Symbol(Enum):
     Function = 279
     Return = 280
     Call = 281
+    Reference = 282
+    Comma = 282
+
+
+class FunctionArgument:
+    def __init__(self, length: int, by_ref: bool = False):
+        self.length = length
+        self.by_ref = by_ref
+
+
+class FunctionSignature:
+    def __init__(self):
+        self.args: Dict[str, FunctionArgument] = {}
+
+    def __str__(self):
+        return  "(" + ", ".join(("&" if v.by_ref else "") + name for name, v in self.args.items()) + ")"
 
 
 current = Symbol.Nothing
+
+function_signatures: Dict[str, FunctionSignature] = {}
 
 
 def getchar() -> str:
@@ -288,9 +307,12 @@ def next_symbol():
             # else:
             #    current = Symbol.Negate
             return
-        elif t == "&" and peek() == "&":
-            current = Symbol.And
-            getchar()
+        elif t == "&":
+            if peek() == "&":
+                current = Symbol.And
+                getchar()
+            else:
+                current = Symbol.Reference
             return
         elif t == "|" and peek() == "|":
             current = Symbol.Or
@@ -299,6 +321,9 @@ def next_symbol():
         elif t == "/" and peek() == "/":
             while peek() != '\n':
                 getchar()
+        elif t == ',':
+            current = Symbol.Comma
+            return
 
 
 def accept(t: Symbol) -> bool:
@@ -311,7 +336,7 @@ def accept(t: Symbol) -> bool:
 def expect(s: Symbol) -> bool:
     if accept(s):
         return True
-    error(f"Expected {s}")
+    error(f"Expected {s}, got {current}")
     return False
 
 
@@ -323,7 +348,7 @@ def error(what: str):
 
 def parse_factor():
     if accept(Symbol.Identifier):
-        append_code(f"LOAD_LOCAL {get_variable_offset(current_identifier)} ; {current_identifier}")
+        gen_load_store_instruction(current_identifier, True)
     elif accept(Symbol.Number):
         append_code(f"PUSH {current_number}")
     elif accept(Symbol.LParen):
@@ -411,7 +436,7 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
         register_variable(var, 1)
         expect(Symbol.Becomes)
         parse_expression()
-        append_code(f"STORE_LOCAL {get_variable_offset(var)} ; {var}")
+        gen_load_store_instruction(var, False)
         expect(Symbol.Semicolon)
     elif accept(Symbol.Begin):
         cont = True
@@ -473,27 +498,52 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
         expect(Symbol.RParen)
         expect(Symbol.Semicolon)
         append_code(f"CALL @function_{current_identifier}")
+
+    elif accept(Symbol.Return):
+        if not inside_function:
+            error("Return outside function")
+        append_code("RET")
+
     else:
         error("parse statement")
 
 
-def parse_block():
+def parse_block(inside_function=False):
     global current_context
+    global function_signatures
+
     if accept(Symbol.EOF):
         return
+
     elif accept(Symbol.Function):
         expect(Symbol.Identifier)
         old_ctx = current_context
         current_context = current_identifier
+        if current_context in function_signatures:
+            error("Duplicate definition of function " + current_context)
+        signature = FunctionSignature()
+        function_signatures[current_context] = signature
+
         expect(Symbol.LParen)
-        expect(Symbol.RParen)
-        parse_block()
+
+        while not accept(Symbol.RParen):
+            if signature.args:
+                expect(Symbol.Comma)
+            if accept(Symbol.Identifier):
+                arg = FunctionArgument(1, False)
+                signature.args[current_identifier] = arg
+            elif accept(Symbol.Reference):
+                next_symbol()
+                arg = FunctionArgument(1, True)
+                signature.args[current_identifier] = arg
+
+        parse_block(True)
         append_code("RET")
         generate_preamble()
-        prepend_code(f":function_{current_context}")
+        prepend_code(f":function_{current_context}\n;{signature}")
         current_context = old_ctx
     else:
-        parse_statement()
+        parse_statement(inside_function=inside_function)
 
 def generate_preamble():
     txt = ""

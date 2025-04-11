@@ -19,7 +19,7 @@ begin
 B = A * 2;
 end
 
-//call funkcja(1, A);
+call funkcja(1, A);
 
 """)
 position = 0
@@ -494,10 +494,38 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
 
     elif accept(Symbol.Call):
         expect(Symbol.Identifier)
+        func = current_identifier
+        if func not in function_signatures:
+            error(f"Unknown function {func}")
+        signature = function_signatures[func]
+
         expect(Symbol.LParen)
+
+        append_code(";" + func + str(signature))
+
+        refs_mapping = {}
+        for i, arg in enumerate(signature.args.values()):
+            if i>0:
+                expect(Symbol.Comma)
+            if not arg.by_ref:
+                parse_expression()
+            else:
+                expect(Symbol.Identifier)
+                gen_load_store_instruction(current_identifier, True)
+                refs_mapping[arg] = current_identifier
+
         expect(Symbol.RParen)
+
         expect(Symbol.Semicolon)
-        append_code(f"CALL @function_{current_identifier}")
+        append_code(f"CALL @function_{func}")
+
+        append_code("; stack cleanup")
+        for arg in reversed(signature.args.values()):
+            if not arg.by_ref:
+                append_code(f"POPN {arg.length}")
+            else:
+                gen_load_store_instruction(refs_mapping[arg], False)
+
 
     elif accept(Symbol.Return):
         if not inside_function:

@@ -4,35 +4,22 @@ from typing import Dict
 
 # TODO:
 # general bool expression (to negate it, parentheses etc)
-# call function, use return values
+# else in IF
+# operator minus must be with spaces
 # arrays
 # global variables, shadowing by locals etc
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
 input_string = ("""
-A = 1;
-
-function druga(A, &B);
-
-function funkcja(A, &B)
-begin
-B = A * 2;
-call druga(1, B);
-end
-
-function druga(A, &B)
-begin
-B = A * 2;
-end
-
-call funkcja(1, A);
-
+PRINT "Hello World";
+PRINTNL;
 """)
 position = 0
 line_number = 1
 current_number = 0
 current_identifier = ""
+current_string = ""
 
 if_counter = 1
 while_counter = 1
@@ -41,6 +28,7 @@ condition_counter = 1
 codes = {}  # per context
 local_variables = {}  # per context, then name-length, in order of occurrence
 current_context = ""  # empty = global, otherwise in function
+string_constants = []
 
 
 def append_code(c: str, newline=True):
@@ -134,6 +122,10 @@ class Symbol(Enum):
     Call = 281
     Reference = 282
     Comma = 282
+    Print = 283
+    PrintNewLine = 284
+    QuotationMark = 285
+    String = 286
 
 
 class FunctionArgument:
@@ -180,10 +172,11 @@ def next_symbol():
     global current
     global current_number
     global current_identifier
+    global current_string
     global line_number
 
     buffer = ""
-    buffer_mode = 0  # 1: number 2: identifier
+    buffer_mode = 0  # 1: number 2: identifier 3: string
     previous_mode = current
 
     while 1:
@@ -197,6 +190,13 @@ def next_symbol():
                 current_number = int(buffer) if '.' not in buffer else float(buffer)
                 if t != "":
                     rewind()
+                return
+        elif buffer_mode == 3:
+            if t != '"' or (t == '"' and buffer and buffer[-1] == '\\'):
+                buffer += t
+                continue
+            else:
+                current_string = buffer
                 return
         elif buffer_mode == 2:
             if t.isalnum() or t == '_':
@@ -243,6 +243,12 @@ def next_symbol():
                 elif buffer_l == "call":
                     current = Symbol.Call
                     return
+                elif buffer_l == "print":
+                    current = Symbol.Print
+                    return
+                elif buffer_l == "printnl":
+                    current = Symbol.PrintNewLine
+                    return
 
                 current_identifier = buffer
                 return
@@ -264,6 +270,10 @@ def next_symbol():
             current = Symbol.Identifier
             buffer += t
             buffer_mode = 2
+            continue
+        elif t == "\"":
+            current = Symbol.String
+            buffer_mode = 3
             continue
         elif t == "=":
             if peek() == "=":
@@ -533,11 +543,30 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
             else:
                 gen_load_store_instruction(refs_mapping[arg], False)
 
-
     elif accept(Symbol.Return):
         if not inside_function:
             error("Return outside function")
         append_code("RET")
+        expect(Symbol.Semicolon)
+
+    elif accept(Symbol.Print):
+        if accept(Symbol.Number):
+            append_code(f"PUSH {current_number}")
+            append_code("SYSCALL Std.PrintInt")
+        elif accept(Symbol.Identifier):
+            gen_load_store_instruction(current_identifier, True)
+            append_code("SYSCALL Std.PrintInt")
+        elif accept(Symbol.String):
+            string_constants.append(current_string)
+            append_code(f"PUSH16 @string_{len(string_constants)}")
+            append_code("SYSCALL Std.PrintString")
+        else:
+            error("Invalid print")
+        expect(Symbol.Semicolon)
+
+    elif accept(Symbol.PrintNewLine):
+        append_code("SYSCALL Std.PrintNewLine")
+        expect(Symbol.Semicolon)
 
     else:
         error("parse statement")
@@ -603,6 +632,9 @@ def print_code():
     for ctx, code in codes.items():
         if ctx:
             print(code)
+    for i, stc in enumerate(string_constants):
+        print(f":string_{i + 1}")
+        print(f"\"{stc}\"")
 
 
 if __name__ == '__main__':

@@ -67,9 +67,15 @@ enum I
     /// </summary>
     ADD,
     /// <summary>
+    /// Subtraction: value on top - next value
     /// pop: 2x val8bit, push: val8bit
     /// </summary>
     SUB,
+    /// <summary>
+    /// Subtraction: next stack value - value on top
+    /// pop: 2x val8bit, push: val8bit
+    /// </summary>
+    SUB2,
     /// <summary>
     /// pop: 2x val8bit, push: val8bit
     /// </summary>
@@ -328,6 +334,11 @@ enum I
     /// pop 2x address16bit, push: address16bit
     /// </summary>
     SUB16,
+    /// <summary>
+    /// 16bit version of <see cref="I.SUB2"/>
+    /// pop 2x address16bit, push: address16bit
+    /// </summary>
+    SUB216,
     /// <summary>
     /// 16bit version of <see cref="I.MUL"/>
     /// pop 2x address16bit, push: address16bit

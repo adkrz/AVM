@@ -302,8 +302,18 @@ namespace AVM
                     case I.SUB:
                         PUSHI((POP() - POP()));
                         break;
+                    case I.SUB2:
+                        var arg1 = POP();
+                        var arg2 = POP();
+                        PUSHI((arg2-arg1));
+                        break;
                     case I.SUB16:
                         PUSHI_ADDR((POP_ADDR() - POP_ADDR()));
+                        break;
+                    case I.SUB216:
+                        var addr1 = POP_ADDR();
+                        var addr2 = POP_ADDR();
+                        PUSHI_ADDR((addr2-addr1));
                         break;
                     case I.DIV:
                         try

@@ -206,8 +206,22 @@ I VM::StepProgram()
         case I::SUB:
             PUSHI((POP() - POP()));
             break;
+        case I::SUB2:
+        {
+            auto tmp1 = POP();
+            auto tmp2 = POP();
+            PUSHI((tmp2 - tmp1));
+        }
+            break;
         case I::SUB16:
             PUSHI_ADDR((POP_ADDR() - POP_ADDR()));
+            break;
+        case I::SUB216:
+        {
+            auto tmp1 = POP_ADDR();
+            auto tmp2 = POP_ADDR();
+            PUSHI_ADDR((tmp2 - tmp1));
+        }
             break;
         case I::DIV:
             arg = POP();

@@ -4,7 +4,6 @@ from typing import Dict
 
 # TODO:
 # general bool expression (to negate it, parentheses etc)
-# else in IF
 # operator minus must be with spaces
 # arrays
 # global variables, shadowing by locals etc
@@ -14,21 +13,17 @@ from typing import Dict
 input_string = ("""
 function fibonacci(X, &ret)
 begin
-if X == 0 then begin 
+if X == 0 then 
 ret=0; 
-return;
-end
-
-if X == 1 then begin
+else if X == 1 then
 ret=1;
-return;
-end
-
+else begin
 A = 0;
 B = 0;
 call fibonacci(X - 2, A);
 call fibonacci(X - 1, B);
 ret = A + B;
+end
 end
 
 
@@ -493,15 +488,17 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
 
         append_code(f"JF @if{no}_else")
 
+        inside_if = True
+
         expect(Symbol.Then)
-        parse_statement(inside_loop=inside_loop, inside_if=True, inside_function=inside_function)
+        parse_statement(inside_loop=inside_loop, inside_if=inside_if, inside_function=inside_function)
         append_code(f"JMP @if{no}_endif")
         append_code(f":if{no}_else")
 
         if accept(Symbol.Else):
             if not inside_if:
                 error("Else outside IF")
-            parse_statement(inside_loop=inside_loop, inside_if=True, inside_function=inside_function)
+            parse_statement(inside_loop=inside_loop, inside_if=inside_if, inside_function=inside_function)
 
         append_code(f":if{no}_endif")
 

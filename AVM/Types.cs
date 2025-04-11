@@ -485,6 +485,12 @@
         CALL_REL,
 
         /// <summary>
+        /// Push the address, where loaded program ends and stack starts
+        /// push: address16bit
+        /// </summary>
+        PUSH_STACK_START,
+
+        /// <summary>
         /// Stop execution.
         /// </summary>
         HALT = 99

@@ -50,7 +50,7 @@ enum I
     // Direct operations on registers (careful!)
 
     /// <summary>
-    /// Read the register (1-IP, 2-SP 3-FP) to the stack
+    /// Read the register (0-IP, 1-SP 2-FP) to the stack
     /// read: val8bit, push: address16bit
     /// </summary>
     PUSH_REG,
@@ -456,6 +456,12 @@ enum I
     /// read: offset16bit
     /// </summary>
     CALL_REL,
+
+    /// <summary>
+    /// Push the address, where loaded program ends and stack starts
+    /// push: address16bit
+    /// </summary>
+    PUSH_STACK_START,
 
     /// <summary>
     /// Stop execution.

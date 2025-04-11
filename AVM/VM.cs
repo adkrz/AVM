@@ -35,7 +35,7 @@ namespace AVM
         private Random random = new Random();
         private string nvram_file = "";
         FileStream? nvram = null;
-        private addr programStartPos;
+        private addr stackStartPos;
 
 
 
@@ -163,9 +163,9 @@ namespace AVM
                 }
             }
 #endif
-            programStartPos = (addr)(program.Length + loadFrom);
-            WRITE_REGISTER(SP_REGISTER, programStartPos);
-            WRITE_REGISTER(FP_REGISTER, programStartPos);
+            stackStartPos = (addr)(program.Length + loadFrom);
+            WRITE_REGISTER(SP_REGISTER, stackStartPos);
+            WRITE_REGISTER(FP_REGISTER, stackStartPos);
             max_sp = READ_REGISTER(SP_REGISTER);
             xic = 0;
             handlers = new();
@@ -267,6 +267,9 @@ namespace AVM
                     case I.PUSH_NEXT_SP:
                         sp_value = READ_REGISTER(SP_REGISTER);
                         PUSHI_ADDR(sp_value + ADDRESS_SIZE);
+                        break;
+                    case I.PUSH_STACK_START:
+                        PUSH_ADDR(stackStartPos);
                         break;
                     case I.POP:
                         POP();
@@ -906,7 +909,7 @@ namespace AVM
                 var ip = READ_REGISTER(IP_REGISTER);
                 var fp = READ_REGISTER(FP_REGISTER);
                 bt.Add(ip);
-                while (fp > programStartPos)
+                while (fp > stackStartPos)
                 {
                     ip = read16(memory, fp - 2 * ADDRESS_SIZE);
                     fp = read16(memory, fp - ADDRESS_SIZE);

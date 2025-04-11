@@ -45,9 +45,9 @@ void VM::LoadProgram(word* program, int program_length, int memory_size, const c
     {
         memory[i + PROGRAM_BEGIN] = program[i];
     }
-    auto startPos = (addr)(program_length + PROGRAM_BEGIN);
-    WRITE_REGISTER(SP_REGISTER, startPos);
-    WRITE_REGISTER(FP_REGISTER, startPos);
+    stackStartPos = (addr)(program_length + PROGRAM_BEGIN);
+    WRITE_REGISTER(SP_REGISTER, stackStartPos);
+    WRITE_REGISTER(FP_REGISTER, stackStartPos);
     max_sp = READ_REGISTER(SP_REGISTER);
     xic = 0;
     handlers.clear();
@@ -170,6 +170,10 @@ I VM::StepProgram()
         case I::PUSH_NEXT_SP:
             sp_value = READ_REGISTER(SP_REGISTER);
             PUSHI_ADDR(sp_value + ADDRESS_SIZE);
+            break;
+        case I::PUSH_STACK_START:
+            PUSH_ADDR(stackStartPos);
+            break;
             break;
         case I::POP:
             POP();

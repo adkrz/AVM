@@ -24,6 +24,7 @@ private:
     const int SP_REGISTER = 1;
     const int FP_REGISTER = 2;
     const int PROGRAM_BEGIN = 0;
+    addr stackStartPos = 0;
     addr registers[3];
 
 

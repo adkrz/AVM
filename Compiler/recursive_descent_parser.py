@@ -5,6 +5,7 @@ from enum import Enum
 # general bool expression (to negate it, parentheses etc)
 # functions and their arguments + return values
 # arrays
+# global variables, shadowing by locals etc
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
@@ -218,8 +219,6 @@ def next_symbol():
                     return
 
                 current_identifier = buffer
-                if previous_mode not in (Symbol.Function, Symbol.Call):
-                    register_variable(current_identifier, 1)
                 return
 
         if not t:
@@ -409,6 +408,7 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
     global while_counter
     if accept(Symbol.Identifier):
         var = current_identifier
+        register_variable(var, 1)
         expect(Symbol.Becomes)
         parse_expression()
         append_code(f"STORE_LOCAL {get_variable_offset(var)} ; {var}")
@@ -472,30 +472,28 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
         expect(Symbol.LParen)
         expect(Symbol.RParen)
         expect(Symbol.Semicolon)
-
+        append_code(f"CALL @function_{current_identifier}")
     else:
         error("parse statement")
 
 
 def parse_block():
     global current_context
-    while 1:
-        if accept(Symbol.Function):
-            expect(Symbol.Identifier)
-            old_ctx = current_context
-            current_context = current_identifier
-            expect(Symbol.LParen)
-            expect(Symbol.RParen)
-            parse_block()
-            append_code("RET")
-            generate_preamble()
-            prepend_code(f":function_{current_context}")
-            current_context = old_ctx
-        else:
-            parse_statement()
-        if accept(Symbol.EOF):
-            break
-
+    if accept(Symbol.EOF):
+        return
+    elif accept(Symbol.Function):
+        expect(Symbol.Identifier)
+        old_ctx = current_context
+        current_context = current_identifier
+        expect(Symbol.LParen)
+        expect(Symbol.RParen)
+        parse_block()
+        append_code("RET")
+        generate_preamble()
+        prepend_code(f":function_{current_context}")
+        current_context = old_ctx
+    else:
+        parse_statement()
 
 def generate_preamble():
     txt = ""
@@ -509,13 +507,18 @@ def generate_preamble():
 
 
 def print_code():
+    # "main" must be printed first to not execute functions
+    if "" in codes:
+        print(codes[""])
     for ctx, code in codes.items():
-        print(code)
+        if ctx:
+            print(code)
 
 
 if __name__ == '__main__':
     next_symbol()
-    parse_block()
+    while not accept(Symbol.EOF):
+        parse_block()
     current_context = ""
     append_code("HALT")
     generate_preamble()

@@ -638,7 +638,11 @@ def parse_block(inside_function=False):
             if signature.args:
                 expect(Symbol.Comma)
             if accept(Symbol.Identifier):
-                arg = Variable(1, by_ref=False)
+                if accept(Symbol.LBracket):
+                    expect(Symbol.RBracket)
+                    arg = Variable(2, by_ref=False, is_array=True)
+                else:
+                    arg = Variable(1, by_ref=False)
                 signature.args[current_identifier] = arg
             elif accept(Symbol.Reference):
                 next_symbol()

@@ -531,6 +531,19 @@ I VM::StepProgram()
             sp_value = READ_REGISTER(SP_REGISTER);
             PUSH_ADDR(read16(memory, sp_value - ADDRESS_SIZE));
             break;
+        case I::ROLL3:
+        {
+            auto a = POP();
+            auto b = POP();
+            auto c = POP();
+            PUSH(a);
+            PUSH(c);
+            PUSH(b);
+        }
+            break;
+        case I::NEG:
+            PUSHI(-POP());
+            break;
         case I::NOP:
             break;
         case I::DEBUGGER:

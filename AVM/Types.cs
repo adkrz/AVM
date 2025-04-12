@@ -501,6 +501,17 @@
         PUSH_STACK_START,
 
         /// <summary>
+        /// Roll 3 stack variables, so if A=top and stack contents are ABC, they become BCA (B=top)
+        /// Rolls 8-bit vals
+        /// </summary>
+        ROLL3,
+        /// <summary>
+        /// Negate the value on top of stack
+        /// pop: val8bit push: val8bit
+        /// </summary>
+        NEG,
+
+        /// <summary>
         /// Stop execution.
         /// </summary>
         HALT = 99

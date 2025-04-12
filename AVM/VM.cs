@@ -630,6 +630,17 @@ namespace AVM
                         sp_value = READ_REGISTER(SP_REGISTER);
                         PUSH_ADDR(read16(memory, sp_value - ADDRESS_SIZE));
                         break;
+                    case I.ROLL3:
+                        var a = POP();
+                        var b = POP();
+                        var c = POP();
+                        PUSH(a);
+                        PUSH(c);
+                        PUSH(b);
+                        break;
+                    case I.NEG:
+                        PUSHI(-POP());
+                        break;
                     case I.NOP:
                         break;
                     case I.DEBUGGER:

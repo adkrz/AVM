@@ -12,7 +12,7 @@ from typing import Dict
 input_string = ("""
 A = [5];
 A[2] = 3;
-X = A[2];
+PRINT A[2];
 
 
 """)
@@ -601,18 +601,13 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
         expect(Symbol.Semicolon)
 
     elif accept(Symbol.Print):
-        if accept(Symbol.Number):
-            append_code(f"PUSH {current_number}")
-            append_code("SYSCALL Std.PrintInt")
-        elif accept(Symbol.Identifier):
-            gen_load_store_instruction(current_identifier, True)
-            append_code("SYSCALL Std.PrintInt")
-        elif accept(Symbol.String):
+        if accept(Symbol.String):
             string_constants.append(current_string)
             append_code(f"PUSH16 @string_{len(string_constants)}")
             append_code("SYSCALL Std.PrintString")
         else:
-            error("Invalid print")
+            parse_expression()
+            append_code("SYSCALL Std.PrintInt")
         expect(Symbol.Semicolon)
 
     elif accept(Symbol.PrintNewLine):

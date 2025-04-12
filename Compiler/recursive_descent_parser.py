@@ -4,7 +4,6 @@ from typing import Dict
 
 # TODO:
 # general bool expression (to negate it, parentheses etc)
-# arrays
 # global variables, shadowing by locals etc
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 

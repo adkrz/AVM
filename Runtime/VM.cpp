@@ -135,6 +135,7 @@ I VM::StepProgram()
     int offset;
     addr val;
     word tmp;
+    int signedResult;
 
     instr = (I)memory[READ_REGISTER(IP_REGISTER)];
     skip = WORD_SIZE;
@@ -194,34 +195,51 @@ I VM::StepProgram()
             WRITE_REGISTER(arg, POP_ADDR());
             break;
         case I::ADD:
-            PUSHI((POP() + POP()));
+            signedResult = POP() + POP();
+            carry = signedResult > 255;
+            PUSHI(signedResult);
             break;
         case I::ADD16:
-            PUSHI_ADDR((POP_ADDR() + POP_ADDR()));
+            signedResult = POP_ADDR() + POP_ADDR();
+            carry = signedResult > 65535;
+            PUSHI_ADDR(signedResult);
             break;
         case I::ADD16C:
             address = read_addr_from_program(skip);
-            PUSHI_ADDR((POP_ADDR() + address));
+            signedResult = POP_ADDR() + address;
+            carry = signedResult > 35535;
+            PUSHI_ADDR(signedResult);
             break;
         case I::SUB:
-            PUSHI((POP() - POP()));
+            signedResult = POP() - POP();
+            carry = signedResult < 0;
+            PUSHI(signedResult);
             break;
         case I::SUB2:
         {
             auto tmp1 = POP();
             auto tmp2 = POP();
-            PUSHI((tmp2 - tmp1));
+            signedResult = tmp2 - tmp1;
+            carry = signedResult < 0;
+            PUSHI(signedResult);
         }
             break;
         case I::SUB16:
-            PUSHI_ADDR((POP_ADDR() - POP_ADDR()));
+            signedResult = POP_ADDR() - POP_ADDR();
+            carry = signedResult < 0;
+            PUSHI_ADDR(signedResult);
             break;
         case I::SUB216:
         {
             auto tmp1 = POP_ADDR();
             auto tmp2 = POP_ADDR();
-            PUSHI_ADDR((tmp2 - tmp1));
+            signedResult = tmp2 - tmp1;
+            carry = signedResult < 0;
+            PUSHI_ADDR(signedResult);
         }
+            break;
+        case I::CARRY:
+            PUSH(carry ? (byte)1 : (byte)0);
             break;
         case I::DIV:
             arg = POP();

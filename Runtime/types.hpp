@@ -484,6 +484,11 @@ enum I
     /// pop: val8bit push: val8bit
     /// </summary>
     NEG,
+    /// <summary>
+    ///  Checks, if the addition or subtraction overflows, returns 0 or 1
+    ///  pop: val8bit
+    /// </summary>
+    CARRY,
 
     /// <summary>
     /// Stop execution.

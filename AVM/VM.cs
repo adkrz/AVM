@@ -17,6 +17,7 @@ namespace AVM
         private addr[] registersBuffer = Array.Empty<addr>();
         private word* memory;
         private addr* registers;
+        private bool carry = false;
 #else
         private word[] memory = Array.Empty<word>();
         private addr[] registers = new addr[3];
@@ -232,6 +233,7 @@ namespace AVM
             addr sp_value;
             int direction;
             int offset;
+            int signedResult;
 
             instr = (I)memory[READ_REGISTER(IP_REGISTER)];
             skip = WORD_SIZE;
@@ -290,30 +292,47 @@ namespace AVM
                         WRITE_REGISTER(arg, POP_ADDR());
                         break;
                     case I.ADD:
-                        PUSHI((POP() + POP()));
+                        signedResult = POP() + POP();
+                        carry = signedResult > 255;
+                        PUSHI(signedResult);
                         break;
                     case I.ADD16:
-                        PUSHI_ADDR((POP_ADDR() + POP_ADDR()));
+                        signedResult = POP_ADDR() + POP_ADDR();
+                        carry = signedResult > 65535;
+                        PUSHI_ADDR(signedResult);
                         break;
                     case I.ADD16C:
                         address = read_addr_from_program(ref skip);
-                        PUSHI_ADDR((POP_ADDR() + address));
+                        signedResult = POP_ADDR() + address;
+                        carry = signedResult > 35535;
+                        PUSHI_ADDR(signedResult);
                         break;
                     case I.SUB:
-                        PUSHI((POP() - POP()));
+                        signedResult = POP() - POP();
+                        carry = signedResult < 0;
+                        PUSHI(signedResult);
                         break;
                     case I.SUB2:
                         var arg1 = POP();
                         var arg2 = POP();
-                        PUSHI((arg2-arg1));
+                        signedResult = arg2 - arg1;
+                        carry = signedResult < 0;
+                        PUSHI(signedResult);
                         break;
                     case I.SUB16:
-                        PUSHI_ADDR((POP_ADDR() - POP_ADDR()));
+                        signedResult = POP_ADDR() - POP_ADDR();
+                        carry = signedResult < 0;
+                        PUSHI_ADDR(signedResult);
                         break;
                     case I.SUB216:
                         var addr1 = POP_ADDR();
                         var addr2 = POP_ADDR();
-                        PUSHI_ADDR((addr2-addr1));
+                        signedResult = addr2 - addr1;
+                        carry = signedResult < 0;
+                        PUSHI_ADDR(signedResult);
+                        break;
+                    case I.CARRY:
+                        PUSH(carry ? (byte)1 : (byte)0);
                         break;
                     case I.DIV:
                         try

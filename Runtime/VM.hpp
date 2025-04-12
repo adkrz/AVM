@@ -26,6 +26,7 @@ private:
     const int PROGRAM_BEGIN = 0;
     addr stackStartPos = 0;
     addr registers[3];
+    bool carry = false;
 
 
     void* hConsole;

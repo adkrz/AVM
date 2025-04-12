@@ -309,6 +309,12 @@ I VM::StepProgram()
         case I::OR:
             PUSHI(POP() | POP());
             break;
+        case I::LAND:
+            PUSHI((POP() != 0) && (POP() != 0) ? 1 : 0);
+            break;
+        case I::LOR:
+            PUSHI((POP() != 0) || (POP() != 0) ? 1 : 0);
+            break;
         case I::XOR:
             PUSHI(POP() ^ POP());
             break;

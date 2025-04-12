@@ -129,13 +129,25 @@
         // Byte operations
 
         /// <summary>
+        /// Bitwise
         /// pop: 2x val8bit, push: val8bit
         /// </summary>
         AND,
         /// <summary>
+        /// Bitwise
         /// pop: 2x val8bit, push: val8bit
         /// </summary>
         OR,
+        /// <summary>
+        /// Logical
+        /// pop: 2x val8bit, push: val8bit
+        /// </summary>
+        LAND,
+        /// <summary>
+        /// Logical
+        /// pop: 2x val8bit, push: val8bit
+        /// </summary>
+        LOR,
         /// <summary>
         /// Bitwise NOT (flip bits)
         /// pop: val8bit, push: val8bit

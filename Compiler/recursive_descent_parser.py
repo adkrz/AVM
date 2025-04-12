@@ -10,26 +10,10 @@ from typing import Dict
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
 input_string = ("""
-function fibonacci(X, &ret)
-begin
-if X == 0 then 
-ret=0; 
-else if X == 1 then
-ret=1;
-else begin
-A = 0;
-B = 0;
-call fibonacci(X-2, A);
-call fibonacci(X-1, B);
-ret = A + B;
-end
-end
+A = [5];
+A[2] = 3;
+X = A[2];
 
-
-X = 6;
-call fibonacci(X, X);
-PRINT X;
-PRINTNL;
 
 """)
 position = 0
@@ -43,7 +27,7 @@ while_counter = 1
 condition_counter = 1
 
 codes = {}  # per context
-local_variables = {}  # per context, then name-length, in order of occurrence
+local_variables: Dict[str, Dict[str, "Variable"]] = {}  # per context, then name+details, in order of occurrence
 current_context = ""  # empty = global, otherwise in function
 string_constants = []
 
@@ -68,37 +52,45 @@ def prepend_code(c: str, newline=True):
         codes[current_context] = c + codes[current_context]
 
 
-def register_variable(name: str, length: int):
+def register_variable(name: str, length: int, is_array: bool = False):
     if current_context in function_signatures:
         if name in function_signatures[current_context].args:
             return
     global local_variables
+    vdef = Variable(length, is_array=is_array)
     if current_context not in local_variables:
-        local_variables[current_context] = {name: length}
+        local_variables[current_context] = {name: vdef}
     else:
         if name not in local_variables[current_context]:
-            local_variables[current_context][name] = length
+            vdef = Variable(length)
+            local_variables[current_context][name] = vdef
 
 
 def gen_load_store_instruction(name: str, load: bool):
     offs = 0
-    base = "LOAD" if load else "STORE"
+
+    def gen(offset, is_arg, is_ptr):
+        instr = "LOAD" if load else "STORE"
+        bits = "16" if is_ptr else ""
+        origin = "ARG" if is_arg else "LOCAL"
+        code = f"{instr}_{origin}{bits} {offset} ; {name}"
+        return code
+
     if current_context in function_signatures and name in function_signatures[current_context].args:
         for k, v in reversed(function_signatures[current_context].args.items()):
             offs += v.length
             if k == name:
-                break
-        append_code(f"{base}_ARG {offs} ; {name}")
-        return
+                append_code(gen(offs, True, v.is_array))
+                return
     if current_context not in local_variables:
         error(f"Current context is empty: {current_context}")
     if name not in local_variables[current_context]:
         error(f"Unknown variable {name}")
     for k, v in local_variables[current_context].items():
         if k == name:
-            break
-        offs += v
-    append_code(f"{base}_LOCAL {offs} ; {name}")
+            append_code(gen(offs, False, v.is_array))
+            return
+        offs += v.length
 
 
 class Symbol(Enum):
@@ -111,6 +103,8 @@ class Symbol(Enum):
     Becomes = ord('=')
     LParen = ord('(')
     RParen = ord(')')
+    LBracket = ord('[')
+    RBracket = ord(']')
     Number = 256
     Div = 257
     Mod = 258
@@ -145,15 +139,16 @@ class Symbol(Enum):
     String = 286
 
 
-class FunctionArgument:
-    def __init__(self, length: int, by_ref: bool = False):
+class Variable:
+    def __init__(self, length: int, by_ref: bool = False, is_array: bool = False):
         self.length = length
         self.by_ref = by_ref
+        self.is_array = is_array
 
 
 class FunctionSignature:
     def __init__(self):
-        self.args: Dict[str, FunctionArgument] = {}
+        self.args: Dict[str, Variable] = {}
 
     def __str__(self):
         return "(" + ", ".join(("&" if v.by_ref else "") + name for name, v in self.args.items()) + ")"
@@ -194,7 +189,7 @@ def next_symbol():
 
     buffer = ""
     buffer_mode = 0  # 1: number 2: identifier 3: string
-    previous_mode = current
+    # previous_mode = current
 
     while 1:
         t = getchar()
@@ -358,6 +353,12 @@ def next_symbol():
         elif t == ',':
             current = Symbol.Comma
             return
+        elif t == '[':
+            current = Symbol.LBracket
+            return
+        elif t == ']':
+            current = Symbol.RBracket
+            return
 
 
 def accept(t: Symbol) -> bool:
@@ -382,7 +383,15 @@ def error(what: str):
 
 def parse_factor():
     if accept(Symbol.Identifier):
-        gen_load_store_instruction(current_identifier, True)
+        if accept(Symbol.LBracket):
+            gen_load_store_instruction(current_identifier, True)
+            parse_expression()
+            expect(Symbol.RBracket)
+            append_code("EXTEND")
+            append_code("ADD16")  # TODO: multiply if element length>1
+            append_code("LOAD_GLOBAL")
+        else:
+            gen_load_store_instruction(current_identifier, True)
     elif accept(Symbol.Number):
         append_code(f"PUSH {current_number}")
     elif accept(Symbol.LParen):
@@ -467,11 +476,34 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
     global while_counter
     if accept(Symbol.Identifier):
         var = current_identifier
-        register_variable(var, 1)
-        expect(Symbol.Becomes)
-        parse_expression()
-        gen_load_store_instruction(var, False)
-        expect(Symbol.Semicolon)
+        if accept(Symbol.Becomes):
+            if accept(Symbol.LBracket):
+                register_variable(var, 2, is_array=True)
+                append_code("PUSH_NEXT_SP")
+                gen_load_store_instruction(var, False)
+                parse_expression()
+                expect(Symbol.RBracket)
+                expect(Symbol.Semicolon)
+                append_code(f"PUSHN2 ; {var} alloc")
+            else:
+                register_variable(var, 1)
+                parse_expression()
+                gen_load_store_instruction(var, False)
+                expect(Symbol.Semicolon)
+        elif accept(Symbol.LBracket):
+            parse_expression()
+            append_code("EXTEND")
+            # TODO: when having array data types, use multiplication if size>1
+            expect(Symbol.RBracket)
+            expect(Symbol.Becomes)
+            gen_load_store_instruction(var, True)
+            append_code("ADD16")
+            parse_expression()
+            # stack is in wrong order, fix it:
+            append_code("ROLL3")  # not yet implemented
+            append_code("STORE_GLOBAL")
+
+            expect(Symbol.Semicolon)
     elif accept(Symbol.Begin):
         cont = True
         while cont:
@@ -612,11 +644,11 @@ def parse_block(inside_function=False):
             if signature.args:
                 expect(Symbol.Comma)
             if accept(Symbol.Identifier):
-                arg = FunctionArgument(1, False)
+                arg = Variable(1, by_ref=False)
                 signature.args[current_identifier] = arg
             elif accept(Symbol.Reference):
                 next_symbol()
-                arg = FunctionArgument(1, True)
+                arg = Variable(1, by_ref=True)
                 signature.args[current_identifier] = arg
 
         if accept(Symbol.Semicolon):
@@ -637,8 +669,8 @@ def generate_preamble():
     txt = ""
     if current_context not in local_variables:
         return
-    for k, length in local_variables[current_context].items():
-        txt += f"PUSHN {length} ; {k}\n"
+    for k, var in local_variables[current_context].items():
+        txt += f"PUSHN {var.length} ; {k}\n"
     # todo: optimize into one big block
     # todo: initial value instead of just push
     prepend_code(txt, False)

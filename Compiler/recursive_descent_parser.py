@@ -3,7 +3,6 @@ from enum import Enum
 from typing import Dict
 
 # TODO:
-# general bool expression (to negate it, parentheses etc)
 # global variables, shadowing by locals etc
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
@@ -105,8 +104,6 @@ class Symbol(Enum):
     LBracket = ord('[')
     RBracket = ord(']')
     Number = 256
-    Div = 257
-    Mod = 258
     Identifier = 259
     EOF = 260
     Equals = 261
@@ -136,6 +133,7 @@ class Symbol(Enum):
     PrintNewLine = 284
     QuotationMark = 285
     String = 286
+    Modulo = 287
 
 
 class Variable:
@@ -358,6 +356,9 @@ def next_symbol():
         elif t == ']':
             current = Symbol.RBracket
             return
+        elif t == '%':
+            current = Symbol.Modulo
+            return
 
 
 def accept(t: Symbol) -> bool:
@@ -400,21 +401,12 @@ def parse_factor():
         error("factor: syntax error")
 
 
-def parse_term():
+def parse_logical():
     parse_factor()
-    while current == Symbol.Mult or current == Symbol.Divide:
+    while current in (Symbol.Equals, Symbol.NotEqual, Symbol.Ge, Symbol.Gt, Symbol.Le, Symbol.Lt):
         v = current
         next_symbol()
         parse_factor()
-        append_code("MUL" if v == Symbol.Mult else "SWAP\nDIV")
-
-
-def parse_condition():
-    parse_expression()
-    if current in (Symbol.Equals, Symbol.NotEqual, Symbol.Gt, Symbol.Ge, Symbol.Lt, Symbol.Le):
-        v = current
-        next_symbol()
-        parse_expression()
         if v == Symbol.Equals:
             opcode = "EQ"
         elif v == Symbol.NotEqual:
@@ -428,31 +420,46 @@ def parse_condition():
         elif v == Symbol.Le:
             opcode = "LESS_OR_EQ"
         else:
-            raise NotImplementedError()
+            raise NotImplementedError(current)
         append_code(opcode)
-    else:
-        error("Condition: invalid operator")
 
 
-def parse_condition_chain():
+def parse_logical_chain():
     global condition_counter
-    parse_condition()
+    parse_logical()
     has_chain = False
     while current in (Symbol.And, Symbol.Or):
         # TODO: precedence
         if accept(Symbol.Or):
             has_chain = True
             append_code(f"DUP\nJT cond{condition_counter}_expr_end")
-            parse_condition()
+            parse_logical()
             append_code("OR")
         elif accept(Symbol.And):
             has_chain = True
             append_code(f"DUP\nJF cond{condition_counter}_expr_end")
-            parse_condition()
+            parse_logical()
             append_code("AND")
     if has_chain:
         append_code(f":cond{condition_counter}_expr_end")
-    condition_counter += 1
+        condition_counter += 1
+
+
+def parse_term():
+    parse_logical_chain()
+    while current in (Symbol.Mult, Symbol.Divide, Symbol.Modulo):
+        v = current
+        next_symbol()
+        parse_logical_chain()
+        if v == Symbol.Mult:
+            opcode = "MUL"
+        elif v == Symbol.Divide:
+            opcode = "SWAP\nMUL"
+        elif v == Symbol.Modulo:
+            opcode = "SWAP\nMOD"
+        else:
+            raise NotImplementedError(current)
+        append_code(opcode)
 
 
 def parse_expression():
@@ -514,7 +521,7 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
         # TODO: optimize unnecessary jumps if IF without ELSE
         no = if_counter
         if_counter += 1  # increment right away, because we may nest code
-        parse_condition_chain()
+        parse_expression()
 
         append_code(f"JF @if{no}_else")
 
@@ -536,7 +543,7 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
         no = while_counter
         while_counter += 1
         append_code(f":while{no}_begin")
-        parse_condition_chain()
+        parse_expression()
         append_code(f"JF @while{no}_endwhile")
 
         expect(Symbol.Do)

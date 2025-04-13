@@ -4,19 +4,22 @@ from typing import Dict
 
 # TODO:
 # data types
+# initial value
 # string arrays
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
 input_string = ("""
-X = 5;
+addr arr[2];
+addr Z;
+Z = arr[3];
 
-function f()
+function funkcja(byte A, byte B&, addr c[])
 begin
-global X;
-X = 2;
-A = X;
+A=1;
 end
+
+//TODO: type check, up/downcast, expressions, function call check, PUSH larger numbers
 
 """)
 position = 0
@@ -55,12 +58,21 @@ def prepend_code(c: str, newline=True):
         codes[current_context] = c + codes[current_context]
 
 
-def register_variable(name: str, length: int, is_array: bool = False, from_global: bool = False):
+class Type(Enum):
+    Byte = 1
+    Addr = 2
+
+    @property
+    def size(self):
+        return 1 if self == Type.Byte else 2
+
+
+def register_variable(name: str, type_: Type, is_array: bool = False, from_global: bool = False):
     if current_context in function_signatures:
         if name in function_signatures[current_context].args:
             return
     global local_variables
-    vdef = Variable(length, is_array=is_array, from_global=from_global)
+    vdef = Variable(type_, is_array=is_array, from_global=from_global)
     if current_context not in local_variables:
         local_variables[current_context] = {name: vdef}
     else:
@@ -71,9 +83,9 @@ def register_variable(name: str, length: int, is_array: bool = False, from_globa
 def gen_load_store_instruction(name: str, load: bool):
     offs = 0
 
-    def gen(offset, is_arg, is_ptr):
+    def gen(offset, is_arg, is_16bit):
         instr = "LOAD" if load else "STORE"
-        bits = "16" if is_ptr else ""
+        bits = "16" if is_16bit else ""
         origin = "ARG" if is_arg else "LOCAL"
         code = f"{instr}_{origin}{bits} {offset} ; {name}"
         return code
@@ -81,9 +93,9 @@ def gen_load_store_instruction(name: str, load: bool):
     # Check function arguments
     if current_context in function_signatures and name in function_signatures[current_context].args:
         for k, v in reversed(function_signatures[current_context].args.items()):
-            offs += v.length
+            offs += v.type.size
             if k == name:
-                append_code(gen(offs, True, v.is_array))
+                append_code(gen(offs, True, v.is_16bit))
                 return
 
     if current_context not in local_variables:
@@ -94,28 +106,44 @@ def gen_load_store_instruction(name: str, load: bool):
         for k, v in local_variables[""].items():
             if k == name:
                 v = local_variables[""][name]
-                bits = "16" if v.is_array else ""
+                bits = "16" if v.is_16bit else ""
                 append_code("PUSH_STACK_START")
                 if offs != 0:
                     append_code(f"#{offs}")
                     append_code("ADD16")
-                # todo: multiply when having variable types
                 if load:
                     append_code(f"LOAD_GLOBAL{bits}")
                 else:
                     append_code(f"STORE_GLOBAL{bits}")
                 return
-            offs += v.length
-
+            offs += v.type.size
 
     # Check local variables
     if name not in local_variables[current_context]:
         error(f"Unknown variable {name}")
     for k, v in local_variables[current_context].items():
         if k == name:
-            append_code(gen(offs, False, v.is_array))
+            append_code(gen(offs, False, v.is_16bit))
             return
-        offs += v.length
+        offs += v.type.size
+
+
+def typeof(name: str) -> Type:
+    # Check function arguments
+    if current_context in function_signatures and name in function_signatures[current_context].args:
+        return function_signatures[current_context].args[name].type
+
+    if current_context not in local_variables:
+        error(f"Current context is empty: {current_context}")
+
+    # Check global variables:
+    if current_context and name in local_variables[""]:
+        return local_variables[""][name].type
+
+    # Check local variables
+    if name not in local_variables[current_context]:
+        error(f"Unknown variable {name}")
+    return local_variables[current_context][name].type
 
 
 class Symbol(Enum):
@@ -155,21 +183,33 @@ class Symbol(Enum):
     Return = 280
     Call = 281
     Reference = 282
-    Comma = 282
-    Print = 283
-    PrintNewLine = 284
-    QuotationMark = 285
-    String = 286
-    Modulo = 287
-    Global = 288
+    Comma = 283
+    Print = 284
+    PrintNewLine = 285
+    QuotationMark = 286
+    String = 287
+    Modulo = 288
+    Global = 289
+    Byte = 290
+    Addr = 291
 
 
 class Variable:
-    def __init__(self, length: int, by_ref: bool = False, is_array: bool = False, from_global: bool = False):
-        self.length = length
+    def __init__(self, type: Type, by_ref: bool = False, is_array: bool = False, from_global: bool = False):
+        """
+        :param type: In case of array it's type of underlying elements, array itself is addr
+        :param by_ref:
+        :param is_array:
+        :param from_global:
+        """
+        self.type = type
         self.by_ref = by_ref
         self.is_array = is_array
         self.from_global = from_global
+
+    @property
+    def is_16bit(self):
+        return self.is_array or self.type.size == 2
 
 
 class FunctionSignature:
@@ -177,7 +217,14 @@ class FunctionSignature:
         self.args: Dict[str, Variable] = {}
 
     def __str__(self):
-        return "(" + ", ".join(("&" if v.by_ref else "") + name for name, v in self.args.items()) + ")"
+        def suffix(v: Variable):
+            if v.by_ref:
+                return "&"
+            if v.is_array:
+                return "[]"
+            return ""
+
+        return "(" + ", ".join(v.type.name + " " + name + suffix(v) for name, v in self.args.items()) + ")"
 
 
 current = Symbol.Nothing
@@ -289,6 +336,12 @@ def next_symbol():
                     return
                 elif buffer_l == "global":
                     current = Symbol.Global
+                    return
+                elif buffer_l == "byte":
+                    current = Symbol.Byte
+                    return
+                elif buffer_l == "addr":
+                    current = Symbol.Addr
                     return
 
                 current_identifier = buffer
@@ -416,12 +469,17 @@ def error(what: str):
 def parse_factor():
     if accept(Symbol.Identifier):
         if accept(Symbol.LBracket):
-            gen_load_store_instruction(current_identifier, True)
+            var = current_identifier
+            gen_load_store_instruction(var, True)
             parse_expression()
             expect(Symbol.RBracket)
             append_code("EXTEND")
-            append_code("ADD16")  # TODO: multiply if element length>1
-            append_code("LOAD_GLOBAL")
+            element_size = typeof(var).size
+            if element_size > 1:
+                append_code(f"PUSH16 #{element_size}")
+                append_code("MUL16")
+            append_code("ADD16")
+            append_code("LOAD_GLOBAL") if element_size == 1 else append_code("LOAD_GLOBAL16")
         else:
             gen_load_store_instruction(current_identifier, True)
     elif accept(Symbol.Number):
@@ -512,26 +570,42 @@ def parse_expression():
 def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
     global if_counter
     global while_counter
-    if accept(Symbol.Identifier):
+
+    if current in (Symbol.Byte, Symbol.Addr):
+        var_type = Type.Byte if current == Symbol.Byte else Type.Addr
+        next_symbol()
+        expect(Symbol.Identifier)
+        var_name = current_identifier
+
+        if accept(Symbol.LBracket):
+            register_variable(var_name, var_type, is_array=True)
+            append_code("PUSH_NEXT_SP")
+            gen_load_store_instruction(var_name, False)
+            parse_expression()
+            element_size = var_type.size
+            if element_size > 1:
+                append_code(f"PUSH {element_size}")
+                append_code(f"MUL")
+            expect(Symbol.RBracket)
+            expect(Symbol.Semicolon)
+            append_code(f"PUSHN2 ; {var_name} alloc")
+        else:
+            register_variable(var_name, var_type)
+            expect(Symbol.Semicolon)
+
+    elif accept(Symbol.Identifier):
         var = current_identifier
         if accept(Symbol.Becomes):
-            if accept(Symbol.LBracket):
-                register_variable(var, 2, is_array=True)
-                append_code("PUSH_NEXT_SP")
-                gen_load_store_instruction(var, False)
-                parse_expression()
-                expect(Symbol.RBracket)
-                expect(Symbol.Semicolon)
-                append_code(f"PUSHN2 ; {var} alloc")
-            else:
-                register_variable(var, 1)
-                parse_expression()
-                gen_load_store_instruction(var, False)
-                expect(Symbol.Semicolon)
+            parse_expression()
+            gen_load_store_instruction(var, False)
+            expect(Symbol.Semicolon)
         elif accept(Symbol.LBracket):
             parse_expression()
             append_code("EXTEND")
-            # TODO: when having array data types, use multiplication if size>1
+            element_size = typeof(var).size
+            if element_size > 1:
+                append_code(f"PUSH16 #{element_size}")
+                append_code("MUL16")
             expect(Symbol.RBracket)
             expect(Symbol.Becomes)
             gen_load_store_instruction(var, True)
@@ -544,7 +618,10 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
             expect(Symbol.Semicolon)
     elif accept(Symbol.Global):
         expect(Symbol.Identifier)
-        register_variable(current_identifier, 1, from_global=True)
+        if current_identifier not in local_variables[""]:
+            error(f"Unknown global variable {current_identifier}")
+        gvar = local_variables[""][current_identifier]
+        register_variable(current_identifier, gvar.type, is_array=gvar.is_array, from_global=True)
         expect(Symbol.Semicolon)
 
     elif accept(Symbol.Begin):
@@ -681,17 +758,22 @@ def parse_block(inside_function=False):
         while not accept(Symbol.RParen):
             if signature.args:
                 expect(Symbol.Comma)
-            if accept(Symbol.Identifier):
+            if current in (Symbol.Byte, Symbol.Addr):
+                var_type = Type.Byte if current == Symbol.Byte else Type.Addr
+                next_symbol()
+                expect(Symbol.Identifier)
+                var_name = current_identifier
+
                 if accept(Symbol.LBracket):
                     expect(Symbol.RBracket)
-                    arg = Variable(2, by_ref=False, is_array=True)
+                    arg = Variable(var_type, is_array=True)
+                elif accept(Symbol.Reference):
+                    arg = Variable(var_type, by_ref=True)
                 else:
-                    arg = Variable(1, by_ref=False)
-                signature.args[current_identifier] = arg
-            elif accept(Symbol.Reference):
-                next_symbol()
-                arg = Variable(1, by_ref=True)
-                signature.args[current_identifier] = arg
+                    arg = Variable(var_type)
+                signature.args[var_name] = arg
+            else:
+                error("Expected type")
 
         if accept(Symbol.Semicolon):
             # just a declaration
@@ -713,7 +795,8 @@ def generate_preamble():
         return
     for k, var in local_variables[current_context].items():
         if not var.from_global:
-            txt += f"PUSHN {var.length} ; {k}\n"
+            stack_size = var.type.size if not var.is_array else 2
+            txt += f"PUSHN {stack_size} ; {var.type.name} {k}\n"
     # todo: optimize into one big block
     # todo: initial value instead of just push
     prepend_code(txt, False)

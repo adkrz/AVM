@@ -3,15 +3,19 @@ from enum import Enum
 from typing import Dict
 
 # TODO:
-# global variables, shadowing by locals etc
+# data types
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
 input_string = ("""
-A = [5];
-A[2] = 3;
-PRINT A[2];
+X = 5;
 
+function f()
+begin
+global X;
+X = 2;
+A = X;
+end
 
 """)
 position = 0
@@ -50,12 +54,12 @@ def prepend_code(c: str, newline=True):
         codes[current_context] = c + codes[current_context]
 
 
-def register_variable(name: str, length: int, is_array: bool = False):
+def register_variable(name: str, length: int, is_array: bool = False, from_global: bool = False):
     if current_context in function_signatures:
         if name in function_signatures[current_context].args:
             return
     global local_variables
-    vdef = Variable(length, is_array=is_array)
+    vdef = Variable(length, is_array=is_array, from_global=from_global)
     if current_context not in local_variables:
         local_variables[current_context] = {name: vdef}
     else:
@@ -74,14 +78,37 @@ def gen_load_store_instruction(name: str, load: bool):
         code = f"{instr}_{origin}{bits} {offset} ; {name}"
         return code
 
+    # Check function arguments
     if current_context in function_signatures and name in function_signatures[current_context].args:
         for k, v in reversed(function_signatures[current_context].args.items()):
             offs += v.length
             if k == name:
                 append_code(gen(offs, True, v.is_array))
                 return
+
     if current_context not in local_variables:
         error(f"Current context is empty: {current_context}")
+
+    # Check global variables:
+    if current_context and name in local_variables[""]:
+        for k, v in local_variables[""].items():
+            if k == name:
+                v = local_variables[""][name]
+                bits = "16" if v.is_array else ""
+                append_code("PUSH_STACK_START")
+                if offs != 0:
+                    append_code(f"#{offs}")
+                    append_code("ADD16")
+                # todo: multiply when having variable types
+                if load:
+                    append_code(f"LOAD_GLOBAL{bits}")
+                else:
+                    append_code(f"STORE_GLOBAL{bits}")
+                return
+            offs += v.length
+
+
+    # Check local variables
     if name not in local_variables[current_context]:
         error(f"Unknown variable {name}")
     for k, v in local_variables[current_context].items():
@@ -134,13 +161,15 @@ class Symbol(Enum):
     QuotationMark = 285
     String = 286
     Modulo = 287
+    Global = 288
 
 
 class Variable:
-    def __init__(self, length: int, by_ref: bool = False, is_array: bool = False):
+    def __init__(self, length: int, by_ref: bool = False, is_array: bool = False, from_global: bool = False):
         self.length = length
         self.by_ref = by_ref
         self.is_array = is_array
+        self.from_global = from_global
 
 
 class FunctionSignature:
@@ -257,6 +286,9 @@ def next_symbol():
                     return
                 elif buffer_l == "printnl":
                     current = Symbol.PrintNewLine
+                    return
+                elif buffer_l == "global":
+                    current = Symbol.Global
                     return
 
                 current_identifier = buffer
@@ -510,6 +542,11 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
             append_code("STORE_GLOBAL")
 
             expect(Symbol.Semicolon)
+    elif accept(Symbol.Global):
+        expect(Symbol.Identifier)
+        register_variable(current_identifier, 1, from_global=True)
+        expect(Symbol.Semicolon)
+
     elif accept(Symbol.Begin):
         cont = True
         while cont:
@@ -675,7 +712,8 @@ def generate_preamble():
     if current_context not in local_variables:
         return
     for k, var in local_variables[current_context].items():
-        txt += f"PUSHN {var.length} ; {k}\n"
+        if not var.from_global:
+            txt += f"PUSHN {var.length} ; {k}\n"
     # todo: optimize into one big block
     # todo: initial value instead of just push
     prepend_code(txt, False)

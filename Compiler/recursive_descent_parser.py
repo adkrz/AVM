@@ -155,13 +155,13 @@ class Symbol(Enum):
     Return = 280
     Call = 281
     Reference = 282
-    Comma = 282
-    Print = 283
-    PrintNewLine = 284
-    QuotationMark = 285
-    String = 286
-    Modulo = 287
-    Global = 288
+    Comma = 283
+    Print = 284
+    PrintNewLine = 285
+    QuotationMark = 286
+    String = 287
+    Modulo = 288
+    Global = 289
 
 
 class Variable:

@@ -4,6 +4,7 @@ from typing import Dict
 
 # TODO:
 # data types
+# string arrays
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"

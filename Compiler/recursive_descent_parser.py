@@ -65,7 +65,6 @@ def register_variable(name: str, length: int, is_array: bool = False, from_globa
         local_variables[current_context] = {name: vdef}
     else:
         if name not in local_variables[current_context]:
-            vdef = Variable(length)
             local_variables[current_context][name] = vdef
 
 

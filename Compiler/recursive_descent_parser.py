@@ -36,6 +36,7 @@ codes = {}  # per context
 local_variables: Dict[str, Dict[str, "Variable"]] = {}  # per context, then name+details, in order of occurrence
 current_context = ""  # empty = global, otherwise in function
 string_constants = []
+expr_is_16bit = False
 
 
 def append_code(c: str, newline=True):
@@ -80,7 +81,7 @@ def register_variable(name: str, type_: Type, is_array: bool = False, from_globa
             local_variables[current_context][name] = vdef
 
 
-def gen_load_store_instruction(name: str, load: bool):
+def gen_load_store_instruction(name: str, load: bool) -> "Variable":
     offs = 0
 
     def gen(offset, is_arg, is_16bit):
@@ -96,7 +97,7 @@ def gen_load_store_instruction(name: str, load: bool):
             offs += v.type.size
             if k == name:
                 append_code(gen(offs, True, v.is_16bit))
-                return
+                return v
 
     if current_context not in local_variables:
         error(f"Current context is empty: {current_context}")
@@ -115,7 +116,7 @@ def gen_load_store_instruction(name: str, load: bool):
                     append_code(f"LOAD_GLOBAL{bits}")
                 else:
                     append_code(f"STORE_GLOBAL{bits}")
-                return
+                return v
             offs += v.type.size
 
     # Check local variables
@@ -124,7 +125,7 @@ def gen_load_store_instruction(name: str, load: bool):
     for k, v in local_variables[current_context].items():
         if k == name:
             append_code(gen(offs, False, v.is_16bit))
-            return
+            return v
         offs += v.type.size
 
 
@@ -466,24 +467,37 @@ def error(what: str):
     exit(1)
 
 
-def parse_factor():
+def parse_factor(dry_run=False, expect_16bit=False):
+    global expr_is_16bit
     if accept(Symbol.Identifier):
         if accept(Symbol.LBracket):
             var = current_identifier
-            gen_load_store_instruction(var, True)
-            parse_expression()
+            var_def = gen_load_store_instruction(var, True)
+            if var_def.is_16bit:
+                expr_is_16bit = True
+            parse_expression(dry_run=dry_run, expect_16bit=True)  # array indexes are 16bit
             expect(Symbol.RBracket)
-            append_code("EXTEND")
-            element_size = typeof(var).size
+            element_size = var_def.type.size
             if element_size > 1:
-                append_code(f"PUSH16 #{element_size}")
-                append_code("MUL16")
-            append_code("ADD16")
-            append_code("LOAD_GLOBAL") if element_size == 1 else append_code("LOAD_GLOBAL16")
+                if not dry_run:
+                    append_code(f"PUSH16 #{element_size}")
+                    append_code("MUL16")
+            if not dry_run:
+                append_code("ADD16")
+                append_code("LOAD_GLOBAL") if element_size == 1 else append_code("LOAD_GLOBAL16")
         else:
-            gen_load_store_instruction(current_identifier, True)
+            var_def = gen_load_store_instruction(current_identifier, True)
+            if expect_16bit and not var_def.is_16bit:
+                if not dry_run:
+                    append_code("EXTEND")
     elif accept(Symbol.Number):
-        append_code(f"PUSH {current_number}")
+        if current_number > 255:
+            expr_is_16bit = True
+            if not dry_run:
+                append_code(f"PUSH16 #{current_number}")
+        else:
+            if not dry_run:
+                append_code(f"PUSH {current_number}")
     elif accept(Symbol.LParen):
         parse_expression()
         expect(Symbol.RParen)
@@ -491,80 +505,118 @@ def parse_factor():
         error("factor: syntax error")
 
 
-def parse_logical():
+def parse_logical(dry_run=False, expect_16bit=False):
     parse_factor()
     while current in (Symbol.Equals, Symbol.NotEqual, Symbol.Ge, Symbol.Gt, Symbol.Le, Symbol.Lt):
         v = current
         next_symbol()
-        parse_factor()
+        parse_factor(dry_run=dry_run, expect_16bit=expect_16bit)
         if v == Symbol.Equals:
-            opcode = "EQ"
+            opcode = "EQ" if not expect_16bit else "EQ16"
         elif v == Symbol.NotEqual:
-            opcode = "NE"
+            opcode = "NE" if not expect_16bit else "NE16"
         elif v == Symbol.Gt:
-            opcode = "SWAP\nLESS_OR_EQ"
+            opcode = "SWAP\nLESS_OR_EQ" if not expect_16bit else "SWAP16\nLESS_OR_EQ16"
         elif v == Symbol.Ge:
-            opcode = "SWAP\nLESS"
+            opcode = "SWAP\nLESS" if not expect_16bit else "SWAP16\nLESS16"
         elif v == Symbol.Lt:
-            opcode = "LESS"
+            opcode = "LESS" if not expect_16bit else "LESS16"
         elif v == Symbol.Le:
-            opcode = "LESS_OR_EQ"
+            opcode = "LESS_OR_EQ" if not expect_16bit else "LESS_OR_EQ16"
         else:
             raise NotImplementedError(current)
-        append_code(opcode)
+        if not dry_run:
+            append_code(opcode)
 
 
-def parse_logical_chain():
+def parse_logical_chain(dry_run=False, expect_16bit=False):
     global condition_counter
-    parse_logical()
+    parse_logical(dry_run=dry_run, expect_16bit=expect_16bit)
     has_chain = False
     while current in (Symbol.And, Symbol.Or):
         # TODO: precedence
         if accept(Symbol.Or):
             has_chain = True
-            append_code(f"DUP\nJT cond{condition_counter}_expr_end")
-            parse_logical()
-            append_code("OR")
+            if not dry_run:
+                append_code("DUP\nJT" if not expect_16bit else "DUP16\nJT16", newline=False)
+                append_code(f" cond{condition_counter}_expr_end")
+            parse_logical(dry_run=dry_run, expect_16bit=expect_16bit)
+            if not dry_run:
+                append_code("OR")
         elif accept(Symbol.And):
             has_chain = True
-            append_code(f"DUP\nJF cond{condition_counter}_expr_end")
-            parse_logical()
-            append_code("AND")
+            if not dry_run:
+                append_code("DUP\nJF" if not expect_16bit else "DUP16\nJF16", newline=False)
+                append_code(f" cond{condition_counter}_expr_end")
+            parse_logical(dry_run=dry_run, expect_16bit=expect_16bit)
+            if not dry_run:
+                append_code("AND")
     if has_chain:
-        append_code(f":cond{condition_counter}_expr_end")
-        condition_counter += 1
+        if not dry_run:
+            append_code(f":cond{condition_counter}_expr_end")
+            condition_counter += 1
 
 
-def parse_term():
-    parse_logical_chain()
+def parse_term(dry_run=False, expect_16bit=False):
+    parse_logical_chain(dry_run=dry_run, expect_16bit=expect_16bit)
     while current in (Symbol.Mult, Symbol.Divide, Symbol.Modulo):
         v = current
         next_symbol()
         parse_logical_chain()
         if v == Symbol.Mult:
-            opcode = "MUL"
+            opcode = "MUL" if not expect_16bit else "MUL16"
         elif v == Symbol.Divide:
-            opcode = "SWAP\nMUL"
+            opcode = "SWAP\nMUL" if not expect_16bit else "SWAP16\nMUL16"
         elif v == Symbol.Modulo:
-            opcode = "SWAP\nMOD"
+            opcode = "SWAP\nMOD" if not expect_16bit else "SWAP16\nMOD16"
         else:
             raise NotImplementedError(current)
-        append_code(opcode)
+        if not dry_run:
+            append_code(opcode)
 
 
-def parse_expression():
+def parse_expression(dry_run=False, expect_16bit=False):
     um = False
     if current == Symbol.Plus or current == Symbol.Minus:
         um = True
         next_symbol()
-    parse_term()
-    if um:
-        append_code("NEG")  # not yet implemented
+    parse_term(dry_run=dry_run, expect_16bit=expect_16bit)
+    if um and not dry_run:
+        append_code("NEG" if not expect_16bit else "NEG16")  # not yet implemented
     while current == Symbol.Plus or current == Symbol.Minus:
         v = current
         next_symbol()
         parse_term()
-        append_code("ADD" if v == Symbol.Plus else "SUB2")
+        if not dry_run:
+            if expect_16bit:
+                append_code("ADD" if v == Symbol.Plus else "SUB2")
+            else:
+                append_code("ADD16" if v == Symbol.Plus else "SUB216")
+
+
+def parse_expression_typed(expect_16bit=False):
+    global position
+    global line_number
+    global condition_counter
+    global expr_is_16bit
+
+    expr_is_16bit = False
+    position_backup = position
+    ln_backup = line_number
+    cond_backup = condition_counter
+
+    parse_expression(dry_run=True, expect_16bit=False)
+
+    position = position_backup
+    line_number = ln_backup
+    condition_counter = cond_backup
+
+    downcast = expr_is_16bit and not expect_16bit
+
+    parse_expression(dry_run=False, expect_16bit=expr_is_16bit)
+
+    if downcast:
+        append_code("SWAP\nPOP")
 
 
 def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
@@ -600,8 +652,8 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
             gen_load_store_instruction(var, False)
             expect(Symbol.Semicolon)
         elif accept(Symbol.LBracket):
-            parse_expression()
-            append_code("EXTEND")
+            parse_expression(expect_16bit=True)
+            # TODO
             element_size = typeof(var).size
             if element_size > 1:
                 append_code(f"PUSH16 #{element_size}")
@@ -710,7 +762,7 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
         append_code("; stack cleanup")
         for arg in reversed(signature.args.values()):
             if not arg.by_ref:
-                append_code(f"POPN {arg.length}")
+                append_code(f"POPN {arg.type.size}")
             else:
                 gen_load_store_instruction(refs_mapping[arg], False)
 

@@ -104,7 +104,7 @@ def gen_load_store_instruction(name: str, load: bool, dry_run=False) -> "Variabl
         error(f"Current context is empty: {current_context}")
 
     # Check global variables:
-    if current_context and name in local_variables[""]:
+    if current_context and "" in local_variables and name in local_variables[""]:
         for k, v in local_variables[""].items():
             if k == name:
                 v = local_variables[""][name]
@@ -589,9 +589,9 @@ def parse_expression(dry_run=False, expect_16bit=False):
     while current == Symbol.Plus or current == Symbol.Minus:
         v = current
         next_symbol()
-        parse_term()
+        parse_term(dry_run=dry_run, expect_16bit=expect_16bit)
         if not dry_run:
-            if expect_16bit:
+            if not expect_16bit:
                 append_code("ADD" if v == Symbol.Plus else "SUB2")
             else:
                 append_code("ADD16" if v == Symbol.Plus else "SUB216")
@@ -603,12 +603,14 @@ def parse_expression_typed(expect_16bit=False):
     global condition_counter
     global expr_is_16bit
     global current
+    global current_identifier
 
     expr_is_16bit = False
     position_backup = position
     ln_backup = line_number
     cond_backup = condition_counter
     current_backup = current
+    ci_backup = current_identifier
 
     parse_expression(dry_run=True, expect_16bit=False)
 
@@ -616,6 +618,7 @@ def parse_expression_typed(expect_16bit=False):
     line_number = ln_backup
     condition_counter = cond_backup
     current = current_backup
+    current_identifier = ci_backup
 
     downcast = expr_is_16bit and not expect_16bit
 

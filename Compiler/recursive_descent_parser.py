@@ -473,8 +473,8 @@ def error(what: str):
 def parse_factor(dry_run=False, expect_16bit=False):
     global expr_is_16bit
     if accept(Symbol.Identifier):
+        var = current_identifier
         if accept(Symbol.LBracket):
-            var = current_identifier
             var_def = gen_load_store_instruction(var, True, dry_run=dry_run)
             if var_def.is_16bit:
                 expr_is_16bit = True
@@ -489,7 +489,7 @@ def parse_factor(dry_run=False, expect_16bit=False):
                 append_code("ADD16")
                 append_code("LOAD_GLOBAL") if element_size == 1 else append_code("LOAD_GLOBAL16")
         else:
-            var_def = gen_load_store_instruction(current_identifier, True, dry_run=dry_run)
+            var_def = gen_load_store_instruction(var, True, dry_run=dry_run)
             if expect_16bit and not var_def.is_16bit:
                 if not dry_run:
                     append_code("EXTEND")
@@ -519,13 +519,13 @@ def parse_logical(dry_run=False, expect_16bit=False):
         elif v == Symbol.NotEqual:
             opcode = "NE" if not expect_16bit else "NE16"
         elif v == Symbol.Gt:
-            opcode = "SWAP\nLESS_OR_EQ" if not expect_16bit else "SWAP16\nLESS_OR_EQ16"
-        elif v == Symbol.Ge:
-            opcode = "SWAP\nLESS" if not expect_16bit else "SWAP16\nLESS16"
-        elif v == Symbol.Lt:
-            opcode = "LESS" if not expect_16bit else "LESS16"
-        elif v == Symbol.Le:
             opcode = "LESS_OR_EQ" if not expect_16bit else "LESS_OR_EQ16"
+        elif v == Symbol.Ge:
+            opcode = "LESS" if not expect_16bit else "LESS16"
+        elif v == Symbol.Lt:
+            opcode = "SWAP\nLESS" if not expect_16bit else "SWAP16\nLESS16"
+        elif v == Symbol.Le:
+            opcode = "SWAP\nLESS_OR_EQ" if not expect_16bit else "SWAP16\nLESS_OR_EQ16"
         else:
             raise NotImplementedError(current)
         if not dry_run:
@@ -641,6 +641,9 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
         if accept(Symbol.LBracket):
             register_variable(var_name, var_type, is_array=True)
             append_code("PUSH_NEXT_SP")
+            # PUSH_NEXT_SP actually pushes SP+addressSize, so move back:
+            append_code("PUSH #2")
+            append_code("SUB2")
             gen_load_store_instruction(var_name, False)
             parse_expression_typed(expect_16bit=var_type.size == 2)
             element_size = var_type.size
@@ -728,6 +731,7 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
 
         parse_statement(inside_loop=True, inside_if=inside_if, inside_function=inside_function)
 
+        append_code(f"JMP @while{no}_begin")
         append_code(f":while{no}_endwhile")
 
     elif accept(Symbol.Break):

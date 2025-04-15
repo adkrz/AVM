@@ -3,9 +3,9 @@ from enum import Enum
 from typing import Dict
 
 # TODO:
-# data types
-# initial value
 # string arrays
+# error handling
+# system calls
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
@@ -649,6 +649,10 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
             append_code(f"PUSHN2 ; {var_name} alloc")
         else:
             register_variable(var_name, var_type)
+
+            if accept(Symbol.Becomes): # initial value, like byte A = 1;
+                parse_expression_typed(expect_16bit=var_type.size == 2)
+                gen_load_store_instruction(var_name, False)
             expect(Symbol.Semicolon)
 
     elif accept(Symbol.Identifier):

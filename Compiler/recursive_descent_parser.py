@@ -90,7 +90,7 @@ def gen_load_store_instruction(name: str, load: bool):
         error(f"Current context is empty: {current_context}")
 
     # Check global variables:
-    if current_context and name in local_variables[""]:
+    if current_context and "" in local_variables and name in local_variables[""]:
         for k, v in local_variables[""].items():
             if k == name:
                 v = local_variables[""][name]

@@ -415,15 +415,16 @@ def error(what: str):
 
 def parse_factor():
     if accept(Symbol.Identifier):
+        var = current_identifier
         if accept(Symbol.LBracket):
-            gen_load_store_instruction(current_identifier, True)
+            gen_load_store_instruction(var, True)
             parse_expression()
             expect(Symbol.RBracket)
             append_code("EXTEND")
             append_code("ADD16")  # TODO: multiply if element length>1
             append_code("LOAD_GLOBAL")
         else:
-            gen_load_store_instruction(current_identifier, True)
+            gen_load_store_instruction(var, True)
     elif accept(Symbol.Number):
         append_code(f"PUSH {current_number}")
     elif accept(Symbol.LParen):
@@ -444,13 +445,13 @@ def parse_logical():
         elif v == Symbol.NotEqual:
             opcode = "NE"
         elif v == Symbol.Gt:
-            opcode = "SWAP\nLESS_OR_EQ"
-        elif v == Symbol.Ge:
-            opcode = "SWAP\nLESS"
-        elif v == Symbol.Lt:
-            opcode = "LESS"
-        elif v == Symbol.Le:
             opcode = "LESS_OR_EQ"
+        elif v == Symbol.Ge:
+            opcode = "LESS"
+        elif v == Symbol.Lt:
+            opcode = "SWAP\nLESS"
+        elif v == Symbol.Le:
+            opcode = "SWAP\nLESS_OR_EQ"
         else:
             raise NotImplementedError(current)
         append_code(opcode)
@@ -518,6 +519,9 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
             if accept(Symbol.LBracket):
                 register_variable(var, 2, is_array=True)
                 append_code("PUSH_NEXT_SP")
+                # PUSH_NEXT_SP actually pushes SP+addressSize, so move back:
+                append_code("PUSH #2")
+                append_code("SUB2")
                 gen_load_store_instruction(var, False)
                 parse_expression()
                 expect(Symbol.RBracket)
@@ -587,6 +591,7 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
 
         parse_statement(inside_loop=True, inside_if=inside_if, inside_function=inside_function)
 
+        append_code(f"JMP @while{no}_begin")
         append_code(f":while{no}_endwhile")
 
     elif accept(Symbol.Break):

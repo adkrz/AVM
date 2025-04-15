@@ -642,8 +642,8 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
             register_variable(var_name, var_type, is_array=True)
             append_code("PUSH_NEXT_SP")
             # PUSH_NEXT_SP actually pushes SP+addressSize, so move back:
-            append_code("PUSH #2")
-            append_code("SUB2")
+            append_code("PUSH16 #2")
+            append_code("SUB216")
             gen_load_store_instruction(var_name, False)
             parse_expression_typed(expect_16bit=var_type.size == 2)
             element_size = var_type.size

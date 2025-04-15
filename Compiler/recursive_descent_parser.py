@@ -494,7 +494,7 @@ def parse_factor(dry_run=False, expect_16bit=False):
                 if not dry_run:
                     append_code("EXTEND")
     elif accept(Symbol.Number):
-        if current_number > 255:
+        if current_number > 255 or expect_16bit:
             expr_is_16bit = True
             if not dry_run:
                 append_code(f"PUSH16 #{current_number}")
@@ -602,17 +602,20 @@ def parse_expression_typed(expect_16bit=False):
     global line_number
     global condition_counter
     global expr_is_16bit
+    global current
 
     expr_is_16bit = False
     position_backup = position
     ln_backup = line_number
     cond_backup = condition_counter
+    current_backup = current
 
     parse_expression(dry_run=True, expect_16bit=False)
 
     position = position_backup
     line_number = ln_backup
     condition_counter = cond_backup
+    current = current_backup
 
     downcast = expr_is_16bit and not expect_16bit
 
@@ -636,7 +639,7 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
             register_variable(var_name, var_type, is_array=True)
             append_code("PUSH_NEXT_SP")
             gen_load_store_instruction(var_name, False)
-            parse_expression()
+            parse_expression_typed(expect_16bit=var_type.size == 2)
             element_size = var_type.size
             if element_size > 1:
                 append_code(f"PUSH {element_size}")

@@ -520,8 +520,8 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
                 register_variable(var, 2, is_array=True)
                 append_code("PUSH_NEXT_SP")
                 # PUSH_NEXT_SP actually pushes SP+addressSize, so move back:
-                append_code("PUSH #2")
-                append_code("SUB2")
+                append_code("PUSH16 #2")
+                append_code("SUB216")
                 gen_load_store_instruction(var, False)
                 parse_expression()
                 expect(Symbol.RBracket)

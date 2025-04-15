@@ -15,7 +15,7 @@ begin
     counter = 5;
     sum = 0;
     while counter >= 0 do begin
-        sum = sum + data[counter];
+        sum = sum + data[counter-1];
         counter = counter - 1;
     end
 end

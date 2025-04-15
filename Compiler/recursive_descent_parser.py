@@ -673,7 +673,8 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
             expect(Symbol.Becomes)
             var_type = gen_load_store_instruction(var, True)
             append_code("ADD16")
-            parse_expression_typed(expect_16bit=var_type.is_16bit)
+            # do not use is_16bit there - we need type of element of array
+            parse_expression_typed(expect_16bit=element_size == 2)
             # stack is in wrong order, fix it:
             append_code("ROLL3")  # not yet implemented
             append_code("STORE_GLOBAL")

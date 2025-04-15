@@ -10,16 +10,10 @@ from typing import Dict
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
 input_string = ("""
-addr arr[2];
-addr Z;
-Z = arr[3];
-
-function funkcja(byte A, byte B&, addr c[])
-begin
-A=1;
-end
-
-//TODO: type check, up/downcast, expressions, function call check, PUSH larger numbers
+addr A = 1;
+byte B = 2;
+B = A;
+A = B;
 
 """)
 position = 0
@@ -490,6 +484,8 @@ def parse_factor(dry_run=False, expect_16bit=False):
                 append_code("LOAD_GLOBAL") if element_size == 1 else append_code("LOAD_GLOBAL16")
         else:
             var_def = gen_load_store_instruction(var, True, dry_run=dry_run)
+            if var_def.is_16bit:
+                expr_is_16bit = True
             if expect_16bit and not var_def.is_16bit:
                 if not dry_run:
                     append_code("EXTEND")
@@ -622,7 +618,7 @@ def parse_expression_typed(expect_16bit=False):
 
     downcast = expr_is_16bit and not expect_16bit
 
-    parse_expression(dry_run=False, expect_16bit=expr_is_16bit)
+    parse_expression(dry_run=False, expect_16bit=expect_16bit)
 
     if downcast:
         append_code("SWAP\nPOP")

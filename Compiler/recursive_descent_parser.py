@@ -565,7 +565,7 @@ def parse_term(dry_run=False, expect_16bit=False):
         if v == Symbol.Mult:
             opcode = "MUL" if not expect_16bit else "MUL16"
         elif v == Symbol.Divide:
-            opcode = "SWAP\nMUL" if not expect_16bit else "SWAP16\nMUL16"
+            opcode = "SWAP\nDIV" if not expect_16bit else "SWAP16\nDIV16"
         elif v == Symbol.Modulo:
             opcode = "SWAP\nMOD" if not expect_16bit else "SWAP16\nMOD16"
         else:

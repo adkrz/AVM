@@ -676,7 +676,10 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
             # do not use is_16bit there - we need type of element of array
             parse_expression_typed(expect_16bit=element_size == 2)
             # stack is in wrong order, fix it:
-            append_code("ROLL3")  # not yet implemented
+            if element_size == 1:
+                append_code("ROLL3")
+            else:
+                append_code("SWAP16")
             append_code("STORE_GLOBAL")
 
             expect(Symbol.Semicolon)

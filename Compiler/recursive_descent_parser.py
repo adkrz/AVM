@@ -3,20 +3,16 @@ from enum import Enum
 from typing import Dict
 
 # TODO:
+# continue/break inside nested loops (while_counter)
 # data types
 # string arrays
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
 
 # input_string = "A=-123.5 + test * 2;\nX=3+5+(2-(3+2));"
 input_string = ("""
-X = 5;
-
-function f()
-begin
-global X;
-X = 2;
-A = X;
-end
+A = 8;
+B = A / 2;
+print B;
 
 """)
 position = 0
@@ -487,7 +483,7 @@ def parse_term():
         if v == Symbol.Mult:
             opcode = "MUL"
         elif v == Symbol.Divide:
-            opcode = "SWAP\nMUL"
+            opcode = "SWAP\nDIV"
         elif v == Symbol.Modulo:
             opcode = "SWAP\nMOD"
         else:

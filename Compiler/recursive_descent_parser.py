@@ -3,7 +3,6 @@ from enum import Enum
 from typing import Dict
 
 # TODO:
-# continue/break inside nested loops (while_counter)
 # data types
 # string arrays
 # https://en.wikipedia.org/wiki/Recursive_descent_parser
@@ -506,7 +505,7 @@ def parse_expression():
         append_code("ADD" if v == Symbol.Plus else "SUB2")
 
 
-def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
+def parse_statement(inside_loop=0, inside_if=False, inside_function=False):
     global if_counter
     global while_counter
     if accept(Symbol.Identifier):
@@ -585,7 +584,7 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
 
         expect(Symbol.Do)
 
-        parse_statement(inside_loop=True, inside_if=inside_if, inside_function=inside_function)
+        parse_statement(inside_loop=no, inside_if=inside_if, inside_function=inside_function)
 
         append_code(f"JMP @while{no}_begin")
         append_code(f":while{no}_endwhile")
@@ -594,15 +593,13 @@ def parse_statement(inside_loop=False, inside_if=False, inside_function=False):
         expect(Symbol.Semicolon)
         if not inside_loop:
             error("Break outside loop")
-        no = while_counter
-        append_code(f"JMP @while{no}_endwhile")
+        append_code(f"JMP @while{inside_loop}_endwhile")
 
     elif accept(Symbol.Continue):
         expect(Symbol.Semicolon)
         if not inside_loop:
             error("Continue outside loop")
-        no = while_counter
-        append_code(f"JMP @while{no}_begin")
+        append_code(f"JMP @while{inside_loop}_begin")
 
     elif accept(Symbol.Call):
         expect(Symbol.Identifier)

@@ -648,7 +648,7 @@ def parse_statement(inside_loop=0, inside_if=False, inside_function=False):
             append_code("SYSCALL Std.PrintString")
         else:
             parse_expression()
-            append_code("SYSCALL Std.PrintInt")
+            append_code("SYSCALL Std.PrintInt\nPOP")
         expect(Symbol.Semicolon)
 
     elif accept(Symbol.PrintNewLine):

@@ -798,9 +798,9 @@ def parse_statement(inside_loop=0, inside_if=False, inside_function=False):
             expr_is_16bit = False
             parse_expression()
             if not expr_is_16bit:
-                append_code("SYSCALL Std.PrintInt")
+                append_code("SYSCALL Std.PrintInt\nPOP")
             else:
-                append_code("SYSCALL Std.PrintInt16")
+                append_code("SYSCALL Std.PrintInt16\nPOPN 2")
         expect(Symbol.Semicolon)
 
     elif accept(Symbol.PrintNewLine):

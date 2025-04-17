@@ -644,8 +644,8 @@ def parse_statement(inside_loop=0, inside_if=False, inside_function=False):
             parse_expression_typed(expect_16bit=var_type.size == 2)
             element_size = var_type.size
             if element_size > 1:
-                append_code(f"PUSH {element_size}")
-                append_code(f"MUL")
+                append_code(f"PUSH16 {element_size}")
+                append_code(f"MUL16")
             expect(Symbol.RBracket)
             expect(Symbol.Semicolon)
             append_code(f"PUSHN2 ; {var_name} alloc")
@@ -678,9 +678,11 @@ def parse_statement(inside_loop=0, inside_if=False, inside_function=False):
             # stack is in wrong order, fix it:
             if element_size == 1:
                 append_code("ROLL3")
+                append_code("STORE_GLOBAL")
             else:
                 append_code("SWAP16")
-            append_code("STORE_GLOBAL")
+                append_code("STORE_GLOBAL16")
+
 
             expect(Symbol.Semicolon)
     elif accept(Symbol.Global):

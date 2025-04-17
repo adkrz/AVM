@@ -627,6 +627,7 @@ def parse_expression_typed(expect_16bit=False):
 def parse_statement(inside_loop=0, inside_if=False, inside_function=False):
     global if_counter
     global while_counter
+    global expr_is_16bit
 
     if current in (Symbol.Byte, Symbol.Addr):
         var_type = Type.Byte if current == Symbol.Byte else Type.Addr
@@ -794,8 +795,12 @@ def parse_statement(inside_loop=0, inside_if=False, inside_function=False):
             append_code(f"PUSH16 @string_{len(string_constants)}")
             append_code("SYSCALL Std.PrintString")
         else:
-            parse_expression_typed(expect_16bit=False)
-            append_code("SYSCALL Std.PrintInt")
+            expr_is_16bit = False
+            parse_expression()
+            if not expr_is_16bit:
+                append_code("SYSCALL Std.PrintInt")
+            else:
+                append_code("SYSCALL Std.PrintInt16")
         expect(Symbol.Semicolon)
 
     elif accept(Symbol.PrintNewLine):

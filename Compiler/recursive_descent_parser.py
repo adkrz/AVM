@@ -88,7 +88,7 @@ def gen_load_store_instruction(name: str, load: bool, dry_run=False) -> "Variabl
     # Check function arguments
     if current_context in function_signatures and name in function_signatures[current_context].args:
         for k, v in reversed(function_signatures[current_context].args.items()):
-            offs += v.type.size
+            offs += v.stack_size
             if k == name:
                 if not dry_run:
                     append_code(gen(offs, True, v.is_16bit))
@@ -113,7 +113,7 @@ def gen_load_store_instruction(name: str, load: bool, dry_run=False) -> "Variabl
                     else:
                         append_code(f"STORE_GLOBAL{bits}")
                 return v
-            offs += v.type.size
+            offs += v.stack_size
 
     # Check local variables
     if name not in local_variables[current_context]:
@@ -123,7 +123,7 @@ def gen_load_store_instruction(name: str, load: bool, dry_run=False) -> "Variabl
             if not dry_run:
                 append_code(gen(offs, False, v.is_16bit))
             return v
-        offs += v.type.size
+        offs += v.stack_size
 
 
 def typeof(name: str) -> Type:
@@ -135,7 +135,7 @@ def typeof(name: str) -> Type:
         error(f"Current context is empty: {current_context}")
 
     # Check global variables:
-    if current_context and name in local_variables[""]:
+    if current_context and "" in local_variables and name in local_variables[""]:
         return local_variables[""][name].type
 
     # Check local variables
@@ -208,6 +208,10 @@ class Variable:
     @property
     def is_16bit(self):
         return self.is_array or self.type.size == 2
+
+    @property
+    def stack_size(self):
+        return 2 if self.is_16bit else 1
 
 
 class FunctionSignature:
@@ -470,12 +474,11 @@ def parse_factor(dry_run=False, expect_16bit=False):
         var = current_identifier
         if accept(Symbol.LBracket):
             var_def = gen_load_store_instruction(var, True, dry_run=dry_run)
-            if var_def.is_16bit:
-                expr_is_16bit = True
             parse_expression_typed(expect_16bit=True)  # array indexes are 16bit
             expect(Symbol.RBracket)
             element_size = var_def.type.size
             if element_size > 1:
+                expr_is_16bit = True
                 if not dry_run:
                     append_code(f"PUSH16 #{element_size}")
                     append_code("MUL16")

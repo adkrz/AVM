@@ -474,6 +474,8 @@ def parse_factor(dry_run=False, expect_16bit=False):
         var = current_identifier
         if accept(Symbol.LBracket):
             var_def = gen_load_store_instruction(var, True, dry_run=dry_run)
+            if not var_def.is_array:
+                error(f"Variable {var} is not an array!")
             parse_expression_typed(expect_16bit=True)  # array indexes are 16bit
             expect(Symbol.RBracket)
             element_size = var_def.type.size
@@ -675,7 +677,9 @@ def parse_statement(inside_loop=0, inside_if=False, inside_function=False):
                 append_code("MUL16")
             expect(Symbol.RBracket)
             expect(Symbol.Becomes)
-            var_type = gen_load_store_instruction(var, True)
+            var_def = gen_load_store_instruction(var, True)
+            if not var_def.is_array:
+                error(f"Variable {var} is not an array!")
             append_code("ADD16")
             # do not use is_16bit there - we need type of element of array
             parse_expression_typed(expect_16bit=element_size == 2)

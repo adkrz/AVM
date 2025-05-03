@@ -1,6 +1,8 @@
 from enum import Enum
 from typing import Dict, Sequence
 
+from lexer import Lexer, Symbol
+
 
 class Type(Enum):
     Byte = 1
@@ -9,54 +11,6 @@ class Type(Enum):
     @property
     def size(self):
         return 1 if self == Type.Byte else 2
-
-
-class Symbol(Enum):
-    Nothing = -1
-    Plus = ord('+')
-    Minus = ord('-')
-    Mult = ord('*')
-    Divide = ord('/')
-    Semicolon = ord(';')
-    Becomes = ord('=')
-    LParen = ord('(')
-    RParen = ord(')')
-    LBracket = ord('[')
-    RBracket = ord(']')
-    Number = 256
-    Identifier = 259
-    EOF = 260
-    Equals = 261
-    NotEqual = 262
-    Gt = 263
-    Ge = 264
-    Lt = 265
-    Le = 266
-    # Negate = 267
-    If = 268
-    Then = 269
-    Else = 270
-    And = 271
-    Or = 272
-    Begin = 273
-    End = 274
-    While = 275
-    Do = 276
-    Continue = 277
-    Break = 278
-    Function = 279
-    Return = 280
-    Call = 281
-    Reference = 282
-    Comma = 283
-    Print = 284
-    PrintNewLine = 285
-    QuotationMark = 286
-    String = 287
-    Modulo = 288
-    Global = 289
-    Byte = 290
-    Addr = 291
 
 
 class Variable:
@@ -98,12 +52,7 @@ class FunctionSignature:
 
 class Parser:
     def __init__(self, input_string: str):
-        self._input_string = input_string
-        self._position = 0
-        self._line_number = 1
-        self._current_number = 0
-        self._current_identifier = ""
-        self._current_string = ""
+        self._lex = Lexer(input_string)
 
         self._if_counter = 1
         self._while_counter = 1
@@ -115,7 +64,6 @@ class Parser:
         self._string_constants = []
         self._expr_is_16bit = False
 
-        self._current = Symbol.Nothing
         self._function_signatures: Dict[str, FunctionSignature] = {}
 
     def _append_code(self, c: str, newline=True):
@@ -150,14 +98,14 @@ class Parser:
 
         def gen(offset, is_arg, is_16bit):
             instr = "LOAD" if load else "STORE"
-            bits = "16" if is_16bit else ""
+            bbits = "16" if is_16bit else ""
             origin = "ARG" if is_arg else "LOCAL"
-            code = f"{instr}_{origin}{bits} {offset} ; {name}"
+            code = f"{instr}_{origin}{bbits} {offset} ; {name}"
             return code
 
         # Check function arguments
-        if self._current_context in self._function_signatures and name in self._function_signatures[
-            self._current_context].args:
+        if (self._current_context in self._function_signatures
+                and name in self._function_signatures[self._current_context].args):
             for k, v in reversed(self._function_signatures[self._current_context].args.items()):
                 offs += v.stack_size
                 if k == name:
@@ -214,227 +162,25 @@ class Parser:
             self._error(f"Unknown variable {name}")
         return self._local_variables[self._current_context][name].type
 
-    def _getchar(self) -> str:
-        if self._position < len(self._input_string):
-            ret = self._input_string[self._position]
-            self._position += 1
-            return ret
-        return ""
-
-    def _rewind(self):
-        if self._position > 0:
-            self._position -= 1
-
-    def _peek(self) -> str:
-        if self._position < len(self._input_string):
-            return self._input_string[self._position]
-        return ""
-
-    def _next_symbol(self):
-        buffer = ""
-        buffer_mode = 0  # 1: number 2: identifier 3: string
-        # previous_mode = current
-
-        while 1:
-            t = self._getchar()
-
-            if buffer_mode == 1:
-                if t.isdigit() or t == '.':
-                    buffer += t
-                    continue
-                else:
-                    self._current_number = int(buffer) if '.' not in buffer else float(buffer)
-                    if t != "":
-                        self._rewind()
-                    return
-            elif buffer_mode == 3:
-                if t != '"' or (t == '"' and buffer and buffer[-1] == '\\'):
-                    buffer += t
-                    continue
-                else:
-                    self._current_string = buffer
-                    return
-            elif buffer_mode == 2:
-                if t.isalnum() or t == '_':
-                    buffer += t
-                    continue
-                else:
-                    if t != "":
-                        self._rewind()
-
-                    buffer_l = buffer.lower()
-                    if buffer_l == "if":
-                        self._current = Symbol.If
-                        return
-                    elif buffer_l == "then":
-                        self._current = Symbol.Then
-                        return
-                    elif buffer_l == "else":
-                        self._current = Symbol.Else
-                        return
-                    elif buffer_l == "begin":
-                        self._current = Symbol.Begin
-                        return
-                    elif buffer_l == "end":
-                        self._current = Symbol.End
-                        return
-                    elif buffer_l == "while":
-                        self._current = Symbol.While
-                        return
-                    elif buffer_l == "do":
-                        self._current = Symbol.Do
-                        return
-                    elif buffer_l == "continue":
-                        self._current = Symbol.Continue
-                        return
-                    elif buffer_l == "break":
-                        self._current = Symbol.Break
-                        return
-                    elif buffer_l == "function":
-                        self._current = Symbol.Function
-                        return
-                    elif buffer_l == "return":
-                        self._current = Symbol.Return
-                        return
-                    elif buffer_l == "call":
-                        self._current = Symbol.Call
-                        return
-                    elif buffer_l == "print":
-                        self._current = Symbol.Print
-                        return
-                    elif buffer_l == "printnl":
-                        self._current = Symbol.PrintNewLine
-                        return
-                    elif buffer_l == "global":
-                        self._current = Symbol.Global
-                        return
-                    elif buffer_l == "byte":
-                        self._current = Symbol.Byte
-                        return
-                    elif buffer_l == "addr":
-                        self._current = Symbol.Addr
-                        return
-
-                    self._current_identifier = buffer
-                    return
-
-            if not t:
-                self._current = Symbol.EOF
-                return
-            elif t in (' ', '\t', '\r'):
-                continue
-            elif t == '\n':
-                self._line_number += 1
-                continue
-            elif t.isdigit() or t == '.':  # or (t == '-' and peek().isdigit()):
-                self._current = Symbol.Number
-                buffer += t
-                buffer_mode = 1
-                continue
-            elif t.isalnum():
-                self._current = Symbol.Identifier
-                buffer += t
-                buffer_mode = 2
-                continue
-            elif t == "\"":
-                self._current = Symbol.String
-                buffer_mode = 3
-                continue
-            elif t == "=":
-                if self._peek() == "=":
-                    self._current = Symbol.Equals
-                    self._getchar()
-                else:
-                    self._current = Symbol.Becomes
-                return
-            elif t == "+":
-                self._current = Symbol.Plus
-                return
-            elif t == "-":
-                self._current = Symbol.Minus
-                return
-            elif t == "*":
-                self._current = Symbol.Mult
-                return
-            elif t == "/" and self._peek() != "/":  # divide vs comment
-                self._current = Symbol.Divide
-                return
-            elif t == ";":
-                self._current = Symbol.Semicolon
-                return
-            elif t == "(":
-                self._current = Symbol.LParen
-                return
-            elif t == ")":
-                self._current = Symbol.RParen
-                return
-            elif t == ">":
-                if self._peek() == "=":
-                    self._current = Symbol.Ge
-                    self._getchar()
-                else:
-                    self._current = Symbol.Gt
-                return
-            elif t == "<":
-                if self._peek() == "=":
-                    self._current = Symbol.Le
-                    self._getchar()
-                else:
-                    self._current = Symbol.Lt
-                return
-            elif t == "!":
-                if self._peek() == "=":
-                    self._current = Symbol.NotEqual
-                    self._getchar()
-                # else:
-                #    current = Symbol.Negate
-                return
-            elif t == "&":
-                if self._peek() == "&":
-                    self._current = Symbol.And
-                    self._getchar()
-                else:
-                    self._current = Symbol.Reference
-                return
-            elif t == "|" and self._peek() == "|":
-                self._current = Symbol.Or
-                self._getchar()
-                return
-            elif t == "/" and self._peek() == "/":
-                while self._peek() != '\n':
-                    self._getchar()
-            elif t == ',':
-                self._current = Symbol.Comma
-                return
-            elif t == '[':
-                self._current = Symbol.LBracket
-                return
-            elif t == ']':
-                self._current = Symbol.RBracket
-                return
-            elif t == '%':
-                self._current = Symbol.Modulo
-                return
-
     def _accept(self, t: Symbol) -> bool:
-        if t == self._current:
-            self._next_symbol()
+        if t == self._lex.current:
+            self._lex.next_symbol()
             return True
         return False
 
     def _expect(self, s: Symbol) -> bool:
         if self._accept(s):
             return True
-        self._error(f"Expected {s}, got {self._current}")
+        self._error(f"Expected {s}, got {self._lex.current}")
         return False
 
     def _error(self, what: str):
         self.print_code()
-        raise Exception(f"Error in line {self._line_number}: {what}")
+        raise Exception(f"Error in line {self._lex.line_number}: {what}")
 
     def _parse_factor(self, dry_run=False, expect_16bit=False):
         if self._accept(Symbol.Identifier):
-            var = self._current_identifier
+            var = self._lex.current_identifier
             if self._accept(Symbol.LBracket):
                 var_def = self._gen_load_store_instruction(var, True, dry_run=dry_run)
                 if not var_def.is_array:
@@ -458,13 +204,13 @@ class Parser:
                     if not dry_run:
                         self._append_code("EXTEND")
         elif self._accept(Symbol.Number):
-            if self._current_number > 255 or expect_16bit:
+            if self._lex.current_number > 255 or expect_16bit:
                 self._expr_is_16bit = True
                 if not dry_run:
-                    self._append_code(f"PUSH16 #{self._current_number}")
+                    self._append_code(f"PUSH16 #{self._lex.current_number}")
             else:
                 if not dry_run:
-                    self._append_code(f"PUSH {self._current_number}")
+                    self._append_code(f"PUSH {self._lex.current_number}")
         elif self._accept(Symbol.LParen):
             self._parse_expression_typed(expect_16bit=expect_16bit)
             self._expect(Symbol.RParen)
@@ -473,9 +219,9 @@ class Parser:
 
     def _parse_logical(self, dry_run=False, expect_16bit=False):
         self._parse_factor(dry_run=dry_run, expect_16bit=expect_16bit)
-        while self._current in (Symbol.Equals, Symbol.NotEqual, Symbol.Ge, Symbol.Gt, Symbol.Le, Symbol.Lt):
-            v = self._current
-            self._next_symbol()
+        while self._lex.current in (Symbol.Equals, Symbol.NotEqual, Symbol.Ge, Symbol.Gt, Symbol.Le, Symbol.Lt):
+            v = self._lex.current
+            self._lex.next_symbol()
             self._parse_factor(dry_run=dry_run, expect_16bit=expect_16bit)
             if v == Symbol.Equals:
                 opcode = "EQ" if not expect_16bit else "EQ16"
@@ -490,14 +236,14 @@ class Parser:
             elif v == Symbol.Le:
                 opcode = "SWAP\nLESS_OR_EQ" if not expect_16bit else "SWAP16\nLESS_OR_EQ16"
             else:
-                raise NotImplementedError(self._current)
+                raise NotImplementedError(self._lex.current)
             if not dry_run:
                 self._append_code(opcode)
 
     def _parse_logical_chain(self, dry_run=False, expect_16bit=False):
         self._parse_logical(dry_run=dry_run, expect_16bit=expect_16bit)
         has_chain = False
-        while self._current in (Symbol.And, Symbol.Or):
+        while self._lex.current in (Symbol.And, Symbol.Or):
             # TODO: precedence
             if self._accept(Symbol.Or):
                 has_chain = True
@@ -522,9 +268,9 @@ class Parser:
 
     def _parse_term(self, dry_run=False, expect_16bit=False):
         self._parse_logical_chain(dry_run=dry_run, expect_16bit=expect_16bit)
-        while self._current in (Symbol.Mult, Symbol.Divide, Symbol.Modulo):
-            v = self._current
-            self._next_symbol()
+        while self._lex.current in (Symbol.Mult, Symbol.Divide, Symbol.Modulo):
+            v = self._lex.current
+            self._lex.next_symbol()
             self._parse_logical_chain(dry_run=dry_run, expect_16bit=expect_16bit)
             if v == Symbol.Mult:
                 opcode = "MUL" if not expect_16bit else "MUL16"
@@ -533,21 +279,21 @@ class Parser:
             elif v == Symbol.Modulo:
                 opcode = "SWAP\nMOD" if not expect_16bit else "SWAP16\nMOD16"
             else:
-                raise NotImplementedError(self._current)
+                raise NotImplementedError(self._lex.current)
             if not dry_run:
                 self._append_code(opcode)
 
     def _parse_expression(self, dry_run=False, expect_16bit=False):
         um = False
-        if self._current == Symbol.Plus or self._current == Symbol.Minus:
+        if self._lex.current == Symbol.Plus or self._lex.current == Symbol.Minus:
             um = True
-            self._next_symbol()
+            self._lex.next_symbol()
         self._parse_term(dry_run=dry_run, expect_16bit=expect_16bit)
         if um and not dry_run:
             self._append_code("NEG" if not expect_16bit else "NEG16")  # not yet implemented
-        while self._current == Symbol.Plus or self._current == Symbol.Minus:
-            v = self._current
-            self._next_symbol()
+        while self._lex.current == Symbol.Plus or self._lex.current == Symbol.Minus:
+            v = self._lex.current
+            self._lex.next_symbol()
             self._parse_term(dry_run=dry_run, expect_16bit=expect_16bit)
             if not dry_run:
                 if not expect_16bit:
@@ -557,19 +303,13 @@ class Parser:
 
     def _parse_expression_typed(self, expect_16bit=False):
         self._expr_is_16bit = False
-        position_backup = self._position
-        ln_backup = self._line_number
+        lex_backup = self._lex.backup_state()
         cond_backup = self._condition_counter
-        current_backup = self._current
-        ci_backup = self._current_identifier
 
         self._parse_expression(dry_run=True, expect_16bit=False)
 
-        self._position = position_backup
-        self._line_number = ln_backup
+        self._lex.restore_state(lex_backup)
         self._condition_counter = cond_backup
-        self._current = current_backup
-        self._current_identifier = ci_backup
 
         downcast = self._expr_is_16bit and not expect_16bit
 
@@ -579,11 +319,11 @@ class Parser:
             self._append_code("SWAP\nPOP")
 
     def _parse_statement(self, inside_loop=0, inside_if=False, inside_function=False):
-        if self._current in (Symbol.Byte, Symbol.Addr):
-            var_type = Type.Byte if self._current == Symbol.Byte else Type.Addr
-            self._next_symbol()
+        if self._lex.current in (Symbol.Byte, Symbol.Addr):
+            var_type = Type.Byte if self._lex.current == Symbol.Byte else Type.Addr
+            self._lex.next_symbol()
             self._expect(Symbol.Identifier)
-            var_name = self._current_identifier
+            var_name = self._lex.current_identifier
 
             if self._accept(Symbol.LBracket):
                 self._register_variable(var_name, var_type, is_array=True)
@@ -609,7 +349,7 @@ class Parser:
                 self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.Identifier):
-            var = self._current_identifier
+            var = self._lex.current_identifier
             if self._accept(Symbol.Becomes):
                 self._parse_expression_typed(expect_16bit=self._typeof(var).size == 2)
                 self._gen_load_store_instruction(var, False)
@@ -639,10 +379,10 @@ class Parser:
                 self._expect(Symbol.Semicolon)
         elif self._accept(Symbol.Global):
             self._expect(Symbol.Identifier)
-            if self._current_identifier not in self._local_variables[""]:
-                self._error(f"Unknown global variable {self._current_identifier}")
-            gvar = self._local_variables[""][self._current_identifier]
-            self._register_variable(self._current_identifier, gvar.type, is_array=gvar.is_array, from_global=True)
+            if self._lex.current_identifier not in self._local_variables[""]:
+                self._error(f"Unknown global variable {self._lex.current_identifier}")
+            gvar = self._local_variables[""][self._lex.current_identifier]
+            self._register_variable(self._lex.current_identifier, gvar.type, is_array=gvar.is_array, from_global=True)
             self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.Begin):
@@ -702,7 +442,7 @@ class Parser:
 
         elif self._accept(Symbol.Call):
             self._expect(Symbol.Identifier)
-            func = self._current_identifier
+            func = self._lex.current_identifier
             if func not in self._function_signatures:
                 self._error(f"Unknown function {func}")
             signature = self._function_signatures[func]
@@ -719,8 +459,8 @@ class Parser:
                     self._parse_expression_typed(expect_16bit=arg.is_16bit)
                 else:
                     self._expect(Symbol.Identifier)
-                    self._gen_load_store_instruction(self._current_identifier, True)
-                    refs_mapping[arg] = self._current_identifier
+                    self._gen_load_store_instruction(self._lex.current_identifier, True)
+                    refs_mapping[arg] = self._lex.current_identifier
 
             self._expect(Symbol.RParen)
 
@@ -742,13 +482,13 @@ class Parser:
 
         elif self._accept(Symbol.Print):
             if self._accept(Symbol.String):
-                self._string_constants.append(self._current_string)
+                self._string_constants.append(self._lex.current_string)
                 self._append_code(f"PUSH16 @string_{len(self._string_constants)}")
                 self._append_code("SYSCALL Std.PrintString")
             else:
-                expr_is_16bit = False
+                self._expr_is_16bit = False
                 self._parse_expression()
-                if not expr_is_16bit:
+                if not self._expr_is_16bit:
                     self._append_code("SYSCALL Std.PrintInt\nPOP")
                 else:
                     self._append_code("SYSCALL Std.PrintInt16\nPOPN 2")
@@ -768,7 +508,7 @@ class Parser:
         elif self._accept(Symbol.Function):
             self._expect(Symbol.Identifier)
             old_ctx = self._current_context
-            self._current_context = self._current_identifier
+            self._current_context = self._lex.current_identifier
 
             signature = FunctionSignature()
             self._function_signatures[self._current_context] = signature
@@ -778,11 +518,11 @@ class Parser:
             while not self._accept(Symbol.RParen):
                 if signature.args:
                     self._expect(Symbol.Comma)
-                if self._current in (Symbol.Byte, Symbol.Addr):
-                    var_type = Type.Byte if self._current == Symbol.Byte else Type.Addr
-                    self._next_symbol()
+                if self._lex.current in (Symbol.Byte, Symbol.Addr):
+                    var_type = Type.Byte if self._lex.current == Symbol.Byte else Type.Addr
+                    self._lex.next_symbol()
                     self._expect(Symbol.Identifier)
-                    var_name = self._current_identifier
+                    var_name = self._lex.current_identifier
 
                     if self._accept(Symbol.LBracket):
                         self._expect(Symbol.RBracket)
@@ -835,7 +575,7 @@ class Parser:
         print("\n".join(self.get_code()))
 
     def do_parse(self):
-        self._next_symbol()
+        self._lex.next_symbol()
         while not self._accept(Symbol.EOF):
             self._parse_block()
         self._current_context = ""

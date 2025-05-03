@@ -12,3 +12,6 @@ class TestArrays(unittest.TestCase, Helpers):
 
     def test_fibonacci(self):
         self.compare_programs("fibonacci_typed.prg", "fibonacci_typed.asm")
+
+    def test_mult_table(self):
+        self.compare_programs("multiplication_table.prg", "multiplication_table.asm")

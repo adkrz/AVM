@@ -1,3 +1,6 @@
+// This program tests:
+// simple arrays, passing them to function, return values from function, print string constants, while loop
+
 function sum8bit(byte data[], byte sum&)
 begin
 byte counter = 0;

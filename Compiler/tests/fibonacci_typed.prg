@@ -1,3 +1,6 @@
+// This program tests:
+// function, call, arguments, recursion, print, conditionals. early return, comparison ops, call with expression as arg
+
 function fibonacci(byte X, byte ret&)
 begin
     if X == 0 then begin

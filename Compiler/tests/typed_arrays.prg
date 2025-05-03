@@ -1,5 +1,5 @@
 // This program tests:
-// simple arrays, passing them to function, return values from function, print string constants, while loop
+// simple arrays, passing them to function, return values from function, print string constants, while loop, expr. as array index
 
 function sum8bit(byte data[], byte sum&)
 begin
@@ -26,8 +26,9 @@ byte arr[5];
 arr[0] = 11;
 arr[1] = 22;
 arr[2] = 33;
-arr[3] = 44;
-arr[4] = 55;
+arr[2+1] = 44; // check if expression works
+byte X = 4; // this one must be upcasted
+arr[X] = 55;
 
 byte counter = 0;
 while counter <= 4 do begin

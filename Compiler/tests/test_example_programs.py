@@ -15,3 +15,6 @@ class TestArrays(unittest.TestCase, Helpers):
 
     def test_mult_table(self):
         self.compare_programs("multiplication_table.prg", "multiplication_table.asm")
+
+    def test_globals(self):
+        self.compare_programs("globals.prg", "globals.asm")

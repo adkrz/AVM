@@ -249,7 +249,7 @@ class Parser:
                 has_chain = True
                 if not dry_run:
                     self._append_code("DUP\nJT" if not expect_16bit else "DUP16\nJT16", newline=False)
-                    self._append_code(f" cond{self._condition_counter}_expr_end")
+                    self._append_code(f" @cond{self._condition_counter}_expr_end")
                 self._parse_logical(dry_run=dry_run, expect_16bit=expect_16bit)
                 if not dry_run:
                     self._append_code("OR")
@@ -257,7 +257,7 @@ class Parser:
                 has_chain = True
                 if not dry_run:
                     self._append_code("DUP\nJF" if not expect_16bit else "DUP16\nJF16", newline=False)
-                    self._append_code(f" cond{self._condition_counter}_expr_end")
+                    self._append_code(f" @cond{self._condition_counter}_expr_end")
                 self._parse_logical(dry_run=dry_run, expect_16bit=expect_16bit)
                 if not dry_run:
                     self._append_code("AND")

@@ -212,7 +212,7 @@ class Parser:
                 if not dry_run:
                     self._append_code(f"PUSH {self._lex.current_number}")
         elif self._accept(Symbol.LParen):
-            self._parse_expression_typed(expect_16bit=expect_16bit)
+            self._parse_expression(dry_run=dry_run, expect_16bit=expect_16bit)
             self._expect(Symbol.RParen)
         else:
             self._error("factor: syntax error")

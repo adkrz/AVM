@@ -1,0 +1,243 @@
+PUSHN 2 ; Byte arr
+PUSHN 1 ; Byte counter
+PUSHN 1 ; Byte sum8
+PUSHN 2 ; Addr arr2
+PUSHN 2 ; Addr sum16
+PUSH16 @string_1
+SYSCALL Std.PrintString
+PUSH_NEXT_SP
+PUSH16 #2
+SUB216
+STORE_LOCAL16 0 ; arr
+PUSH 5
+PUSHN2 ; arr alloc
+PUSH16 #0
+LOAD_LOCAL16 0 ; arr
+ADD16
+PUSH 11
+ROLL3
+STORE_GLOBAL
+PUSH16 #1
+LOAD_LOCAL16 0 ; arr
+ADD16
+PUSH 22
+ROLL3
+STORE_GLOBAL
+PUSH16 #2
+LOAD_LOCAL16 0 ; arr
+ADD16
+PUSH 33
+ROLL3
+STORE_GLOBAL
+PUSH16 #3
+LOAD_LOCAL16 0 ; arr
+ADD16
+PUSH 44
+ROLL3
+STORE_GLOBAL
+PUSH16 #4
+LOAD_LOCAL16 0 ; arr
+ADD16
+PUSH 55
+ROLL3
+STORE_GLOBAL
+PUSH 0
+STORE_LOCAL 2 ; counter
+:while3_begin
+LOAD_LOCAL 2 ; counter
+PUSH 4
+SWAP
+LESS_OR_EQ
+JF @while3_endwhile
+LOAD_LOCAL16 0 ; arr
+LOAD_LOCAL 2 ; counter
+EXTEND
+ADD16
+LOAD_GLOBAL
+SYSCALL Std.PrintInt
+POP
+SYSCALL Std.PrintNewLine
+LOAD_LOCAL 2 ; counter
+PUSH 1
+ADD
+STORE_LOCAL 2 ; counter
+JMP @while3_begin
+:while3_endwhile
+PUSH16 @string_2
+SYSCALL Std.PrintString
+PUSH 0
+STORE_LOCAL 3 ; sum8
+;sum8bit(Byte data[], Byte sum&)
+LOAD_LOCAL16 0 ; arr
+LOAD_LOCAL 3 ; sum8
+CALL @function_sum8bit
+; stack cleanup
+STORE_LOCAL 3 ; sum8
+POPN 1
+LOAD_LOCAL 3 ; sum8
+SYSCALL Std.PrintInt
+POP
+SYSCALL Std.PrintNewLine
+PUSH16 @string_3
+SYSCALL Std.PrintString
+PUSH_NEXT_SP
+PUSH16 #2
+SUB216
+STORE_LOCAL16 4 ; arr2
+PUSH16 #5
+PUSH16 2
+MUL16
+PUSHN2 ; arr2 alloc
+PUSH16 #0
+PUSH16 #2
+MUL16
+LOAD_LOCAL16 4 ; arr2
+ADD16
+PUSH16 #11
+SWAP16
+STORE_GLOBAL16
+PUSH16 #1
+PUSH16 #2
+MUL16
+LOAD_LOCAL16 4 ; arr2
+ADD16
+PUSH16 #22
+SWAP16
+STORE_GLOBAL16
+PUSH16 #2
+PUSH16 #2
+MUL16
+LOAD_LOCAL16 4 ; arr2
+ADD16
+PUSH16 #33
+SWAP16
+STORE_GLOBAL16
+PUSH16 #3
+PUSH16 #2
+MUL16
+LOAD_LOCAL16 4 ; arr2
+ADD16
+PUSH16 #44
+SWAP16
+STORE_GLOBAL16
+PUSH16 #4
+PUSH16 #2
+MUL16
+LOAD_LOCAL16 4 ; arr2
+ADD16
+PUSH16 #55
+SWAP16
+STORE_GLOBAL16
+PUSH 0
+STORE_LOCAL 2 ; counter
+:while4_begin
+LOAD_LOCAL 2 ; counter
+PUSH 4
+SWAP
+LESS_OR_EQ
+JF @while4_endwhile
+LOAD_LOCAL16 4 ; arr2
+LOAD_LOCAL 2 ; counter
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+SYSCALL Std.PrintInt16
+POPN 2
+SYSCALL Std.PrintNewLine
+LOAD_LOCAL 2 ; counter
+PUSH 1
+ADD
+STORE_LOCAL 2 ; counter
+JMP @while4_begin
+:while4_endwhile
+PUSH16 @string_4
+SYSCALL Std.PrintString
+PUSH16 #0
+STORE_LOCAL16 6 ; sum16
+;sum16bit(Addr data[], Addr sum&)
+LOAD_LOCAL16 4 ; arr2
+LOAD_LOCAL16 6 ; sum16
+CALL @function_sum16bit
+; stack cleanup
+STORE_LOCAL16 6 ; sum16
+POPN 2
+LOAD_LOCAL16 6 ; sum16
+SYSCALL Std.PrintInt16
+POPN 2
+SYSCALL Std.PrintNewLine
+HALT
+
+:function_sum8bit
+;(Byte data[], Byte sum&)
+PUSHN 1 ; Byte counter
+PUSH 0
+STORE_LOCAL 0 ; counter
+PUSH 0
+STORE_ARG 1 ; sum
+:while1_begin
+LOAD_LOCAL 0 ; counter
+PUSH 4
+SWAP
+LESS_OR_EQ
+JF @while1_endwhile
+LOAD_LOCAL 0 ; counter
+EXTEND
+LOAD_ARG 1 ; sum
+LOAD_ARG16 3 ; data
+LOAD_LOCAL 0 ; counter
+EXTEND
+ADD16
+LOAD_GLOBAL
+ADD
+STORE_ARG 1 ; sum
+LOAD_LOCAL 0 ; counter
+PUSH 1
+ADD
+STORE_LOCAL 0 ; counter
+JMP @while1_begin
+:while1_endwhile
+RET
+
+:function_sum16bit
+;(Addr data[], Addr sum&)
+PUSHN 1 ; Byte counter
+PUSH 0
+STORE_LOCAL 0 ; counter
+PUSH16 #0
+STORE_ARG16 2 ; sum
+:while2_begin
+LOAD_LOCAL 0 ; counter
+PUSH 4
+SWAP
+LESS_OR_EQ
+JF @while2_endwhile
+LOAD_LOCAL 0 ; counter
+EXTEND
+LOAD_ARG16 2 ; sum
+LOAD_ARG16 4 ; data
+LOAD_LOCAL 0 ; counter
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+ADD16
+STORE_ARG16 2 ; sum
+LOAD_LOCAL 0 ; counter
+PUSH 1
+ADD
+STORE_LOCAL 0 ; counter
+JMP @while2_begin
+:while2_endwhile
+RET
+
+:string_1
+"8-bit version\\n"
+:string_2
+"Sum="
+:string_3
+"16-bit version\\n"
+:string_4
+"Sum="

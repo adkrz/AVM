@@ -20,6 +20,23 @@ SYSCALL Std.PrintString
 JMP @if1_endif
 :if1_else
 :if1_endif
+SYSCALL Std.PrintNewLine
+LOAD_LOCAL 0 ; a
+PUSH 4
+EQ
+JF @if2_else
+LOAD_LOCAL 0 ; a
+PUSH 0
+LESS_OR_EQ
+JF @if3_else
+PUSH16 @string_2
+SYSCALL Std.PrintString
+JMP @if3_endif
+:if3_else
+:if3_endif
+JMP @if2_endif
+:if2_else
+:if2_endif
 HALT
 
 :function_func
@@ -34,3 +51,5 @@ RET
 
 :string_1
 "OK!"
+:string_2
+"OK2!"

@@ -1,3 +1,4 @@
+import os
 from typing import List, Sequence
 
 
@@ -44,8 +45,19 @@ class Helpers:
             for ss in s.split("\n"):
                 yield ss
 
-    def compare_programs(self, input_file, output_file):
+    @staticmethod
+    def _fix_path(path: str):
+        """ Fix for running test in case where current directory is somewhere else """
+        if os.path.exists(path):
+            return path
+        this_module_dir = os.path.dirname(__file__)
+        path = os.path.join(this_module_dir, path)
+        return path
+
+    def compare_programs(self, input_file: str, output_file: str):
         from recursive_descent_parser import Parser
+        input_file = Helpers._fix_path(input_file)
+        output_file = Helpers._fix_path(output_file)
 
         program = self.read_file_to_string(input_file)
         parser = Parser(program)

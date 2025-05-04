@@ -1,6 +1,6 @@
 import unittest
 
-from tests.helpers import Helpers
+from helpers import Helpers
 
 
 class TestArrays(unittest.TestCase, Helpers):
@@ -18,3 +18,7 @@ class TestArrays(unittest.TestCase, Helpers):
 
     def test_globals(self):
         self.compare_programs("globals.prg", "globals.asm")
+
+
+if __name__ == '__main__':
+    unittest.main()

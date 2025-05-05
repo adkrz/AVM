@@ -179,23 +179,23 @@ class Parser:
                 return v
             offs += v.stack_size
 
-    def _typeof(self, name: str) -> Type:
+    def _get_variable(self, name: str) -> Variable:
         # Check function arguments
         if (self._current_context in self._function_signatures and name
                 in self._function_signatures[self._current_context].args):
-            return self._function_signatures[self._current_context].args[name].type
+            return self._function_signatures[self._current_context].args[name]
 
         if self._current_context not in self._local_variables:
             self._error(f"Current context is empty: {self._current_context}")
 
         # Check global variables:
         if self._current_context and "" in self._local_variables and name in self._local_variables[""]:
-            return self._local_variables[""][name].type
+            return self._local_variables[""][name]
 
         # Check local variables
         if name not in self._local_variables[self._current_context]:
             self._error(f"Unknown variable {name}")
-        return self._local_variables[self._current_context][name].type
+        return self._local_variables[self._current_context][name]
 
     def _accept(self, t: Symbol) -> bool:
         if t == self._lex.current:
@@ -413,20 +413,50 @@ class Parser:
             self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.Identifier):
-            var = self._lex.current_identifier
-            if self._accept(Symbol.Becomes):
-                self._parse_expression_typed(expect_16bit=self._typeof(var).size == 2)
-                self._gen_load_store_instruction(var, False)
+            var_name = self._lex.current_identifier
+            var = self._get_variable(var_name)
+            if var.struct_def:
+                # LHS structure element assignment
+                current_struct = var.struct_def
+                is_first_array = False
+                while 1:
+                    if var.is_array:
+                        self._expect(Symbol.LBracket)
+                        self._parse_expression_typed(expect_16bit=True)
+                        if is_first_array:
+                            is_first_array = False
+                        else:
+                            pass
+                        self._expect(Symbol.RBracket)
+                    if self._accept(Symbol.Dot):
+                        self._expect(Symbol.Identifier)
+                        struct_member = self._lex.current_identifier
+                        member_variable = current_struct.members[struct_member]
+                        offset = current_struct.member_offset(struct_member)
+                        var = member_variable
+                        if var.struct_def:
+                            current_struct = var.struct_def
+                        else:
+                            break
+                self._expect(Symbol.Becomes)
+                self._parse_expression_typed(expect_16bit=var.type.size == 2)
+                self._expect(Symbol.Semicolon)
+
+            elif self._accept(Symbol.Becomes):
+                # Simple LHS variable assignment
+                self._parse_expression_typed(expect_16bit=var.type.size == 2)
+                self._gen_load_store_instruction(var_name, False)
                 self._expect(Symbol.Semicolon)
             elif self._accept(Symbol.LBracket):
+                # Array element LHS assignment
                 self._parse_expression_typed(expect_16bit=True)
-                element_size = self._typeof(var).size
+                element_size = var.type.size
                 if element_size > 1:
                     self._append_code(f"PUSH16 #{element_size}")
                     self._append_code("MUL16")
                 self._expect(Symbol.RBracket)
                 self._expect(Symbol.Becomes)
-                var_def = self._gen_load_store_instruction(var, True)
+                var_def = self._gen_load_store_instruction(var_name, True)
                 if not var_def.is_array:
                     self._error(f"Variable {var} is not an array!")
                 self._append_code("ADD16")
@@ -702,6 +732,7 @@ if __name__ == '__main__':
     struct str(byte a, addr b, addr c[5]);
     struct additional(str x[2], addr y);   
     additional zmienna[5];
+    zmienna[2].x[0].b = 1;
     """)
     parser.do_parse()
     parser.print_code()

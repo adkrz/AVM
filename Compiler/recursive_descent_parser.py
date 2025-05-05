@@ -197,6 +197,31 @@ class Parser:
             self._error(f"Unknown variable {name}")
         return self._local_variables[self._current_context][name]
 
+    def _offsetof(self, name: str) -> int:
+        offs = 0
+        # Check function arguments
+        if self._current_context in self._function_signatures and name in self._function_signatures[self._current_context].args:
+            for k, v in reversed(self._function_signatures[self._current_context].args.items()):
+                offs += v.stack_size
+                if k == name:
+                    return offs
+
+        # Check global variables:
+        if self._current_context and "" in self._local_variables and name in self._local_variables[""]:
+            for k, v in self._local_variables[""].items():
+                if k == name:
+                    v = self._local_variables[""][name]
+                    return offs
+                offs += v.stack_size
+
+        # Check local variables
+        if name not in self._local_variables[self._current_context]:
+            self._error(f"Unknown variable {name}")
+        for k, v in self._local_variables[self._current_context].items():
+            if k == name:
+                return offs
+            offs += v.stack_size
+
     def _accept(self, t: Symbol) -> bool:
         if t == self._lex.current:
             self._lex.next_symbol()
@@ -216,6 +241,12 @@ class Parser:
     def _parse_factor(self, dry_run=False, expect_16bit=False):
         if self._accept(Symbol.Identifier):
             var = self._lex.current_identifier
+            var_def = self._get_variable(var)
+
+            if var_def.struct_def:
+                last_var_in_chain = self._generate_struct_address(var_def, var)
+                self._append_code("LOAD_GLOBAL") if not last_var_in_chain.is_16bit else self._append_code("LOAD_GLOBAL16")
+
             if self._accept(Symbol.LBracket):
                 var_def = self._gen_load_store_instruction(var, True, dry_run=dry_run)
                 if not var_def.is_array:
@@ -353,6 +384,51 @@ class Parser:
         if downcast:
             self._append_code("SWAP\nPOP")
 
+    def _generate_struct_address(self, var: Variable, var_name: str) -> Variable:
+        """ Generates instructions to compute address of last member in struct chain
+         Returns this last member variable """
+        current_struct = var.struct_def
+        if not current_struct:
+            self._error("Expected structure")
+        struct_beginning = True
+        while 1:
+            if var.is_array:
+                self._expect(Symbol.LBracket)
+                self._parse_expression_typed(expect_16bit=True)  # index of element
+                element_size = var.stack_size
+                self._append_code(f"PUSH16 #{element_size}")
+                self._append_code("MUL16")
+                if struct_beginning:
+                    # dynamic array - add calculated address to pointer
+                    struct_beginning = False
+                    self._gen_load_store_instruction(var_name, True)  # load arr ptr
+                    self._append_code("ADD16")
+                # else: is a static array
+                self._expect(Symbol.RBracket)
+            else:
+                if struct_beginning:
+                    # load relative to frame pointer
+                    struct_beginning = False
+                    self._append_code("PUSH_REG 2")
+                    offset = self._offsetof(var_name)
+                    self._append_code(f"PUSH16 #{offset} ; struct {current_struct.name}")
+                    self._append_code("ADD16")
+
+            if self._accept(Symbol.Dot):
+                self._expect(Symbol.Identifier)
+                struct_member = self._lex.current_identifier
+                member_variable = current_struct.members[struct_member]
+
+                var = member_variable
+                if var.struct_def:
+                    current_struct = var.struct_def
+                else:
+                    offset = current_struct.member_offset(struct_member)
+                    self._append_code(f"PUSH16 #{offset}")
+                    self._append_code("ADD16")
+                    break
+        return var
+
     def _parse_statement(self, inside_loop=0, inside_if=False, inside_function=False):
         if self._lex.current in (Symbol.Byte, Symbol.Addr):
             var_type = Type.Byte if self._lex.current == Symbol.Byte else Type.Addr
@@ -417,29 +493,18 @@ class Parser:
             var = self._get_variable(var_name)
             if var.struct_def:
                 # LHS structure element assignment
-                current_struct = var.struct_def
-                is_first_array = False
-                while 1:
-                    if var.is_array:
-                        self._expect(Symbol.LBracket)
-                        self._parse_expression_typed(expect_16bit=True)
-                        if is_first_array:
-                            is_first_array = False
-                        else:
-                            pass
-                        self._expect(Symbol.RBracket)
-                    if self._accept(Symbol.Dot):
-                        self._expect(Symbol.Identifier)
-                        struct_member = self._lex.current_identifier
-                        member_variable = current_struct.members[struct_member]
-                        offset = current_struct.member_offset(struct_member)
-                        var = member_variable
-                        if var.struct_def:
-                            current_struct = var.struct_def
-                        else:
-                            break
+                last_var_in_chain = self._generate_struct_address(var, var_name)
+
                 self._expect(Symbol.Becomes)
-                self._parse_expression_typed(expect_16bit=var.type.size == 2)
+                self._parse_expression_typed(expect_16bit=last_var_in_chain.type.size == 2)
+
+                if not last_var_in_chain.is_16bit:
+                    self._append_code("ROLL3")
+                    self._append_code("STORE_GLOBAL")
+                else:
+                    self._append_code("SWAP16")
+                    self._append_code("STORE_GLOBAL16")
+
                 self._expect(Symbol.Semicolon)
 
             elif self._accept(Symbol.Becomes):
@@ -733,6 +798,7 @@ if __name__ == '__main__':
     struct additional(str x[2], addr y);   
     additional zmienna[5];
     zmienna[2].x[0].b = 1;
+    addr z =zmienna[2].x[0].b; 
     """)
     parser.do_parse()
     parser.print_code()

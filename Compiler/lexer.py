@@ -47,6 +47,8 @@ class Symbol(Enum):
     Global = 289
     Byte = 290
     Addr = 291
+    Struct = 292
+    Dot = 293
 
 
 class Lexer:
@@ -192,6 +194,9 @@ class Lexer:
                     elif buffer_l == "addr":
                         self._current = Symbol.Addr
                         return
+                    elif buffer_l == "struct":
+                        self._current = Symbol.Struct
+                        return
 
                     self._current_identifier = buffer
                     return
@@ -204,6 +209,9 @@ class Lexer:
             elif t == '\n':
                 self._line_number += 1
                 continue
+            elif t == ".":
+                self._current = Symbol.Dot
+                return
             elif t.isdigit() or t == '.':  # or (t == '-' and peek().isdigit()):
                 self._current = Symbol.Number
                 buffer += t

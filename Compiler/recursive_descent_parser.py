@@ -443,11 +443,12 @@ class Parser:
                 self._append_code("PUSH16 #2")
                 self._append_code("SUB216")
                 self._gen_load_store_instruction(var_name, False)
-                self._parse_expression_typed(expect_16bit=var_type.size == 2)
+                # TODO: array size limitation - no 16 bit version of PUSHN2
+                self._parse_expression_typed(expect_16bit=False)
                 element_size = var_type.size
                 if element_size > 1:
-                    self._append_code(f"PUSH16 {element_size}")
-                    self._append_code(f"MUL16")
+                    self._append_code(f"PUSH {element_size}")
+                    self._append_code(f"MUL")
                 self._expect(Symbol.RBracket)
                 self._expect(Symbol.Semicolon)
                 self._append_code(f"PUSHN2 ; {var_name} alloc")
@@ -474,11 +475,11 @@ class Parser:
                 self._append_code("PUSH16 #2")
                 self._append_code("SUB216")
                 self._gen_load_store_instruction(var_name, False)
-                self._parse_expression_typed(expect_16bit=True)
+                self._parse_expression_typed(expect_16bit=False)
                 element_size = vdef.stack_size
                 if element_size > 1:
-                    self._append_code(f"PUSH16 {element_size}")
-                    self._append_code(f"MUL16")
+                    self._append_code(f"PUSH {element_size}")
+                    self._append_code(f"MUL")
                 self._expect(Symbol.RBracket)
                 self._append_code(f"PUSHN2 ; {var_name} alloc")
             elif self._accept(Symbol.Becomes):

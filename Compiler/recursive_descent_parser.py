@@ -257,6 +257,7 @@ class Parser:
             if var_def.struct_def:
                 last_var_in_chain = self._generate_struct_address(var_def, var)
                 self._append_code("LOAD_GLOBAL") if not last_var_in_chain.is_16bit else self._append_code("LOAD_GLOBAL16")
+                self._expr_is_16bit = last_var_in_chain.is_16bit
                 return
 
             if self._accept(Symbol.LBracket):
@@ -809,10 +810,20 @@ class Parser:
 if __name__ == '__main__':
     parser = Parser("""
     struct str(byte a, addr b, addr c[5]);
-    struct additional(str x[2], addr y);   
-    additional zmienna[5];
-    zmienna[2].x[0].b = 1;
-    print zmienna[2].x[0].b; 
+    struct additional(str x[2], addr y);
+    
+    // Simple struct:
+    additional zmienna;
+    zmienna.x[0].a = 5;
+    print zmienna.x[0].a;
+    printnl;
+    
+    // Array of structs + assign to 16 bit value
+    additional zmienna2[5];
+    zmienna2[2].x[0].b = 1;
+    print zmienna2[2].x[0].b;
+    printnl;
+    
     """)
     parser.do_parse()
     parser.print_code()

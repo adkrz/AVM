@@ -3,6 +3,12 @@ from typing import Dict, Sequence, Optional
 
 from lexer import Lexer, Symbol
 
+"""
+TODO:
+structure expression that does not end on simple variable
+global structs
+pass struct to function
+"""
 
 class Type(Enum):
     Byte = 1
@@ -251,6 +257,7 @@ class Parser:
             if var_def.struct_def:
                 last_var_in_chain = self._generate_struct_address(var_def, var)
                 self._append_code("LOAD_GLOBAL") if not last_var_in_chain.is_16bit else self._append_code("LOAD_GLOBAL16")
+                return
 
             if self._accept(Symbol.LBracket):
                 var_def = self._gen_load_store_instruction(var, True, dry_run=dry_run)
@@ -805,7 +812,7 @@ if __name__ == '__main__':
     struct additional(str x[2], addr y);   
     additional zmienna[5];
     zmienna[2].x[0].b = 1;
-    addr z =zmienna[2].x[0].b; 
+    print zmienna[2].x[0].b; 
     """)
     parser.do_parse()
     parser.print_code()

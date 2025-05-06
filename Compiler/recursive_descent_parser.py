@@ -59,12 +59,17 @@ class Variable:
 
     @property
     def stack_size(self):
+        s = self.stack_size_single_element
+        if self.array_fixed_size > 1:
+            s *= self.array_fixed_size
+        return s
+
+    @property
+    def stack_size_single_element(self):
         if self.type == Type.Struct:
             s = self.struct_def.stack_size
         else:
             s = 2 if self.is_16bit else 1
-        if self.array_fixed_size > 1:
-            s *= self.array_fixed_size
         return s
 
 
@@ -395,7 +400,8 @@ class Parser:
             if var.is_array:
                 self._expect(Symbol.LBracket)
                 self._parse_expression_typed(expect_16bit=True)  # index of element
-                element_size = var.stack_size
+                # if struct beginning, do full jump (array of struct), otherwise element jump
+                element_size = var.stack_size if struct_beginning else var.stack_size_single_element
                 self._append_code(f"PUSH16 #{element_size}")
                 self._append_code("MUL16")
                 if struct_beginning:

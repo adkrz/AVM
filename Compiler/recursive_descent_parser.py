@@ -57,6 +57,7 @@ class Variable:
         self.from_global = from_global
         self.struct_def = struct_def
         self.array_fixed_size = 0
+        self.is_arg = False
 
     @property
     def is_16bit(self):
@@ -423,6 +424,8 @@ class Parser:
                         offset = self._offsetof(var_name)
                         self._append_code(f"PUSH16 #{offset} ; struct {current_struct.name}")
                         self._append_code("ADD16")
+                    elif var.is_arg:
+                        self._gen_load_store_instruction(var_name, True)  # load ptr
                     else:
                         # load relative to frame pointer
                         self._append_code("PUSH_REG 2")
@@ -635,7 +638,7 @@ class Parser:
             for i, arg in enumerate(signature.args.values()):
                 if i > 0:
                     self._expect(Symbol.Comma)
-                if not arg.by_ref:
+                if not arg.by_ref and not arg.struct_def:
                     self._parse_expression_typed(expect_16bit=arg.is_16bit)
                 else:
                     self._expect(Symbol.Identifier)
@@ -649,7 +652,7 @@ class Parser:
 
             self._append_code("; stack cleanup")
             for arg in reversed(signature.args.values()):
-                if not arg.by_ref:
+                if not arg.by_ref and not arg.struct_def:
                     self._append_code(f"POPN {arg.type.size}")
                 else:
                     self._gen_load_store_instruction(refs_mapping[arg], False)
@@ -711,6 +714,20 @@ class Parser:
                         arg = Variable(var_type, by_ref=True)
                     else:
                         arg = Variable(var_type)
+                    arg.is_arg = True
+                    signature.args[var_name] = arg
+                elif self._lex.current_identifier in self._struct_definitions:
+                    struct_def = self._struct_definitions[self._lex.current_identifier]
+                    self._lex.next_symbol()
+                    self._expect(Symbol.Identifier)
+                    var_name = self._lex.current_identifier
+
+                    if self._accept(Symbol.LBracket):
+                        self._expect(Symbol.RBracket)
+                        arg = Variable(Type.Struct, is_array=True, struct_def=struct_def)
+                    else:
+                        arg = Variable(Type.Struct, struct_def=struct_def)
+                    arg.is_arg = True
                     signature.args[var_name] = arg
                 else:
                     self._error("Expected type")
@@ -820,12 +837,11 @@ struct additional(str x[2], addr y);
 
 additional zmienna;
 
-function modify_by_global() begin
-global zmienna;
-zmienna.x[0].a = 5;
+function modify_by_ref(additional Z) begin
+Z.x[0].a = 5;
 end
 
-call modify_by_global();
+call modify_by_ref(zmienna);
 print zmienna.x[0].a;
 printnl;
 

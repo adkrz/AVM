@@ -5,8 +5,7 @@ from lexer import Lexer, Symbol
 
 """
 TODO:
-structure expression that does not end on simple variable
-global structs
+structure expression that does not end on simple variable and can be passed to function under other type
 pass struct to function
 """
 
@@ -199,11 +198,7 @@ class Parser:
         if self._current_context not in self._local_variables:
             self._error(f"Current context is empty: {self._current_context}")
 
-        # Check global variables:
-        if self._current_context and "" in self._local_variables and name in self._local_variables[""]:
-            return self._local_variables[""][name]
-
-        # Check local variables
+        # Check local variables, this includes global declarations
         if name not in self._local_variables[self._current_context]:
             self._error(f"Unknown variable {name}")
         return self._local_variables[self._current_context][name]
@@ -421,12 +416,19 @@ class Parser:
                 self._expect(Symbol.RBracket)
             else:
                 if struct_beginning:
-                    # load relative to frame pointer
                     struct_beginning = False
-                    self._append_code("PUSH_REG 2")
-                    offset = self._offsetof(var_name)
-                    self._append_code(f"PUSH16 #{offset} ; struct {current_struct.name}")
-                    self._append_code("ADD16")
+                    if var.from_global:
+                        # load relative to stack beginning:
+                        self._append_code("PUSH_STACK_START")
+                        offset = self._offsetof(var_name)
+                        self._append_code(f"PUSH16 #{offset} ; struct {current_struct.name}")
+                        self._append_code("ADD16")
+                    else:
+                        # load relative to frame pointer
+                        self._append_code("PUSH_REG 2")
+                        offset = self._offsetof(var_name)
+                        self._append_code(f"PUSH16 #{offset} ; struct {current_struct.name}")
+                        self._append_code("ADD16")
 
             if self._accept(Symbol.Dot):
                 self._expect(Symbol.Identifier)
@@ -441,6 +443,8 @@ class Parser:
                     self._append_code(f"PUSH16 #{offset}")
                     self._append_code("ADD16")
                     break
+            else:
+                break
         return var
 
     def _parse_statement(self, inside_loop=0, inside_if=False, inside_function=False):
@@ -552,11 +556,13 @@ class Parser:
 
                 self._expect(Symbol.Semicolon)
         elif self._accept(Symbol.Global):
+            if not inside_function:
+                self._error("Global is allowed only inside functions!")
             self._expect(Symbol.Identifier)
             if self._lex.current_identifier not in self._local_variables[""]:
                 self._error(f"Unknown global variable {self._lex.current_identifier}")
             gvar = self._local_variables[""][self._lex.current_identifier]
-            self._register_variable(self._lex.current_identifier, gvar.type, is_array=gvar.is_array, from_global=True)
+            self._register_variable(self._lex.current_identifier, gvar.type, is_array=gvar.is_array, from_global=True, struct_def=gvar.struct_def)
             self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.Begin):
@@ -809,20 +815,20 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-    struct str(byte a, addr b, addr c[5]);
-    struct additional(str x[2], addr y);
-    
-    // Simple struct:
-    additional zmienna;
-    zmienna.x[0].a = 5;
-    print zmienna.x[0].a;
-    printnl;
-    
-    // Array of structs + assign to 16 bit value
-    additional zmienna2[5];
-    zmienna2[2].x[0].b = 1;
-    print zmienna2[2].x[0].b;
-    printnl;
+struct str(byte a, addr b, addr c[5]);
+struct additional(str x[2], addr y);
+
+additional zmienna;
+
+function modify_by_global() begin
+global zmienna;
+zmienna.x[0].a = 5;
+end
+
+call modify_by_global();
+print zmienna.x[0].a;
+printnl;
+
     
     """)
     parser.do_parse()

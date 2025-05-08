@@ -665,8 +665,13 @@ class Parser:
 
         elif self._accept(Symbol.Print):
             if self._accept(Symbol.String):
-                self._string_constants.append(self._lex.current_string)
-                self._append_code(f"PUSH16 @string_{len(self._string_constants)}")
+                index = 0
+                if self._lex.current_string not in self._string_constants:
+                    self._string_constants.append(self._lex.current_string)
+                    index = len(self._string_constants)
+                else:
+                    index = self._string_constants.index(self._lex.current_string) + 1
+                self._append_code(f"PUSH16 @string_{index}")
                 self._append_code("SYSCALL Std.PrintString")
             else:
                 self._expr_is_16bit = False
@@ -792,20 +797,22 @@ class Parser:
         txt = ""
         if self._current_context not in self._local_variables:
             return
+        total_stack_size = 0
         for k, var in self._local_variables[self._current_context].items():
             if not var.from_global:
                 name = k
                 if var.is_array:
                     name += "[]"
                 if var.struct_def and not var.is_array:
-                    stack_size = var.stack_size
-                    txt += f"PUSHN {stack_size} ; struct {var.struct_def.name} {name}\n"
+                    total_stack_size += var.stack_size
+                    txt += f"; struct {var.struct_def.name} {name}\n"
                 else:
-                    stack_size = var.stack_size if not var.is_array else 2
-                    txt += f"PUSHN {stack_size} ; {var.type.name} {name}\n"
-        # todo: optimize into one big block
+                    total_stack_size += var.stack_size if not var.is_array else 2
+                    txt += f"; {var.type.name} {name}\n"
         # todo: initial value instead of just push
-        self._prepend_code(txt, False)
+        if total_stack_size > 0:
+            txt += f"PUSHN {total_stack_size}\n"
+            self._prepend_code(txt, False)
 
     def get_code(self) -> Sequence[str]:
         # "main" must be printed first to not execute functions

@@ -1,5 +1,6 @@
-PUSHN 28 ; struct additional zmienna
-PUSHN 2 ; Struct zmienna_tablica[]
+; struct additional zmienna
+; Struct zmienna_tablica[]
+PUSHN 30
 ;modify_by_ref(Struct Z)
 LOAD_LOCAL 0 ; zmienna
 CALL @function_modify_by_ref

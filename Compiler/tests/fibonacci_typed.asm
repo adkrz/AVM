@@ -16,8 +16,9 @@ HALT
 
 :function_fibonacci
 ;(Byte X, Byte ret&)
-PUSHN 1 ; Byte A
-PUSHN 1 ; Byte B
+; Byte A
+; Byte B
+PUSHN 2
 LOAD_ARG 2 ; X
 PUSH 0
 EQ

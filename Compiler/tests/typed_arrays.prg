@@ -21,7 +21,7 @@ while counter <= 4 do begin
 end
 end
 
-print "8-bit version\\n";
+print "8-bit version\n";
 byte arr[5];
 arr[0] = 11;
 arr[1] = 22;
@@ -42,7 +42,7 @@ call sum8bit(arr, sum8);
 print sum8;
 printnl;
 
-print "16-bit version\\n";
+print "16-bit version\n";
 addr arr2[5];
 arr2[0] = 11;
 arr2[1] = 22;

@@ -1,9 +1,10 @@
-PUSHN 2 ; Byte arr
-PUSHN 1 ; Byte X
-PUSHN 1 ; Byte counter
-PUSHN 1 ; Byte sum8
-PUSHN 2 ; Addr arr2
-PUSHN 2 ; Addr sum16
+; Byte arr
+; Byte X
+; Byte counter
+; Byte sum8
+; Addr arr2
+; Addr sum16
+PUSHN 9
 PUSH16 @string_1
 SYSCALL Std.PrintString
 PUSH_NEXT_SP
@@ -158,7 +159,7 @@ ADD
 STORE_LOCAL 3 ; counter
 JMP @while4_begin
 :while4_endwhile
-PUSH16 @string_4
+PUSH16 @string_2
 SYSCALL Std.PrintString
 PUSH16 #0
 STORE_LOCAL16 7 ; sum16
@@ -240,10 +241,8 @@ JMP @while2_begin
 RET
 
 :string_1
-"8-bit version\\n"
+"8-bit version\n"
 :string_2
 "Sum="
 :string_3
-"16-bit version\\n"
-:string_4
-"Sum="
+"16-bit version\n"

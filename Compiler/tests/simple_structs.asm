@@ -1,5 +1,6 @@
-PUSHN 28 ; struct additional zmienna
-PUSHN 2 ; Struct zmienna2[]
+; struct additional zmienna
+; Struct zmienna2[]
+PUSHN 30
 PUSH_REG 2
 PUSH16 #0 ; struct additional
 ADD16

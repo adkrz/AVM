@@ -19,6 +19,15 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_globals(self):
         self.compare_programs("globals.prg", "globals.asm")
 
+    def test_simple_structs(self):
+        self.compare_programs("simple_structs.prg", "simple_structs.asm")
+
+    def test_function_structs_global(self):
+        self.compare_programs("function_structs_global.prg", "function_structs_global.asm")
+
+    def test_function_structs_arg(self):
+        self.compare_programs("function_structs_arg.prg", "function_structs_arg.asm")
+
 
 if __name__ == '__main__':
     unittest.main()

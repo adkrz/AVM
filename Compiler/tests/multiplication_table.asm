@@ -1,6 +1,7 @@
-PUSHN 1 ; Byte c1
-PUSHN 1 ; Byte c2
-PUSHN 1 ; Byte result
+; Byte c1
+; Byte c2
+; Byte result
+PUSHN 3
 PUSH 1
 STORE_LOCAL 0 ; c1
 :while1_begin
@@ -85,7 +86,7 @@ STORE_LOCAL 2 ; result
 LOAD_LOCAL 2 ; result
 SYSCALL Std.PrintInt
 POP
-PUSH16 @string_3
+PUSH16 @string_1
 SYSCALL Std.PrintString
 LOAD_LOCAL 1 ; c2
 PUSH 1
@@ -106,5 +107,3 @@ HALT
 " "
 :string_2
 "Now skip some rows!"
-:string_3
-" "

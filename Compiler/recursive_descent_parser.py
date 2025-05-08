@@ -1,20 +1,50 @@
 from enum import Enum
-from typing import Dict, Sequence
+from typing import Dict, Sequence, Optional
 
 from lexer import Lexer, Symbol
 
+"""
+TODO:
+structure expression that does not end on simple variable and can be passed to function under other type
+pass struct to function
+"""
 
 class Type(Enum):
     Byte = 1
     Addr = 2
+    Struct = 3
 
     @property
     def size(self):
+        if self == Type.Struct:
+            raise NotImplementedError("Use specific method to calc struct sizes")
         return 1 if self == Type.Byte else 2
 
 
+class StructDefinition:
+    def __init__(self, name):
+        self._name = name
+        self.members: Dict[str, Variable] = {}
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def stack_size(self) -> int:
+        return self.member_offset("")
+
+    def member_offset(self, member_name: str) -> int:
+        offset = 0
+        for name, m in self.members.items():
+            if name == member_name:
+                return offset
+            offset += m.stack_size
+        return offset
+
+
 class Variable:
-    def __init__(self, type_: Type, by_ref: bool = False, is_array: bool = False, from_global: bool = False):
+    def __init__(self, type_: Type, by_ref: bool = False, is_array: bool = False, from_global: bool = False, struct_def: Optional[StructDefinition] = None):
         """
         :param type_: In case of array its type of underlying elements, array itself is addr
         :param by_ref:
@@ -25,14 +55,28 @@ class Variable:
         self.by_ref = by_ref
         self.is_array = is_array
         self.from_global = from_global
+        self.struct_def = struct_def
+        self.array_fixed_size = 0
+        self.is_arg = False
 
     @property
     def is_16bit(self):
-        return self.is_array or self.type.size == 2
+        return self.is_array or (self.type != Type.Struct and self.type.size == 2)
 
     @property
     def stack_size(self):
-        return 2 if self.is_16bit else 1
+        s = self.stack_size_single_element
+        if self.array_fixed_size > 1:
+            s *= self.array_fixed_size
+        return s
+
+    @property
+    def stack_size_single_element(self):
+        if self.type == Type.Struct:
+            s = self.struct_def.stack_size
+        else:
+            s = 2 if self.is_16bit else 1
+        return s
 
 
 class FunctionSignature:
@@ -65,6 +109,7 @@ class Parser:
         self._expr_is_16bit = False
 
         self._function_signatures: Dict[str, FunctionSignature] = {}
+        self._struct_definitions: Dict[str, "StructDefinition"] = {}
 
     def _append_code(self, c: str, newline=True):
         if newline:
@@ -82,16 +127,17 @@ class Parser:
         else:
             self._codes[self._current_context] = c + self._codes[self._current_context]
 
-    def _register_variable(self, name: str, type_: Type, is_array: bool = False, from_global: bool = False):
+    def _register_variable(self, name: str, type_: Type, is_array: bool = False, from_global: bool = False, struct_def: Optional[StructDefinition]=None) -> Variable:
         if self._current_context in self._function_signatures:
             if name in self._function_signatures[self._current_context].args:
-                return
-        vdef = Variable(type_, is_array=is_array, from_global=from_global)
+                return self._function_signatures[self._current_context].args[name]
+        vdef = Variable(type_, is_array=is_array, from_global=from_global, struct_def=struct_def)
         if self._current_context not in self._local_variables:
             self._local_variables[self._current_context] = {name: vdef}
         else:
             if name not in self._local_variables[self._current_context]:
                 self._local_variables[self._current_context][name] = vdef
+        return vdef
 
     def _gen_load_store_instruction(self, name: str, load: bool, dry_run=False) -> "Variable":
         offs = 0
@@ -144,23 +190,44 @@ class Parser:
                 return v
             offs += v.stack_size
 
-    def _typeof(self, name: str) -> Type:
+    def _get_variable(self, name: str) -> Variable:
         # Check function arguments
         if (self._current_context in self._function_signatures and name
                 in self._function_signatures[self._current_context].args):
-            return self._function_signatures[self._current_context].args[name].type
+            return self._function_signatures[self._current_context].args[name]
 
         if self._current_context not in self._local_variables:
             self._error(f"Current context is empty: {self._current_context}")
 
+        # Check local variables, this includes global declarations
+        if name not in self._local_variables[self._current_context]:
+            self._error(f"Unknown variable {name}")
+        return self._local_variables[self._current_context][name]
+
+    def _offsetof(self, name: str) -> int:
+        offs = 0
+        # Check function arguments
+        if self._current_context in self._function_signatures and name in self._function_signatures[self._current_context].args:
+            for k, v in reversed(self._function_signatures[self._current_context].args.items()):
+                offs += v.stack_size
+                if k == name:
+                    return offs
+
         # Check global variables:
         if self._current_context and "" in self._local_variables and name in self._local_variables[""]:
-            return self._local_variables[""][name].type
+            for k, v in self._local_variables[""].items():
+                if k == name:
+                    v = self._local_variables[""][name]
+                    return offs
+                offs += v.stack_size
 
         # Check local variables
         if name not in self._local_variables[self._current_context]:
             self._error(f"Unknown variable {name}")
-        return self._local_variables[self._current_context][name].type
+        for k, v in self._local_variables[self._current_context].items():
+            if k == name:
+                return offs
+            offs += v.stack_size
 
     def _accept(self, t: Symbol) -> bool:
         if t == self._lex.current:
@@ -181,6 +248,14 @@ class Parser:
     def _parse_factor(self, dry_run=False, expect_16bit=False):
         if self._accept(Symbol.Identifier):
             var = self._lex.current_identifier
+            var_def = self._get_variable(var)
+
+            if var_def.struct_def:
+                last_var_in_chain = self._generate_struct_address(var_def, var)
+                self._append_code("LOAD_GLOBAL") if not last_var_in_chain.is_16bit else self._append_code("LOAD_GLOBAL16")
+                self._expr_is_16bit = last_var_in_chain.is_16bit
+                return
+
             if self._accept(Symbol.LBracket):
                 var_def = self._gen_load_store_instruction(var, True, dry_run=dry_run)
                 if not var_def.is_array:
@@ -318,6 +393,63 @@ class Parser:
         if downcast:
             self._append_code("SWAP\nPOP")
 
+    def _generate_struct_address(self, var: Variable, var_name: str) -> Variable:
+        """ Generates instructions to compute address of last member in struct chain
+         Returns this last member variable """
+        current_struct = var.struct_def
+        if not current_struct:
+            self._error("Expected structure")
+        struct_beginning = True
+        while 1:
+            if var.is_array:
+                self._expect(Symbol.LBracket)
+                self._parse_expression_typed(expect_16bit=True)  # index of element
+                # if struct beginning, do full jump (array of struct), otherwise element jump
+                element_size = var.stack_size if struct_beginning else var.stack_size_single_element
+                self._append_code(f"PUSH16 #{element_size}")
+                self._append_code("MUL16")
+                if struct_beginning:
+                    # dynamic array - add calculated address to pointer
+                    struct_beginning = False
+                    self._gen_load_store_instruction(var_name, True)  # load arr ptr
+                    self._append_code("ADD16")
+                # else: is a static array
+                self._expect(Symbol.RBracket)
+            else:
+                if struct_beginning:
+                    struct_beginning = False
+                    if var.from_global:
+                        # load relative to stack beginning:
+                        self._append_code("PUSH_STACK_START")
+                        offset = self._offsetof(var_name)
+                        self._append_code(f"PUSH16 #{offset} ; struct {current_struct.name}")
+                        self._append_code("ADD16")
+                    elif var.is_arg:
+                        self._gen_load_store_instruction(var_name, True)  # load ptr
+                    else:
+                        # load relative to frame pointer
+                        self._append_code("PUSH_REG 2")
+                        offset = self._offsetof(var_name)
+                        self._append_code(f"PUSH16 #{offset} ; struct {current_struct.name}")
+                        self._append_code("ADD16")
+
+            if self._accept(Symbol.Dot):
+                self._expect(Symbol.Identifier)
+                struct_member = self._lex.current_identifier
+                member_variable = current_struct.members[struct_member]
+
+                var = member_variable
+                if var.struct_def:
+                    current_struct = var.struct_def
+                else:
+                    offset = current_struct.member_offset(struct_member)
+                    self._append_code(f"PUSH16 #{offset}")
+                    self._append_code("ADD16")
+                    break
+            else:
+                break
+        return var
+
     def _parse_statement(self, inside_loop=0, inside_if=False, inside_function=False):
         if self._lex.current in (Symbol.Byte, Symbol.Addr):
             var_type = Type.Byte if self._lex.current == Symbol.Byte else Type.Addr
@@ -349,21 +481,69 @@ class Parser:
                     self._gen_load_store_instruction(var_name, False)
                 self._expect(Symbol.Semicolon)
 
+        elif self._lex.current == Symbol.Identifier and self._lex.current_identifier in self._struct_definitions:
+            # struct init
+            struct_name = self._lex.current_identifier
+            struct_def = self._struct_definitions[struct_name]
+            self._lex.next_symbol()
+            self._expect(Symbol.Identifier)
+            var_name = self._lex.current_identifier
+
+            if self._accept(Symbol.LBracket):  # array of struct
+                vdef = self._register_variable(var_name, Type.Struct, is_array=True, struct_def=struct_def)
+                self._append_code("PUSH_NEXT_SP")
+                # PUSH_NEXT_SP actually pushes SP+addressSize, so move back:
+                self._append_code("PUSH16 #2")
+                self._append_code("SUB216")
+                self._gen_load_store_instruction(var_name, False)
+                self._parse_expression_typed(expect_16bit=False)
+                element_size = vdef.stack_size
+                if element_size > 1:
+                    self._append_code(f"PUSH {element_size}")
+                    self._append_code(f"MUL")
+                self._expect(Symbol.RBracket)
+                self._append_code(f"PUSHN2 ; {var_name} alloc")
+            elif self._accept(Symbol.Becomes):
+                self._error("Cannot assign directly to structure")
+
+            else:
+                self._register_variable(var_name, Type.Struct, struct_def=struct_def)
+            self._expect(Symbol.Semicolon)
+
         elif self._accept(Symbol.Identifier):
-            var = self._lex.current_identifier
-            if self._accept(Symbol.Becomes):
-                self._parse_expression_typed(expect_16bit=self._typeof(var).size == 2)
-                self._gen_load_store_instruction(var, False)
+            var_name = self._lex.current_identifier
+            var = self._get_variable(var_name)
+            if var.struct_def:
+                # LHS structure element assignment
+                last_var_in_chain = self._generate_struct_address(var, var_name)
+
+                self._expect(Symbol.Becomes)
+                self._parse_expression_typed(expect_16bit=last_var_in_chain.type.size == 2)
+
+                if not last_var_in_chain.is_16bit:
+                    self._append_code("ROLL3")
+                    self._append_code("STORE_GLOBAL")
+                else:
+                    self._append_code("SWAP16")
+                    self._append_code("STORE_GLOBAL16")
+
+                self._expect(Symbol.Semicolon)
+
+            elif self._accept(Symbol.Becomes):
+                # Simple LHS variable assignment
+                self._parse_expression_typed(expect_16bit=var.type.size == 2)
+                self._gen_load_store_instruction(var_name, False)
                 self._expect(Symbol.Semicolon)
             elif self._accept(Symbol.LBracket):
+                # Array element LHS assignment
                 self._parse_expression_typed(expect_16bit=True)
-                element_size = self._typeof(var).size
+                element_size = var.type.size
                 if element_size > 1:
                     self._append_code(f"PUSH16 #{element_size}")
                     self._append_code("MUL16")
                 self._expect(Symbol.RBracket)
                 self._expect(Symbol.Becomes)
-                var_def = self._gen_load_store_instruction(var, True)
+                var_def = self._gen_load_store_instruction(var_name, True)
                 if not var_def.is_array:
                     self._error(f"Variable {var} is not an array!")
                 self._append_code("ADD16")
@@ -379,11 +559,13 @@ class Parser:
 
                 self._expect(Symbol.Semicolon)
         elif self._accept(Symbol.Global):
+            if not inside_function:
+                self._error("Global is allowed only inside functions!")
             self._expect(Symbol.Identifier)
             if self._lex.current_identifier not in self._local_variables[""]:
                 self._error(f"Unknown global variable {self._lex.current_identifier}")
             gvar = self._local_variables[""][self._lex.current_identifier]
-            self._register_variable(self._lex.current_identifier, gvar.type, is_array=gvar.is_array, from_global=True)
+            self._register_variable(self._lex.current_identifier, gvar.type, is_array=gvar.is_array, from_global=True, struct_def=gvar.struct_def)
             self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.Begin):
@@ -456,7 +638,7 @@ class Parser:
             for i, arg in enumerate(signature.args.values()):
                 if i > 0:
                     self._expect(Symbol.Comma)
-                if not arg.by_ref:
+                if not arg.by_ref and not arg.struct_def:
                     self._parse_expression_typed(expect_16bit=arg.is_16bit)
                 else:
                     self._expect(Symbol.Identifier)
@@ -470,7 +652,7 @@ class Parser:
 
             self._append_code("; stack cleanup")
             for arg in reversed(signature.args.values()):
-                if not arg.by_ref:
+                if not arg.by_ref and not arg.struct_def:
                     self._append_code(f"POPN {arg.type.size}")
                 else:
                     self._gen_load_store_instruction(refs_mapping[arg], False)
@@ -483,8 +665,13 @@ class Parser:
 
         elif self._accept(Symbol.Print):
             if self._accept(Symbol.String):
-                self._string_constants.append(self._lex.current_string)
-                self._append_code(f"PUSH16 @string_{len(self._string_constants)}")
+                index = 0
+                if self._lex.current_string not in self._string_constants:
+                    self._string_constants.append(self._lex.current_string)
+                    index = len(self._string_constants)
+                else:
+                    index = self._string_constants.index(self._lex.current_string) + 1
+                self._append_code(f"PUSH16 @string_{index}")
                 self._append_code("SYSCALL Std.PrintString")
             else:
                 self._expr_is_16bit = False
@@ -532,6 +719,20 @@ class Parser:
                         arg = Variable(var_type, by_ref=True)
                     else:
                         arg = Variable(var_type)
+                    arg.is_arg = True
+                    signature.args[var_name] = arg
+                elif self._lex.current_identifier in self._struct_definitions:
+                    struct_def = self._struct_definitions[self._lex.current_identifier]
+                    self._lex.next_symbol()
+                    self._expect(Symbol.Identifier)
+                    var_name = self._lex.current_identifier
+
+                    if self._accept(Symbol.LBracket):
+                        self._expect(Symbol.RBracket)
+                        arg = Variable(Type.Struct, is_array=True, struct_def=struct_def)
+                    else:
+                        arg = Variable(Type.Struct, struct_def=struct_def)
+                    arg.is_arg = True
                     signature.args[var_name] = arg
                 else:
                     self._error("Expected type")
@@ -546,6 +747,49 @@ class Parser:
                 self._generate_preamble()
                 self._prepend_code(f":function_{self._current_context}\n;{signature}")
             self._current_context = old_ctx
+        elif self._accept(Symbol.Struct):
+            self._expect(Symbol.Identifier)
+            struct_name = self._lex.current_identifier
+            definition = StructDefinition(struct_name)
+            self._struct_definitions[struct_name] = definition
+            self._expect(Symbol.LParen)
+            while not self._accept(Symbol.RParen):
+                if definition.members:
+                    self._expect(Symbol.Comma)
+                if self._lex.current in (Symbol.Byte, Symbol.Addr):
+                    var_type = Type.Byte if self._lex.current == Symbol.Byte else Type.Addr
+                    self._lex.next_symbol()
+                    self._expect(Symbol.Identifier)
+                    var_name = self._lex.current_identifier
+
+                    if self._accept(Symbol.LBracket):
+                        self._expect(Symbol.Number)
+                        size = self._lex.current_number
+                        self._expect(Symbol.RBracket)
+                        arg = Variable(var_type, is_array=True)
+                        arg.array_fixed_size = size
+                    else:
+                        arg = Variable(var_type)
+                    definition.members[var_name] = arg
+                elif self._lex.current == Symbol.Identifier and self._lex.current_identifier in self._struct_definitions:
+                    # nested struct
+                    struct_name = self._lex.current_identifier
+                    self._lex.next_symbol()
+                    var_name = self._lex.current_identifier
+                    self._lex.next_symbol()
+                    if self._accept(Symbol.LBracket):
+                        self._expect(Symbol.Number)
+                        size = self._lex.current_number
+                        self._expect(Symbol.RBracket)
+                        arg = Variable(Type.Struct, is_array=True, struct_def=self._struct_definitions[struct_name])
+                        arg.array_fixed_size = size
+                    else:
+                        arg = Variable(Type.Struct, struct_def=definition)
+                    definition.members[var_name] = arg
+
+                else:
+                    self._error("Expected type")
+            self._expect(Symbol.Semicolon)
         else:
             self._parse_statement(inside_function=inside_function)
 
@@ -553,13 +797,22 @@ class Parser:
         txt = ""
         if self._current_context not in self._local_variables:
             return
+        total_stack_size = 0
         for k, var in self._local_variables[self._current_context].items():
             if not var.from_global:
-                stack_size = var.type.size if not var.is_array else 2
-                txt += f"PUSHN {stack_size} ; {var.type.name} {k}\n"
-        # todo: optimize into one big block
+                name = k
+                if var.is_array:
+                    name += "[]"
+                if var.struct_def and not var.is_array:
+                    total_stack_size += var.stack_size
+                    txt += f"; struct {var.struct_def.name} {name}\n"
+                else:
+                    total_stack_size += var.stack_size if not var.is_array else 2
+                    txt += f"; {var.type.name} {name}\n"
         # todo: initial value instead of just push
-        self._prepend_code(txt, False)
+        if total_stack_size > 0:
+            txt += f"PUSHN {total_stack_size}\n"
+            self._prepend_code(txt, False)
 
     def get_code(self) -> Sequence[str]:
         # "main" must be printed first to not execute functions
@@ -585,6 +838,21 @@ class Parser:
 
 
 if __name__ == '__main__':
-    parser = Parser("addr test = 1;")
+    parser = Parser("""
+struct str(byte a, addr b, addr c[5]);
+struct additional(str x[2], addr y);
+
+additional zmienna;
+
+function modify_by_ref(additional Z) begin
+Z.x[0].a = 5;
+end
+
+call modify_by_ref(zmienna);
+print zmienna.x[0].a;
+printnl;
+
+    
+    """)
     parser.do_parse()
     parser.print_code()

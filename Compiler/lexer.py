@@ -41,7 +41,7 @@ class Symbol(Enum):
     Comma = 283
     Print = 284
     PrintNewLine = 285
-    QuotationMark = 286
+    # QuotationMark = 286
     String = 287
     Modulo = 288
     Global = 289
@@ -49,6 +49,7 @@ class Symbol(Enum):
     Addr = 291
     Struct = 292
     Dot = 293
+    Char = 294
 
 
 class Lexer:
@@ -129,6 +130,13 @@ class Lexer:
                     return
             elif buffer_mode == 3:
                 if t != '"' or (t == '"' and buffer and buffer[-1] == '\\'):
+                    buffer += t
+                    continue
+                else:
+                    self._current_string = buffer
+                    return
+            elif buffer_mode == 4:
+                if t != "'" or (t == "'" and buffer and buffer[-1] == '\\'):
                     buffer += t
                     continue
                 else:
@@ -225,6 +233,10 @@ class Lexer:
             elif t == "\"":
                 self._current = Symbol.String
                 buffer_mode = 3
+                continue
+            elif t == "'":
+                self._current = Symbol.Char
+                buffer_mode = 4
                 continue
             elif t == "=":
                 if self._peek() == "=":

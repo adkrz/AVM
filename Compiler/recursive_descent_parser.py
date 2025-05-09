@@ -289,6 +289,12 @@ class Parser:
         elif self._accept(Symbol.LParen):
             self._parse_expression(dry_run=dry_run, expect_16bit=expect_16bit)
             self._expect(Symbol.RParen)
+        elif self._accept(Symbol.Char):
+            val = self._lex.current_string
+            if len(val) != 1:
+                self._error("Expected exactly one character in single quotes!")
+            if not dry_run:
+                self._append_code(f"PUSH {ord(self._lex.current_string)}")
         else:
             self._error("factor: syntax error")
 
@@ -839,20 +845,7 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-struct str(byte a, addr b, addr c[5]);
-struct additional(str x[2], addr y);
-
-additional zmienna;
-
-function modify_by_ref(additional Z) begin
-Z.x[0].a = 5;
-end
-
-call modify_by_ref(zmienna);
-print zmienna.x[0].a;
-printnl;
-
-    
+byte X = 'A';
     """)
     parser.do_parse()
     parser.print_code()

@@ -141,7 +141,6 @@ class Parser:
         return vdef
 
     def _gen_load_store_instruction(self, name: str, load: bool, dry_run=False) -> "Variable":
-        offs = 0
 
         def gen(offset, is_arg, is_16bit):
             instr = "LOAD" if load else "STORE"
@@ -150,46 +149,28 @@ class Parser:
             code = f"{instr}_{origin}{bbits} {offset} ; {name}"
             return code
 
-        # Check function arguments
-        if (self._current_context in self._function_signatures
-                and name in self._function_signatures[self._current_context].args):
-            for k, v in reversed(self._function_signatures[self._current_context].args.items()):
-                offs += v.stack_size
-                if k == name:
-                    if not dry_run:
-                        self._append_code(gen(offs, True, v.is_16bit))
-                    return v
+        var = self._get_variable(name)
+        offs = self._offsetof(name)
 
-        if self._current_context not in self._local_variables:
-            self._error(f"Current context is empty: {self._current_context}")
+        if var.is_arg:
+            if not dry_run:
+                self._append_code(gen(offs, True, var.is_16bit))
+        elif var.from_global:
+            if not dry_run:
+                bits = "16" if var.is_16bit else ""
+                self._append_code("PUSH_STACK_START")
+                if offs != 0:
+                    self._append_code(f"#{offs}")
+                    self._append_code("ADD16")
+                if load:
+                    self._append_code(f"LOAD_GLOBAL{bits}")
+                else:
+                    self._append_code(f"STORE_GLOBAL{bits}")
+        else:
+            if not dry_run:
+                self._append_code(gen(offs, False, var.is_16bit))
 
-        # Check global variables:
-        if self._current_context and "" in self._local_variables and name in self._local_variables[""]:
-            for k, v in self._local_variables[""].items():
-                if k == name:
-                    v = self._local_variables[""][name]
-                    if not dry_run:
-                        bits = "16" if v.is_16bit else ""
-                        self._append_code("PUSH_STACK_START")
-                        if offs != 0:
-                            self._append_code(f"#{offs}")
-                            self._append_code("ADD16")
-                        if load:
-                            self._append_code(f"LOAD_GLOBAL{bits}")
-                        else:
-                            self._append_code(f"STORE_GLOBAL{bits}")
-                    return v
-                offs += v.stack_size
-
-        # Check local variables
-        if name not in self._local_variables[self._current_context]:
-            self._error(f"Unknown variable {name}")
-        for k, v in self._local_variables[self._current_context].items():
-            if k == name:
-                if not dry_run:
-                    self._append_code(gen(offs, False, v.is_16bit))
-                return v
-            offs += v.stack_size
+        return var
 
     def _get_variable(self, name: str) -> Variable:
         # Check function arguments

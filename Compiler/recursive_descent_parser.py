@@ -9,6 +9,7 @@ structure expression that does not end on simple variable and can be passed to f
 pass struct to function
 """
 
+
 class Type(Enum):
     Byte = 1
     Addr = 2
@@ -245,9 +246,55 @@ class Parser:
         self.print_code()
         raise Exception(f"Error in line {self._lex.line_number}: {what}")
 
+    def _parse_intrinsic(self, function_name, dry_run=False):
+        self._expect(Symbol.LParen)
+        if function_name == "sizeof":
+            if self._accept(Symbol.Byte):
+                if not dry_run:
+                    self._append_code(f"PUSH {Type.Byte.size}")
+            elif self._accept(Symbol.Addr):
+                if not dry_run:
+                    self._append_code(f"PUSH {Type.Addr.size}")
+            else:
+                self._expect(Symbol.Identifier)
+                if self._lex.current_identifier in self._struct_definitions:
+                    if not dry_run:
+                        self._append_code(f"PUSH {self._struct_definitions[self._lex.current_identifier].stack_size}")
+                else:
+                    self._error(f"Unknown data type {self._lex.current_identifier}")
+        elif function_name == "addressof":
+            self._expect(Symbol.Identifier)
+            var_name = self._lex.current_identifier
+            var_def = self._get_variable(var_name)
+            if not dry_run:
+                if var_def.is_array:
+                    self._gen_load_store_instruction(var_name, True)
+                elif var_def.from_global:
+                    self._append_code("PUSH_STACK_START")
+                    self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
+                    self._append_code("ADD16")
+                elif var_def.is_arg:
+                    self._append_code("PUSH_REG 2")
+                    self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
+                    self._append_code("SUB16")
+                    self._append_code("PUSH16 #2")  # saved registers
+                    self._append_code("SUB16")
+                else:
+                    self._append_code("PUSH_REG 2")
+                    self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
+                    self._append_code("ADD16")
+        else:
+            self._error(f"Unknown function {function_name}")
+        self._expect(Symbol.RParen)
+
     def _parse_factor(self, dry_run=False, expect_16bit=False):
         if self._accept(Symbol.Identifier):
             var = self._lex.current_identifier
+
+            if var in ("sizeof", "addressof", "strlen"):
+                self._parse_intrinsic(var, dry_run)
+                return
+
             var_def = self._get_variable(var)
 
             if var_def.struct_def:
@@ -845,7 +892,8 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-byte X = 'A';
+byte A[5];
+byte X = addressof(A);
     """)
     parser.do_parse()
     parser.print_code()

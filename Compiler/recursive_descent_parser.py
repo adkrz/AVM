@@ -230,6 +230,14 @@ class Parser:
     def _gen_array_initialization(self, new_var_name: str, new_var_type: Optional[Type] = None, struct_def=None) -> Variable:
         vtype = Type.Struct if struct_def else new_var_type
         vdef = self._register_variable(new_var_name, vtype, is_array=True, struct_def=struct_def)
+
+        if self._accept(Symbol.RBracket):
+            # this is a raw pointer, no memory reservation, but read address
+            if self._accept(Symbol.Becomes):
+                self._parse_expression_typed(expect_16bit=True)
+                self._gen_load_store_instruction(new_var_name, False)
+            return vdef
+
         self._append_code("PUSH_NEXT_SP")
         # PUSH_NEXT_SP actually pushes SP+addressSize, so move back:
         self._append_code("PUSH16 #2")
@@ -870,8 +878,11 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-byte A[5];
-addr X = addressof("test");
+    byte x = 1;
+    byte y = 1;
+addr A[] = addressof(x);
+A = addressof(y);
+A[2] = 0;
     """)
     parser.do_parse()
     parser.print_code()

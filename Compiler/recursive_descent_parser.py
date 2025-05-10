@@ -315,7 +315,7 @@ class Parser:
         if self._accept(Symbol.Identifier):
             var = self._lex.current_identifier
 
-            if var in ("sizeof", "addressof", "strlen"):
+            if var in ("sizeof", "addressof"):
                 self._parse_intrinsic(var, dry_run)
                 return
 

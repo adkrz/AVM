@@ -322,7 +322,10 @@ class Parser:
             if len(val) != 1:
                 self._error("Expected exactly one character in single quotes!")
             if not dry_run:
-                self._append_code(f"PUSH {ord(self._lex.current_string)}")
+                if expect_16bit:
+                    self._append_code(f"PUSH16 #{ord(self._lex.current_string)}")
+                else:
+                    self._append_code(f"PUSH {ord(self._lex.current_string)}")
         else:
             self._error("factor: syntax error")
 

@@ -40,6 +40,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_cond16bit(self):
         self.compare_programs("cond_16bit.prg", "cond_16bit.asm")
 
+    def test_bf_interpreter(self):
+        self.compare_programs("bf_interpreter.prg", "bf_interpreter.asm")
+
 
 if __name__ == '__main__':
     unittest.main()

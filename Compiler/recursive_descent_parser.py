@@ -227,6 +227,24 @@ class Parser:
         self.print_code()
         raise Exception(f"Error in line {self._lex.line_number}: {what}")
 
+    def _gen_array_initialization(self, new_var_name: str, new_var_type: Optional[Type] = None, struct_def=None) -> Variable:
+        vtype = Type.Struct if struct_def else new_var_type
+        vdef = self._register_variable(new_var_name, vtype, is_array=True, struct_def=struct_def)
+        self._append_code("PUSH_NEXT_SP")
+        # PUSH_NEXT_SP actually pushes SP+addressSize, so move back:
+        self._append_code("PUSH16 #2")
+        self._append_code("SUB216")
+        self._gen_load_store_instruction(new_var_name, False)
+        self._parse_expression_typed(expect_16bit=False)  # size of array
+        element_size = new_var_type.size if new_var_type else struct_def.stack_size
+        if element_size > 1:
+            # TODO: array size limitation - no 16 bit version of PUSHN2
+            self._append_code(f"PUSH {element_size}")
+            self._append_code(f"MUL")
+        self._expect(Symbol.RBracket)
+        self._append_code(f"PUSHN2 ; {new_var_name} alloc")
+        return vdef
+
     def _gen_address_of_str(self, string_constant: str, dry_run=False):
         if string_constant not in self._string_constants:
             self._string_constants.append(string_constant)
@@ -502,21 +520,8 @@ class Parser:
             var_name = self._lex.current_identifier
 
             if self._accept(Symbol.LBracket):
-                self._register_variable(var_name, var_type, is_array=True)
-                self._append_code("PUSH_NEXT_SP")
-                # PUSH_NEXT_SP actually pushes SP+addressSize, so move back:
-                self._append_code("PUSH16 #2")
-                self._append_code("SUB216")
-                self._gen_load_store_instruction(var_name, False)
-                # TODO: array size limitation - no 16 bit version of PUSHN2
-                self._parse_expression_typed(expect_16bit=False)
-                element_size = var_type.size
-                if element_size > 1:
-                    self._append_code(f"PUSH {element_size}")
-                    self._append_code(f"MUL")
-                self._expect(Symbol.RBracket)
+                self._gen_array_initialization(var_name, var_type)
                 self._expect(Symbol.Semicolon)
-                self._append_code(f"PUSHN2 ; {var_name} alloc")
             else:
                 self._register_variable(var_name, var_type)
 
@@ -534,19 +539,7 @@ class Parser:
             var_name = self._lex.current_identifier
 
             if self._accept(Symbol.LBracket):  # array of struct
-                vdef = self._register_variable(var_name, Type.Struct, is_array=True, struct_def=struct_def)
-                self._append_code("PUSH_NEXT_SP")
-                # PUSH_NEXT_SP actually pushes SP+addressSize, so move back:
-                self._append_code("PUSH16 #2")
-                self._append_code("SUB216")
-                self._gen_load_store_instruction(var_name, False)
-                self._parse_expression_typed(expect_16bit=False)
-                element_size = vdef.stack_size
-                if element_size > 1:
-                    self._append_code(f"PUSH {element_size}")
-                    self._append_code(f"MUL")
-                self._expect(Symbol.RBracket)
-                self._append_code(f"PUSHN2 ; {var_name} alloc")
+                self._gen_array_initialization(var_name, struct_def=struct_def)
             elif self._accept(Symbol.Becomes):
                 self._error("Cannot assign directly to structure")
 

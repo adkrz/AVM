@@ -37,6 +37,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_array_index_types(self):
         self.compare_programs("array_index_types.prg", "array_index_types.asm")
 
+    def test_cond16bit(self):
+        self.compare_programs("cond_16bit.prg", "cond_16bit.asm")
+
 
 if __name__ == '__main__':
     unittest.main()

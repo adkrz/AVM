@@ -227,6 +227,37 @@ class Parser:
         self.print_code()
         raise Exception(f"Error in line {self._lex.line_number}: {what}")
 
+    def _gen_address_of_str(self, string_constant: str, dry_run=False):
+        if string_constant not in self._string_constants:
+            self._string_constants.append(string_constant)
+            index = len(self._string_constants)
+        else:
+            index = self._string_constants.index(self._lex.current_string) + 1
+        if not dry_run:
+            self._append_code(f"PUSH16 @string_{index}")
+
+    def _gen_address_of_variable(self, var_name, dry_run=False):
+        var_def = self._get_variable(var_name)
+        if not dry_run:
+            if var_def.is_array:
+                self._gen_load_store_instruction(var_name, True)
+            elif var_def.from_global:
+                self._append_code("PUSH_STACK_START")
+                offset = self._offsetof(var_name)
+                if offset > 0:
+                    self._append_code(f"PUSH16 #{offset}")
+                    self._append_code("ADD16")
+            elif var_def.is_arg:
+                self._append_code("PUSH_REG 2")
+                self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
+                self._append_code("SUB16")
+                self._append_code("PUSH16 #2")  # saved registers
+                self._append_code("SUB16")
+            else:
+                self._append_code("PUSH_REG 2")
+                self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
+                self._append_code("ADD16")
+
     def _parse_intrinsic(self, function_name, dry_run=False):
         self._expect(Symbol.LParen)
         if function_name == "sizeof":
@@ -246,34 +277,10 @@ class Parser:
         elif function_name == "addressof":
             self._expr_is_16bit = True
             if self._accept(Symbol.String):
-                if self._lex.current_string not in self._string_constants:
-                    self._string_constants.append(self._lex.current_string)
-                    index = len(self._string_constants)
-                else:
-                    index = self._string_constants.index(self._lex.current_string) + 1
-                if not dry_run:
-                    self._append_code(f"PUSH16 @string_{index}")
+                self._gen_address_of_str(self._lex.current_string, dry_run)
             else:
                 self._expect(Symbol.Identifier)
-                var_name = self._lex.current_identifier
-                var_def = self._get_variable(var_name)
-                if not dry_run:
-                    if var_def.is_array:
-                        self._gen_load_store_instruction(var_name, True)
-                    elif var_def.from_global:
-                        self._append_code("PUSH_STACK_START")
-                        self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
-                        self._append_code("ADD16")
-                    elif var_def.is_arg:
-                        self._append_code("PUSH_REG 2")
-                        self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
-                        self._append_code("SUB16")
-                        self._append_code("PUSH16 #2")  # saved registers
-                        self._append_code("SUB16")
-                    else:
-                        self._append_code("PUSH_REG 2")
-                        self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
-                        self._append_code("ADD16")
+                self._gen_address_of_variable(self._lex.current_identifier, dry_run)
         else:
             self._error(f"Unknown function {function_name}")
         self._expect(Symbol.RParen)
@@ -465,20 +472,10 @@ class Parser:
             else:
                 if struct_beginning:
                     struct_beginning = False
-                    if var.from_global:
-                        # load relative to stack beginning:
-                        self._append_code("PUSH_STACK_START")
-                        offset = self._offsetof(var_name)
-                        self._append_code(f"PUSH16 #{offset} ; struct {current_struct.name}")
-                        self._append_code("ADD16")
-                    elif var.is_arg:
+                    if var.is_arg:
                         self._gen_load_store_instruction(var_name, True)  # load ptr
                     else:
-                        # load relative to frame pointer
-                        self._append_code("PUSH_REG 2")
-                        offset = self._offsetof(var_name)
-                        self._append_code(f"PUSH16 #{offset} ; struct {current_struct.name}")
-                        self._append_code("ADD16")
+                        self._gen_address_of_variable(var_name)
 
             if self._accept(Symbol.Dot):
                 self._expect(Symbol.Identifier)
@@ -712,13 +709,7 @@ class Parser:
 
         elif self._accept(Symbol.Print):
             if self._accept(Symbol.String):
-                index = 0
-                if self._lex.current_string not in self._string_constants:
-                    self._string_constants.append(self._lex.current_string)
-                    index = len(self._string_constants)
-                else:
-                    index = self._string_constants.index(self._lex.current_string) + 1
-                self._append_code(f"PUSH16 @string_{index}")
+                self._gen_address_of_str(self._lex.current_string)
                 self._append_code("SYSCALL Std.PrintString")
             else:
                 self._expr_is_16bit = False

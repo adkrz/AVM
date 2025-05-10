@@ -5,7 +5,7 @@ PUSHN 30
 CALL @function_modify_by_global
 ; stack cleanup
 PUSH_REG 2
-PUSH16 #0 ; struct additional
+PUSH16 #0
 ADD16
 PUSH16 #0
 PUSH16 #13
@@ -46,8 +46,6 @@ HALT
 :function_modify_by_global
 ;()
 PUSH_STACK_START
-PUSH16 #0 ; struct additional
-ADD16
 PUSH16 #0
 PUSH16 #13
 MUL16

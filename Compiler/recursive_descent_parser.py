@@ -244,26 +244,36 @@ class Parser:
                 else:
                     self._error(f"Unknown data type {self._lex.current_identifier}")
         elif function_name == "addressof":
-            self._expect(Symbol.Identifier)
-            var_name = self._lex.current_identifier
-            var_def = self._get_variable(var_name)
-            if not dry_run:
-                if var_def.is_array:
-                    self._gen_load_store_instruction(var_name, True)
-                elif var_def.from_global:
-                    self._append_code("PUSH_STACK_START")
-                    self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
-                    self._append_code("ADD16")
-                elif var_def.is_arg:
-                    self._append_code("PUSH_REG 2")
-                    self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
-                    self._append_code("SUB16")
-                    self._append_code("PUSH16 #2")  # saved registers
-                    self._append_code("SUB16")
+            self._expr_is_16bit = True
+            if self._accept(Symbol.String):
+                if self._lex.current_string not in self._string_constants:
+                    self._string_constants.append(self._lex.current_string)
+                    index = len(self._string_constants)
                 else:
-                    self._append_code("PUSH_REG 2")
-                    self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
-                    self._append_code("ADD16")
+                    index = self._string_constants.index(self._lex.current_string) + 1
+                if not dry_run:
+                    self._append_code(f"PUSH16 @string_{index}")
+            else:
+                self._expect(Symbol.Identifier)
+                var_name = self._lex.current_identifier
+                var_def = self._get_variable(var_name)
+                if not dry_run:
+                    if var_def.is_array:
+                        self._gen_load_store_instruction(var_name, True)
+                    elif var_def.from_global:
+                        self._append_code("PUSH_STACK_START")
+                        self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
+                        self._append_code("ADD16")
+                    elif var_def.is_arg:
+                        self._append_code("PUSH_REG 2")
+                        self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
+                        self._append_code("SUB16")
+                        self._append_code("PUSH16 #2")  # saved registers
+                        self._append_code("SUB16")
+                    else:
+                        self._append_code("PUSH_REG 2")
+                        self._append_code(f"PUSH16 #{self._offsetof(var_name)}")
+                        self._append_code("ADD16")
         else:
             self._error(f"Unknown function {function_name}")
         self._expect(Symbol.RParen)
@@ -877,7 +887,7 @@ class Parser:
 if __name__ == '__main__':
     parser = Parser("""
 byte A[5];
-byte X = addressof(A);
+addr X = addressof("test");
     """)
     parser.do_parse()
     parser.print_code()

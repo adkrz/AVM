@@ -483,7 +483,7 @@ class Parser:
         self._parse_expression(dry_run=False, expect_16bit=expect_16bit)
 
         if downcast:
-            self._append_code("SWAP\nPOP")
+            self._append_code("POP")
 
     def _generate_struct_address(self, var: Variable, var_name: str) -> Variable:
         """ Generates instructions to compute address of last member in struct chain
@@ -738,7 +738,7 @@ class Parser:
             if not self._expr_is_16bit:
                 self._append_code("SYSCALL Std.PrintCharPop")
             else:
-                self._append_code("SWAP\nPOP\nSYSCALL Std.PrintCharPop")
+                self._append_code("POP\nSYSCALL Std.PrintCharPop")
             self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.PrintNewLine):

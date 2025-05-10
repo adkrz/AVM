@@ -43,6 +43,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_bf_interpreter(self):
         self.compare_programs("bf_interpreter.prg", "bf_interpreter.asm")
 
+    def test_downcast(self):
+        self.compare_programs("test_downcast.prg", "test_downcast.asm")
+
 
 if __name__ == '__main__':
     unittest.main()

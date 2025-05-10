@@ -19,8 +19,6 @@ STORE_LOCAL 2 ; index
 :while1_begin
 PUSH 1
 JF @while1_endwhile
-LOAD_LOCAL 2 ; index
-EXTEND
 LOAD_LOCAL16 0 ; string
 LOAD_LOCAL 2 ; index
 EXTEND

@@ -1,8 +1,8 @@
-; Byte arr
+; Byte arr[]
 ; Byte X
 ; Byte counter
 ; Byte sum8
-; Addr arr2
+; Addr arr2[]
 ; Addr sum16
 PUSHN 9
 PUSH16 @string_1
@@ -178,7 +178,8 @@ HALT
 
 :function_sum8bit
 ;(Byte data[], Byte sum&)
-PUSHN 1 ; Byte counter
+; Byte counter
+PUSHN 1
 PUSH 0
 STORE_LOCAL 0 ; counter
 PUSH 0
@@ -189,8 +190,6 @@ PUSH 4
 SWAP
 LESS_OR_EQ
 JF @while1_endwhile
-LOAD_LOCAL 0 ; counter
-EXTEND
 LOAD_ARG 1 ; sum
 LOAD_ARG16 3 ; data
 LOAD_LOCAL 0 ; counter
@@ -209,7 +208,8 @@ RET
 
 :function_sum16bit
 ;(Addr data[], Addr sum&)
-PUSHN 1 ; Byte counter
+; Byte counter
+PUSHN 1
 PUSH 0
 STORE_LOCAL 0 ; counter
 PUSH16 #0
@@ -220,8 +220,6 @@ PUSH 4
 SWAP
 LESS_OR_EQ
 JF @while2_endwhile
-LOAD_LOCAL 0 ; counter
-EXTEND
 LOAD_ARG16 2 ; sum
 LOAD_ARG16 4 ; data
 LOAD_LOCAL 0 ; counter

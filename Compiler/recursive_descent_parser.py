@@ -331,7 +331,9 @@ class Parser:
                 var_def = self._gen_load_store_instruction(var, True, dry_run=dry_run)
                 if not var_def.is_array:
                     self._error(f"Variable {var} is not an array!")
-                self._parse_expression_typed(expect_16bit=True)  # array indexes are 16bit
+                backup = self._expr_is_16bit
+                self._parse_expression(dry_run=dry_run, expect_16bit=True)  # array indexes are 16bit
+                self._expr_is_16bit = backup
                 self._expect(Symbol.RBracket)
                 element_size = var_def.type.size
                 if element_size > 1:
@@ -895,11 +897,13 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-    byte x = 1;
-    byte y = 1;
-addr A[] = addressof(x);
-A = addressof(y);
-A[2] = 0;
+// Test byte array with addr index and vice versa
+byte table[] = 1000;
+addr index = 500;
+byte value = table[index];
+
+
+
     """)
     parser.do_parse()
     parser.print_code()

@@ -1,0 +1,29 @@
+; Byte table[]
+; Addr index
+; Byte value
+; Addr table2[]
+; Byte index2
+; Addr value2
+PUSHN 10
+PUSH16 #1000
+STORE_LOCAL16 0 ; table
+PUSH16 #500
+STORE_LOCAL16 2 ; index
+LOAD_LOCAL16 0 ; table
+LOAD_LOCAL16 2 ; index
+ADD16
+LOAD_GLOBAL
+STORE_LOCAL 4 ; value
+PUSH16 #1000
+STORE_LOCAL16 5 ; table2
+PUSH 20
+STORE_LOCAL 7 ; index2
+LOAD_LOCAL16 5 ; table2
+LOAD_LOCAL 7 ; index2
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+STORE_LOCAL16 8 ; value2
+HALT

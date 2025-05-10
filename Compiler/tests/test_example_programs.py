@@ -34,6 +34,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_char_ops(self):
         self.compare_programs("char_ops.prg", "char_ops.asm")
 
+    def test_array_index_types(self):
+        self.compare_programs("array_index_types.prg", "array_index_types.asm")
+
 
 if __name__ == '__main__':
     unittest.main()

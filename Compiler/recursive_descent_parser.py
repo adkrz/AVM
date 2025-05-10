@@ -362,13 +362,22 @@ class Parser:
             self._expect(Symbol.RParen)
         elif self._accept(Symbol.Char):
             val = self._lex.current_string
+            if val == "\\n":
+                val = "\n"
+            elif val == "\\r":
+                val = "\r"
+            if val == "\\t":
+                val = "\t"
+            if val == "\\0":
+                val = "\0"
+
             if len(val) != 1:
                 self._error("Expected exactly one character in single quotes!")
             if not dry_run:
                 if expect_16bit:
-                    self._append_code(f"PUSH16 #{ord(self._lex.current_string)}")
+                    self._append_code(f"PUSH16 #{ord(val)}")
                 else:
-                    self._append_code(f"PUSH {ord(self._lex.current_string)}")
+                    self._append_code(f"PUSH {ord(val)}")
         else:
             self._error("factor: syntax error")
 
@@ -719,6 +728,14 @@ class Parser:
                     self._append_code("SYSCALL Std.PrintInt\nPOP")
                 else:
                     self._append_code("SYSCALL Std.PrintInt16\nPOPN 2")
+            self._expect(Symbol.Semicolon)
+
+        elif self._accept(Symbol.PrintChar):
+            self._parse_expression()
+            if not self._expr_is_16bit:
+                self._append_code("SYSCALL Std.PrintCharPop")
+            else:
+                self._append_code("SWAP\nPOP\nSYSCALL Std.PrintCharPop")
             self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.PrintNewLine):

@@ -31,6 +31,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_simple_pointers(self):
         self.compare_programs("simple_pointers.prg", "simple_pointers.asm")
 
+    def test_char_ops(self):
+        self.compare_programs("char_ops.prg", "char_ops.asm")
+
 
 if __name__ == '__main__':
     unittest.main()

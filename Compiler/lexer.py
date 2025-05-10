@@ -50,6 +50,7 @@ class Symbol(Enum):
     Struct = 292
     Dot = 293
     Char = 294
+    PrintChar = 295
 
 
 class Lexer:
@@ -192,6 +193,9 @@ class Lexer:
                         return
                     elif buffer_l == "printnl":
                         self._current = Symbol.PrintNewLine
+                        return
+                    elif buffer_l == "printch":
+                        self._current = Symbol.PrintChar
                         return
                     elif buffer_l == "global":
                         self._current = Symbol.Global

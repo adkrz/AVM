@@ -403,6 +403,7 @@ class Parser:
                 opcode = "SWAP\nLESS_OR_EQ" if not self._expr_is_16bit else "SWAP16\nLESS_OR_EQ16"
             else:
                 raise NotImplementedError(self._lex.current)
+            self._expr_is_16bit = False  # bool result is 8-bit
             if not dry_run:
                 self._append_code(opcode)
 

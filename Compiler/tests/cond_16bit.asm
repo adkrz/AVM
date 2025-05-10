@@ -5,8 +5,6 @@ STORE_LOCAL16 0 ; a
 LOAD_LOCAL16 0 ; a
 PUSH 5
 LESS_OR_EQ16
-SWAP
-POP
 JF @if1_else
 PUSH16 @string_1
 SYSCALL Std.PrintString

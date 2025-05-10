@@ -160,7 +160,7 @@ class Parser:
                 bits = "16" if var.is_16bit else ""
                 self._append_code("PUSH_STACK_START")
                 if offs != 0:
-                    self._append_code(f"#{offs}")
+                    self._append_code(f"PUSH16 #{offs}")
                     self._append_code("ADD16")
                 if load:
                     self._append_code(f"LOAD_GLOBAL{bits}")

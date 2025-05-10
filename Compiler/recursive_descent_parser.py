@@ -388,17 +388,17 @@ class Parser:
             self._lex.next_symbol()
             self._parse_factor(dry_run=dry_run, expect_16bit=expect_16bit)
             if v == Symbol.Equals:
-                opcode = "EQ" if not expect_16bit else "EQ16"
+                opcode = "EQ" if not self._expr_is_16bit else "EQ16"
             elif v == Symbol.NotEqual:
-                opcode = "NE" if not expect_16bit else "NE16"
+                opcode = "NE" if not self._expr_is_16bit else "NE16"
             elif v == Symbol.Gt:
-                opcode = "LESS_OR_EQ" if not expect_16bit else "LESS_OR_EQ16"
+                opcode = "LESS_OR_EQ" if not self._expr_is_16bit else "LESS_OR_EQ16"
             elif v == Symbol.Ge:
-                opcode = "LESS" if not expect_16bit else "LESS16"
+                opcode = "LESS" if not self._expr_is_16bit else "LESS16"
             elif v == Symbol.Lt:
-                opcode = "SWAP\nLESS" if not expect_16bit else "SWAP16\nLESS16"
+                opcode = "SWAP\nLESS" if not self._expr_is_16bit else "SWAP16\nLESS16"
             elif v == Symbol.Le:
-                opcode = "SWAP\nLESS_OR_EQ" if not expect_16bit else "SWAP16\nLESS_OR_EQ16"
+                opcode = "SWAP\nLESS_OR_EQ" if not self._expr_is_16bit else "SWAP16\nLESS_OR_EQ16"
             else:
                 raise NotImplementedError(self._lex.current)
             if not dry_run:

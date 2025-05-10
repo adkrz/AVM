@@ -51,6 +51,8 @@ class Symbol(Enum):
     Dot = 293
     Char = 294
     PrintChar = 295
+    Debugger = 296
+    Halt = 297
 
 
 class Lexer:
@@ -196,6 +198,12 @@ class Lexer:
                         return
                     elif buffer_l == "printch":
                         self._current = Symbol.PrintChar
+                        return
+                    elif buffer_l == "debugger":
+                        self._current = Symbol.Debugger
+                        return
+                    elif buffer_l == "halt":
+                        self._current = Symbol.Halt
                         return
                     elif buffer_l == "global":
                         self._current = Symbol.Global

@@ -744,6 +744,14 @@ class Parser:
             self._append_code("SYSCALL Std.PrintNewLine")
             self._expect(Symbol.Semicolon)
 
+        elif self._accept(Symbol.Debugger):
+            self._append_code("debugger")
+            self._expect(Symbol.Semicolon)
+
+        elif self._accept(Symbol.Halt):
+            self._append_code("HALT")
+            self._expect(Symbol.Semicolon)
+
         else:
             self._error("parse statement")
 

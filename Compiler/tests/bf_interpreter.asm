@@ -11,11 +11,11 @@ PUSH16 #10000
 STORE_LOCAL16 2 ; memory
 PUSH 0
 STORE_LOCAL 5 ; instruction_pointer
-LOAD_LOCAL16 2 ; memory
+PUSH16 #0
 STORE_LOCAL16 6 ; memory_pointer
 :while1_begin
 LOAD_LOCAL16 6 ; memory_pointer
-PUSH16 #40000
+PUSH16 #30000
 SWAP16
 LESS_OR_EQ16
 JF @while1_endwhile
@@ -31,7 +31,7 @@ ADD16
 STORE_LOCAL16 6 ; memory_pointer
 JMP @while1_begin
 :while1_endwhile
-LOAD_LOCAL16 2 ; memory
+PUSH16 #0
 STORE_LOCAL16 6 ; memory_pointer
 :while2_begin
 PUSH 1

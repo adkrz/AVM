@@ -6,13 +6,13 @@ byte program[] = addressof("++++++++[>+>++++<<-]>++>>+<[-[>>+<<-]+>>]>+[-<<<[->[
 byte memory[] = 10000;
 byte instruction;
 byte instruction_pointer = 0;
-addr memory_pointer = memory;
+addr memory_pointer = 0;
 
-while memory_pointer <= 40000 do begin
+while memory_pointer <= 30000 do begin
     memory[memory_pointer] = 0;
     memory_pointer = memory_pointer + 1;
 end
-memory_pointer = memory;
+memory_pointer = 0;
 
 while 1 do begin
     instruction = program[instruction_pointer];

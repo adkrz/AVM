@@ -588,7 +588,7 @@ class Parser:
 
             elif self._accept(Symbol.Becomes):
                 # Simple LHS variable assignment
-                self._parse_expression_typed(expect_16bit=var.type.size == 2)
+                self._parse_expression_typed(expect_16bit=var.is_16bit)
                 self._gen_load_store_instruction(var_name, False)
                 self._expect(Symbol.Semicolon)
             elif self._accept(Symbol.LBracket):

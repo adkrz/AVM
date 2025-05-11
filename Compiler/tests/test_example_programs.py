@@ -49,6 +49,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_downcast(self):
         self.compare_programs("test_downcast.prg", "test_downcast.asm")
 
+    def test_forward_declare(self):
+        self.compare_programs("forward_declare_func.prg", "forward_declare_func.asm")
+
 
 if __name__ == '__main__':
     unittest.main()

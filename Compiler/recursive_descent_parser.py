@@ -307,6 +307,14 @@ class Parser:
             else:
                 self._expect(Symbol.Identifier)
                 self._gen_address_of_variable(self._lex.current_identifier, dry_run)
+        elif function_name == "pred":
+            self._parse_expression(dry_run)
+            if not dry_run:
+                self._append_code("DEC") if not self._expr_is_16bit else self._append_code("DEC16")
+        elif function_name == "succ":
+            self._parse_expression(dry_run)
+            if not dry_run:
+                self._append_code("INC") if not self._expr_is_16bit else self._append_code("INC16")
         else:
             self._error(f"Unknown function {function_name}")
         self._expect(Symbol.RParen)
@@ -315,7 +323,7 @@ class Parser:
         if self._accept(Symbol.Identifier):
             var = self._lex.current_identifier
 
-            if var in ("sizeof", "addressof"):
+            if var in ("sizeof", "addressof", "pred", "succ"):
                 self._parse_intrinsic(var, dry_run)
                 return
 

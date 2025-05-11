@@ -24,8 +24,7 @@ PUSH 0
 ROLL3
 STORE_GLOBAL
 LOAD_LOCAL16 7 ; memory_pointer
-PUSH16 #1
-ADD16
+INC16
 STORE_LOCAL16 7 ; memory_pointer
 JMP @while1_begin
 :while1_endwhile
@@ -60,8 +59,7 @@ STORE_LOCAL 9 ; count_brackets
 PUSH 1
 JF @while3_endwhile
 LOAD_LOCAL16 5 ; instruction_pointer
-PUSH16 #1
-ADD16
+INC16
 STORE_LOCAL16 5 ; instruction_pointer
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
@@ -69,8 +67,7 @@ PUSH 91
 EQ
 JF @if4_else
 LOAD_LOCAL 9 ; count_brackets
-PUSH 1
-ADD
+INC
 STORE_LOCAL 9 ; count_brackets
 JMP @if4_endif
 :if4_else
@@ -81,16 +78,14 @@ PUSH 93
 EQ
 JF @if5_else
 LOAD_LOCAL 9 ; count_brackets
-PUSH 1
-SUB2
+DEC
 STORE_LOCAL 9 ; count_brackets
 LOAD_LOCAL 9 ; count_brackets
 PUSH 0
 EQ
 JF @if6_else
 LOAD_LOCAL16 5 ; instruction_pointer
-PUSH16 #1
-ADD16
+INC16
 STORE_LOCAL16 5 ; instruction_pointer
 JMP @while3_endwhile
 JMP @if6_endif
@@ -117,8 +112,7 @@ STORE_LOCAL 9 ; count_brackets
 PUSH 1
 JF @while4_endwhile
 LOAD_LOCAL16 5 ; instruction_pointer
-PUSH16 #1
-SUB216
+DEC16
 STORE_LOCAL16 5 ; instruction_pointer
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
@@ -126,8 +120,7 @@ PUSH 93
 EQ
 JF @if8_else
 LOAD_LOCAL 9 ; count_brackets
-PUSH 1
-ADD
+INC
 STORE_LOCAL 9 ; count_brackets
 JMP @if8_endif
 :if8_else
@@ -138,8 +131,7 @@ PUSH 91
 EQ
 JF @if9_else
 LOAD_LOCAL 9 ; count_brackets
-PUSH 1
-SUB2
+DEC
 STORE_LOCAL 9 ; count_brackets
 LOAD_LOCAL 9 ; count_brackets
 PUSH 0
@@ -162,8 +154,7 @@ PUSH 62
 EQ
 JF @if11_else
 LOAD_LOCAL16 7 ; memory_pointer
-PUSH16 #1
-ADD16
+INC16
 STORE_LOCAL16 7 ; memory_pointer
 JMP @if11_endif
 :if11_else
@@ -172,8 +163,7 @@ PUSH 60
 EQ
 JF @if12_else
 LOAD_LOCAL16 7 ; memory_pointer
-PUSH16 #1
-SUB216
+DEC16
 STORE_LOCAL16 7 ; memory_pointer
 JMP @if12_endif
 :if12_else
@@ -184,8 +174,7 @@ JF @if13_else
 LOAD_LOCAL16 7 ; memory_pointer
 LOAD_LOCAL16 7 ; memory_pointer
 LOAD_GLOBAL
-PUSH 1
-ADD
+INC
 ROLL3
 STORE_GLOBAL
 JMP @if13_endif
@@ -197,8 +186,7 @@ JF @if14_else
 LOAD_LOCAL16 7 ; memory_pointer
 LOAD_LOCAL16 7 ; memory_pointer
 LOAD_GLOBAL
-PUSH 1
-SUB2
+DEC
 ROLL3
 STORE_GLOBAL
 JMP @if14_endif
@@ -220,8 +208,7 @@ JMP @if15_endif
 :if7_endif
 :if2_endif
 LOAD_LOCAL16 5 ; instruction_pointer
-PUSH16 #1
-ADD16
+INC16
 STORE_LOCAL16 5 ; instruction_pointer
 JMP @while2_begin
 :while2_endwhile

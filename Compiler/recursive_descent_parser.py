@@ -331,19 +331,24 @@ class Parser:
                 var_def = self._gen_load_store_instruction(var, True, dry_run=dry_run)
                 if not var_def.is_array:
                     self._error(f"Variable {var} is not an array!")
-                backup = self._expr_is_16bit
-                self._parse_expression(dry_run=dry_run, expect_16bit=True)  # array indexes are 16bit
-                self._expr_is_16bit = backup
-                self._expect(Symbol.RBracket)
                 element_size = var_def.type.size
-                if element_size > 1:
-                    self._expr_is_16bit = True
+                if self._accept(Symbol.RBracket):
+                    # arr[] is the same as arr[0]
                     if not dry_run:
-                        self._append_code(f"PUSH16 #{element_size}")
-                        self._append_code("MUL16")
-                if not dry_run:
-                    self._append_code("ADD16")
-                    self._append_code("LOAD_GLOBAL") if element_size == 1 else self._append_code("LOAD_GLOBAL16")
+                        self._append_code("LOAD_GLOBAL") if element_size == 1 else self._append_code("LOAD_GLOBAL16")
+                else:
+                    backup = self._expr_is_16bit
+                    self._parse_expression(dry_run=dry_run, expect_16bit=True)  # array indexes are 16bit
+                    self._expr_is_16bit = backup
+                    self._expect(Symbol.RBracket)
+                    if element_size > 1:
+                        self._expr_is_16bit = True
+                        if not dry_run:
+                            self._append_code(f"PUSH16 #{element_size}")
+                            self._append_code("MUL16")
+                    if not dry_run:
+                        self._append_code("ADD16")
+                        self._append_code("LOAD_GLOBAL") if element_size == 1 else self._append_code("LOAD_GLOBAL16")
             else:
                 var_def = self._gen_load_store_instruction(var, True, dry_run=dry_run)
                 if var_def.is_16bit:
@@ -593,18 +598,25 @@ class Parser:
                 self._expect(Symbol.Semicolon)
             elif self._accept(Symbol.LBracket):
                 # Array element LHS assignment
-                self._parse_expression_typed(expect_16bit=True)
                 element_size = var.type.size
-                if element_size > 1:
-                    self._append_code(f"PUSH16 #{element_size}")
-                    self._append_code("MUL16")
-                self._expect(Symbol.RBracket)
-                self._expect(Symbol.Becomes)
-                var_def = self._gen_load_store_instruction(var_name, True)
-                if not var_def.is_array:
-                    self._error(f"Variable {var} is not an array!")
-                self._append_code("ADD16")
-                # do not use is_16bit there - we need type of element of array
+                if self._accept(Symbol.RBracket):
+                    # arr[] = the same as arr[0], no skip to calculate
+                    self._expect(Symbol.Becomes)
+                    var_def = self._gen_load_store_instruction(var_name, True)
+                    if not var_def.is_array:
+                        self._error(f"Variable {var} is not an array!")
+                else:
+                    self._parse_expression_typed(expect_16bit=True)
+                    if element_size > 1:
+                        self._append_code(f"PUSH16 #{element_size}")
+                        self._append_code("MUL16")
+                    self._expect(Symbol.RBracket)
+                    self._expect(Symbol.Becomes)
+                    var_def = self._gen_load_store_instruction(var_name, True)
+                    if not var_def.is_array:
+                        self._error(f"Variable {var} is not an array!")
+                    self._append_code("ADD16")
+                    # do not use is_16bit there - we need type of element of array
                 self._parse_expression_typed(expect_16bit=element_size == 2)
                 # stack is in wrong order, fix it:
                 if element_size == 1:

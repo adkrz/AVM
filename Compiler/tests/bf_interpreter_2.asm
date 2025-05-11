@@ -21,8 +21,7 @@ LESS_OR_EQ16
 JF @while1_endwhile
 LOAD_LOCAL16 7 ; memory_pointer
 PUSH 0
-ROLL3
-STORE_GLOBAL
+STORE_GLOBAL2
 LOAD_LOCAL16 7 ; memory_pointer
 INC16
 STORE_LOCAL16 7 ; memory_pointer
@@ -175,8 +174,7 @@ LOAD_LOCAL16 7 ; memory_pointer
 LOAD_LOCAL16 7 ; memory_pointer
 LOAD_GLOBAL
 INC
-ROLL3
-STORE_GLOBAL
+STORE_GLOBAL2
 JMP @if13_endif
 :if13_else
 LOAD_LOCAL 4 ; instruction
@@ -187,8 +185,7 @@ LOAD_LOCAL16 7 ; memory_pointer
 LOAD_LOCAL16 7 ; memory_pointer
 LOAD_GLOBAL
 DEC
-ROLL3
-STORE_GLOBAL
+STORE_GLOBAL2
 JMP @if14_endif
 :if14_else
 LOAD_LOCAL 4 ; instruction

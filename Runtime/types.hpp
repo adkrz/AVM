@@ -503,6 +503,17 @@ enum I
     CARRY,
 
     /// <summary>
+    /// Store the 8bit value from stack at address, reverse order of <see cref="STORE_GLOBAL"/>
+    /// pop: value8bit, address16bit (value on top of stack)
+    /// </summary>
+    STORE_GLOBAL2,
+    /// <summary>
+    /// Store the 16bit value from stack at address, reverse order of <see cref="STORE_GLOBAL16"/>
+    /// pop: address16bit, address16bit (value on top of stack)
+    /// </summary>
+    STORE_GLOBAL216,
+
+    /// <summary>
     /// Stop execution.
     /// </summary>
     HALT = 99

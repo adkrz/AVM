@@ -458,6 +458,11 @@ I VM::StepProgram()
             arg = POP();
             memory[address] = arg;
             break;
+        case I::STORE_GLOBAL2:
+            arg = POP();
+            address = POP_ADDR();
+            memory[address] = arg;
+            break;
         case I::LOAD_GLOBAL16:
             address = POP_ADDR();
             PUSH_ADDR(read16(memory, address));
@@ -465,6 +470,11 @@ I VM::StepProgram()
         case I::STORE_GLOBAL16:
             address = POP_ADDR();
             val = POP_ADDR();
+            write16(memory, address, val);
+            break;
+        case I::STORE_GLOBAL216:
+            val = POP_ADDR();
+            address = POP_ADDR();
             write16(memory, address, val);
             break;
         case I::LOAD:

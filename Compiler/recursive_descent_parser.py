@@ -591,11 +591,9 @@ class Parser:
                 self._parse_expression_typed(expect_16bit=last_var_in_chain.type.size == 2)
 
                 if not last_var_in_chain.is_16bit:
-                    self._append_code("ROLL3")
-                    self._append_code("STORE_GLOBAL")
+                    self._append_code("STORE_GLOBAL2")
                 else:
-                    self._append_code("SWAP16")
-                    self._append_code("STORE_GLOBAL16")
+                    self._append_code("STORE_GLOBAL216")
 
                 self._expect(Symbol.Semicolon)
 
@@ -628,11 +626,9 @@ class Parser:
                 self._parse_expression_typed(expect_16bit=element_size == 2)
                 # stack is in wrong order, fix it:
                 if element_size == 1:
-                    self._append_code("ROLL3")
-                    self._append_code("STORE_GLOBAL")
+                    self._append_code("STORE_GLOBAL2")
                 else:
-                    self._append_code("SWAP16")
-                    self._append_code("STORE_GLOBAL16")
+                    self._append_code("STORE_GLOBAL216")
 
                 self._expect(Symbol.Semicolon)
         elif self._accept(Symbol.Global):

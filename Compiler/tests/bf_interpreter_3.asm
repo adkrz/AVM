@@ -115,6 +115,7 @@ ADD16
 STORE_LOCAL16 13 ; cache_pointer
 LOAD_LOCAL16 13 ; cache_pointer
 LOAD_LOCAL16 5 ; instruction_pointer
+INC16
 STORE_GLOBAL216
 LOAD_LOCAL16 11 ; jump_cache
 LOAD_LOCAL16 5 ; instruction_pointer
@@ -170,7 +171,6 @@ ADD16
 STORE_LOCAL16 13 ; cache_pointer
 LOAD_LOCAL16 13 ; cache_pointer
 LOAD_GLOBAL16
-INC16
 STORE_LOCAL16 5 ; instruction_pointer
 JMP @while5_begin
 JMP @if6_endif

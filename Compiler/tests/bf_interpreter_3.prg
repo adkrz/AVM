@@ -39,7 +39,7 @@ while instruction_pointer[] != '\0' do begin
                 count_brackets = pred(count_brackets);
                 if count_brackets == 0 then begin
                     cache_pointer = jump_cache + (ip1 - program);
-                    cache_pointer[] = instruction_pointer;
+                    cache_pointer[] = succ(instruction_pointer);
                     cache_pointer = jump_cache + (instruction_pointer - program);
                     cache_pointer[] = ip1;
                     break;
@@ -58,7 +58,7 @@ while 1 do begin
     if instruction == '[' then begin
         if memory_pointer[] == 0 then begin
             cache_pointer = jump_cache + (instruction_pointer - program);
-            instruction_pointer = succ(cache_pointer[]);
+            instruction_pointer = cache_pointer[];
             continue;
         end
     end

@@ -21,12 +21,24 @@
     <ClCompile Include="VM.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Compiler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VM.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="types.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="string_ops.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="magic_enum.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -18,12 +18,17 @@ public:
     I StepProgram();
     virtual ~VM();
 
+    static const int PROGRAM_BEGIN = 0; // place where the program starts in memory
+    static const word ADDRESS_SIZE = 2; // size in bytes of address (register, memory slot)
+    static inline void write16(word* list, int pos, addr value);
 private:
     word* memory;
-    const int IP_REGISTER = 0;
-    const int SP_REGISTER = 1;
-    const int FP_REGISTER = 2;
-    const int PROGRAM_BEGIN = 0;
+    static const int IP_REGISTER = 0;
+    static const int SP_REGISTER = 1;
+    static const int FP_REGISTER = 2;
+    
+    static const word WORD_SIZE = 1;  // size in array, not in bytes
+    
     addr stackStartPos = 0;
     addr registers[3];
     bool carry = false;
@@ -36,8 +41,7 @@ private:
     std::string nvram_file;
     std::fstream nvram;
 
-    const word WORD_SIZE = 1;  // size in array, not in bytes
-    const word ADDRESS_SIZE = 2;
+    
     int max_sp = 0;
     unsigned long long xic = 0;
     std::map<InterruptCodes, addr> handlers;
@@ -45,7 +49,6 @@ private:
 
     static inline addr read16(word* list, int pos);
     static inline offs readoffs(word* list, int pos);
-    static inline void write16(word* list, int pos, addr value);
     inline addr READ_REGISTER(int r);
     inline void WRITE_REGISTER(int r, addr value);
     inline void ADD_TO_REGISTER(int r, int value);

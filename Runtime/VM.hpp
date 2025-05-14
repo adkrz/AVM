@@ -20,7 +20,7 @@ public:
 
     static const int PROGRAM_BEGIN = 0; // place where the program starts in memory
     static const word ADDRESS_SIZE = 2; // size in bytes of address (register, memory slot)
-    static inline void write16(word* list, int pos, addr value);
+    static void write16(word* list, int pos, addr value);
 private:
     word* memory;
     static const int IP_REGISTER = 0;

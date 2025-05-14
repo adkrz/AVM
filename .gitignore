@@ -370,3 +370,6 @@ FodyWeavers.xsd
 
 # Pycharm:
 .idea/
+
+# Linux build
+*.o

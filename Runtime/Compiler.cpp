@@ -34,7 +34,6 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
             auto tokens = split(trimmed, ' ');
             if (tokens.size() != 3)
                 throw std::runtime_error("Invalid const at line" + std::to_string(lineNo) + ", expected CONST NAME intValue");
-            int index = 0;
             int cValue = 0;
             auto cName = std::string(tokens[1]);
             auto result = std::from_chars(tokens[2].data(), tokens[2].data() + tokens[2].size(), cValue);
@@ -48,9 +47,8 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
             auto tokens = split(trimmed, ' ');
             if (tokens.size() != 3)
                 throw std::runtime_error("Invalid const16 at line" + std::to_string(lineNo) + ", expected CONST16 NAME intValue");
-            int index = 0;
-            int cValue = 0;
             auto cName = std::string(tokens[1]);
+            int cValue = 0;
             auto result = std::from_chars(tokens[2].data(), tokens[2].data() + tokens[2].size(), cValue);
             if (result.ec == std::errc::invalid_argument)
                 throw std::runtime_error("Invalid const16 at line" + std::to_string(lineNo) + ", expected CONST16 NAME intValue");
@@ -155,7 +153,7 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
             if (token.starts_with("#"))
             {
                 // 16 bit int
-                unsigned short int i16;
+                unsigned short int i16 = 0;
                 auto ts = token.substr(1);
                 auto result = std::from_chars(ts.data(), ts.data() + ts.size(), i16);
                 if (result.ec == std::errc::invalid_argument)

@@ -239,7 +239,7 @@ I VM::StepProgram()
         }
             break;
         case I::CARRY:
-            PUSH(carry ? (byte)1 : (byte)0);
+            PUSH(carry ? 1 : 0);
             break;
         case I::DIV:
             arg = POP();
@@ -613,7 +613,7 @@ I VM::StepProgram()
             throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));
         }
     }
-    catch (InterruptException ex)
+    catch (const InterruptException& ex)
     {
         if (handlers.count(ex.Code))
         {
@@ -888,7 +888,6 @@ char VM::getchar2()
 }
 void VM::disableEcho()
 {
-    char c;
     termios term;
     tcgetattr(0, &term);
     termios term2 = term;

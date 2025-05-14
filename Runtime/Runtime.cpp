@@ -80,8 +80,7 @@ int main(int argc, char** argv)
             auto stream = std::ifstream(inputFile);
             program = Compiler().ReadAndCompile(stream);
             std::ofstream outfile(avmFile, std::ios::binary);
-            for (auto b : program)
-                outfile.write(reinterpret_cast<const char*>(program.data()), program.size());
+            outfile.write(reinterpret_cast<const char*>(program.data()), program.size());
             if (!run)
                 return 0;
         }

@@ -75,8 +75,10 @@ int main(int argc, char** argv)
     {
         if (compile)
         {
-            auto avmFile = directory / basename / ".avm";
-            auto dbgFile = directory / basename / ".dbg";
+            auto avmFile = directory / basename;
+            auto dbgFile = avmFile;
+            avmFile += ".avm";
+			dbgFile += ".dbg";
             auto stream = std::ifstream(inputFile);
             program = Compiler().ReadAndCompile(stream);
             std::ofstream outfile(avmFile, std::ios::binary);

@@ -32,7 +32,8 @@ int main(int argc, char** argv)
     auto ext = to_lower(path.extension().generic_string());
     auto directory = path.parent_path();
     auto basename = path.stem();
-    auto nvr_file = directory / basename / "_nvram.bin";
+    auto nvr_file = directory / basename;
+    nvr_file += "_nvram.bin";
 
     if (ext == ".asm")
     {

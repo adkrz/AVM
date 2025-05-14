@@ -340,6 +340,7 @@ class Parser:
                 if not var_def.is_array:
                     self._error(f"Variable {var} is not an array!")
                 element_size = var_def.type.size
+                self._expr_is_16bit = element_size == 2
                 if self._accept(Symbol.RBracket):
                     # arr[] is the same as arr[0]
                     if not dry_run:

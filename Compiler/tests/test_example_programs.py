@@ -52,6 +52,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_forward_declare(self):
         self.compare_programs("forward_declare_func.prg", "forward_declare_func.asm")
 
+    def test_array_bug(self):
+        self.compare_programs("array_bug.prg", "array_bug.asm")
+
 
 if __name__ == '__main__':
     unittest.main()

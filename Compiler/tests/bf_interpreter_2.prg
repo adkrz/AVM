@@ -18,7 +18,6 @@ memory_pointer = memory;
 
 while 1 do begin
     instruction = instruction_pointer[];
-    if instruction == '\0' then break;
 
     if instruction == '[' then begin
         if memory_pointer[] == 0 then begin
@@ -26,7 +25,7 @@ while 1 do begin
             while 1 do begin
                 instruction_pointer = succ(instruction_pointer);
                 if instruction_pointer[] == '[' then count_brackets = succ(count_brackets);
-                if instruction_pointer[] == ']' then begin
+                else if instruction_pointer[] == ']' then begin
                     count_brackets = pred(count_brackets);
                     if count_brackets == 0 then begin
                         instruction_pointer = succ(instruction_pointer);
@@ -43,7 +42,7 @@ while 1 do begin
         while 1 do begin
                 instruction_pointer = pred(instruction_pointer);
                 if instruction_pointer[] == ']' then count_brackets = succ(count_brackets);
-                if instruction_pointer[] == '[' then begin
+                else if instruction_pointer[] == '[' then begin
                     count_brackets = pred(count_brackets);
                     if count_brackets == 0 then break;
                 end
@@ -56,6 +55,7 @@ while 1 do begin
     else if instruction == '+' then memory_pointer[] = succ(memory_pointer[]);
     else if instruction == '-' then memory_pointer[] = pred(memory_pointer[]);
     else if instruction == '.' then printch memory_pointer[];
+    else if instruction == '\0' then break;
 
     instruction_pointer = succ(instruction_pointer);
 end

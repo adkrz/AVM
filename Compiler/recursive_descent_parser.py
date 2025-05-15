@@ -104,6 +104,9 @@ class ExprContext:
         self.expr_is16bit = False
         self.dry_run = False
         self.expect_16bit = expect_16bit
+        # Some expressions are simple like x[0], while 1 etc
+        self.is_simple_constant = True
+        self.simple_value = 0
 
     def clone_with_same_buffer(self) -> "ExprContext":
         c = ExprContext(self.parent_parser, self.expect_16bit)
@@ -334,6 +337,7 @@ class Parser:
 
     def _parse_factor(self, context: ExprContext):
         if self._accept(Symbol.Identifier):
+            context.is_simple_constant = False
             var = self._lex.current_identifier
 
             if var in ("sizeof", "addressof", "pred", "succ"):
@@ -380,7 +384,9 @@ class Parser:
                 context.append_code(f"PUSH16 #{self._lex.current_number}")
             else:
                 context.append_code(f"PUSH {self._lex.current_number}")
+            context.simple_value = self._lex.current_number
         elif self._accept(Symbol.LParen):
+            context.is_simple_constant = False
             self._parse_expression(context)
             self._expect(Symbol.RParen)
         elif self._accept(Symbol.Char):
@@ -400,12 +406,14 @@ class Parser:
                 context.append_code(f"PUSH16 #{ord(val)}")
             else:
                 context.append_code(f"PUSH {ord(val)}")
+            context.simple_value = ord(val)
         else:
             self._error("factor: syntax error")
 
     def _parse_logical(self, context: ExprContext):
         self._parse_factor(context)
         while self._lex.current in (Symbol.Equals, Symbol.NotEqual, Symbol.Ge, Symbol.Gt, Symbol.Le, Symbol.Lt):
+            context.is_simple_constant = False
             v = self._lex.current
             self._lex.next_symbol()
             self._parse_factor(context)
@@ -430,6 +438,7 @@ class Parser:
         self._parse_logical(context)
         has_chain = False
         while self._lex.current in (Symbol.And, Symbol.Or):
+            context.is_simple_constant = False
             # TODO: precedence
             if self._accept(Symbol.Or):
                 has_chain = True
@@ -450,6 +459,7 @@ class Parser:
     def _parse_term(self, context: ExprContext):
         self._parse_logical_chain(context)
         while self._lex.current in (Symbol.Mult, Symbol.Divide, Symbol.Modulo):
+            context.is_simple_constant = False
             v = self._lex.current
             self._lex.next_symbol()
             self._parse_logical_chain(context)
@@ -472,6 +482,7 @@ class Parser:
         if um:
             context.append_code("NEG" if not context.expect_16bit else "NEG16")  # not yet implemented
         while self._lex.current == Symbol.Plus or self._lex.current == Symbol.Minus:
+            context.is_simple_constant = False
             v = self._lex.current
             self._lex.next_symbol()
             self._parse_term(context)
@@ -480,7 +491,7 @@ class Parser:
             else:
                 context.append_code("ADD16" if v == Symbol.Plus else "SUB216")
 
-    def _parse_expression_typed(self, expect_16bit=False):
+    def _parse_expression_typed(self, expect_16bit=False, skip_if_simple_zero=False, skip_if_simple_nonzero=False) -> ExprContext:
         lex_backup = self._lex.backup_state()
         cond_backup = self._condition_counter
 
@@ -488,6 +499,12 @@ class Parser:
         context.dry_run = True
         context.expect_16bit = False
         self._parse_expression(context)
+
+        if context.is_simple_constant:
+            if context.simple_value == 0 and skip_if_simple_zero:
+                return context
+            if context.simple_value != 0 and skip_if_simple_nonzero:
+                return context
 
         self._lex.restore_state(lex_backup)
         self._condition_counter = cond_backup
@@ -500,6 +517,7 @@ class Parser:
 
         if downcast:
             self._append_code("POP")
+        return context
 
     def _generate_struct_address(self, var: Variable, var_name: str, context: ExprContext) -> Variable:
         """ Generates instructions to compute address of last member in struct chain
@@ -677,8 +695,9 @@ class Parser:
             no = self._while_counter
             self._while_counter += 1
             self._append_code(f":while{no}_begin")
-            self._parse_expression_typed(expect_16bit=False)
-            self._append_code(f"JF @while{no}_endwhile")
+            parse_data = self._parse_expression_typed(expect_16bit=False, skip_if_simple_nonzero=True)
+            if not parse_data.is_simple_constant:  # while 1 may be optimized
+                self._append_code(f"JF @while{no}_endwhile")
 
             self._expect(Symbol.Do)
 
@@ -926,8 +945,8 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-byte A=1;
-byte X = 2+3+A+6;
+byte a[5];
+a[0] = 1;
 
 
 

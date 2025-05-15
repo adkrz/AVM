@@ -33,8 +33,6 @@ JMP @while1_begin
 PUSH16 #0
 STORE_LOCAL16 6 ; memory_pointer
 :while2_begin
-PUSH 1
-JF @while2_endwhile
 LOAD_LOCAL16 0 ; program
 LOAD_LOCAL 5 ; instruction_pointer
 EXTEND
@@ -63,8 +61,6 @@ JF @if3_else
 PUSH 1
 STORE_LOCAL 8 ; count_brackets
 :while3_begin
-PUSH 1
-JF @while3_endwhile
 LOAD_LOCAL 5 ; instruction_pointer
 PUSH 1
 ADD
@@ -124,8 +120,6 @@ JF @if7_else
 PUSH 1
 STORE_LOCAL 8 ; count_brackets
 :while4_begin
-PUSH 1
-JF @while4_endwhile
 LOAD_LOCAL 5 ; instruction_pointer
 PUSH 1
 SUB2

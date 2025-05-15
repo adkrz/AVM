@@ -261,19 +261,19 @@ class Parser:
                 self._gen_load_store_instruction(new_var_name, False, context)
             return vdef
 
-        self._append_code("PUSH_NEXT_SP")
+        context.append_code("PUSH_NEXT_SP")
         # PUSH_NEXT_SP actually pushes SP+addressSize, so move back:
-        self._append_code("PUSH16 #2")
-        self._append_code("SUB216")
+        context.append_code("PUSH16 #2")
+        context.append_code("SUB216")
         self._gen_load_store_instruction(new_var_name, False, context)
         self._parse_expression_typed(expect_16bit=False)  # size of array
         element_size = new_var_type.size if new_var_type else struct_def.stack_size
         if element_size > 1:
             # TODO: array size limitation - no 16 bit version of PUSHN2
-            self._append_code(f"PUSH {element_size}")
-            self._append_code(f"MUL")
+            context.append_code(f"PUSH {element_size}")
+            context.append_code(f"MUL")
         self._expect(Symbol.RBracket)
-        self._append_code(f"PUSHN2 ; {new_var_name} alloc")
+        context.append_code(f"PUSHN2 ; {new_var_name} alloc")
         return vdef
 
     def _gen_address_of_str(self, string_constant: str, context: ExprContext):
@@ -516,7 +516,7 @@ class Parser:
         self._parse_expression(context)
 
         if downcast:
-            self._append_code("POP")
+            context.append_code("POP")
         return context
 
     def _generate_struct_address(self, var: Variable, var_name: str, context: ExprContext) -> Variable:
@@ -532,13 +532,13 @@ class Parser:
                 self._parse_expression_typed(expect_16bit=True)  # index of element
                 # if struct beginning, do full jump (array of struct), otherwise element jump
                 element_size = var.stack_size if struct_beginning else var.stack_size_single_element
-                self._append_code(f"PUSH16 #{element_size}")
-                self._append_code("MUL16")
+                context.append_code(f"PUSH16 #{element_size}")
+                context.append_code("MUL16")
                 if struct_beginning:
                     # dynamic array - add calculated address to pointer
                     struct_beginning = False
                     self._gen_load_store_instruction(var_name, True, context)  # load arr ptr
-                    self._append_code("ADD16")
+                    context.append_code("ADD16")
                 # else: is a static array
                 self._expect(Symbol.RBracket)
             else:
@@ -559,8 +559,8 @@ class Parser:
                     current_struct = var.struct_def
                 else:
                     offset = current_struct.member_offset(struct_member)
-                    self._append_code(f"PUSH16 #{offset}")
-                    self._append_code("ADD16")
+                    context.append_code(f"PUSH16 #{offset}")
+                    context.append_code("ADD16")
                     break
             else:
                 break

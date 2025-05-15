@@ -27,6 +27,8 @@ instruction_pointer = program;
 addr jump_cache[strlen];
 addr cache_pointer[] = jump_cache;
 
+// Precompute brackets, using brackets counter
+// Another option is recursive call for finding next bracket, but this comes with own overhead
 while instruction_pointer[] != '\0' do begin
     instruction = instruction_pointer[];
     if instruction == '[' then begin

@@ -491,7 +491,7 @@ class Parser:
             else:
                 context.append_code("ADD16" if v == Symbol.Plus else "SUB216")
 
-    def _parse_expression_typed(self, expect_16bit=False, skip_if_simple_zero=False, skip_if_simple_nonzero=False) -> ExprContext:
+    def _parse_expression_typed(self, expect_16bit=False, skip_if_any_simple=False, skip_if_simple_nonzero=False) -> ExprContext:
         lex_backup = self._lex.backup_state()
         cond_backup = self._condition_counter
 
@@ -501,7 +501,7 @@ class Parser:
         self._parse_expression(context)
 
         if context.is_simple_constant:
-            if context.simple_value == 0 and skip_if_simple_zero:
+            if skip_if_any_simple:
                 return context
             if context.simple_value != 0 and skip_if_simple_nonzero:
                 return context
@@ -633,16 +633,24 @@ class Parser:
                     if not var_def.is_array:
                         self._error(f"Variable {var} is not an array!")
                 else:
-                    self._parse_expression_typed(expect_16bit=True)
-                    if element_size > 1:
-                        self._append_code(f"PUSH16 #{element_size}")
-                        self._append_code("MUL16")
+                    parse_data = self._parse_expression_typed(expect_16bit=True, skip_if_any_simple=True)
+                    has_offset = True
+                    if parse_data.is_simple_constant:
+                        if parse_data.simple_value == 0:
+                            has_offset = False
+                        else:
+                            self._append_code(f"PUSH16 #{element_size*parse_data.simple_value}")
+                    else:
+                        if element_size > 1:
+                            self._append_code(f"PUSH16 #{element_size}")
+                            self._append_code("MUL16")
                     self._expect(Symbol.RBracket)
                     self._expect(Symbol.Becomes)
                     var_def = self._gen_load_store_instruction(var_name, True, self._create_ec())
                     if not var_def.is_array:
                         self._error(f"Variable {var} is not an array!")
-                    self._append_code("ADD16")
+                    if has_offset:
+                        self._append_code("ADD16")
                     # do not use is_16bit there - we need type of element of array
                 self._parse_expression_typed(expect_16bit=element_size == 2)
                 # stack is in wrong order, fix it:

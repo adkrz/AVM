@@ -53,6 +53,7 @@ class Symbol(Enum):
     PrintChar = 295
     Debugger = 296
     Halt = 297
+    Const = 298
 
 
 class Lexer:
@@ -183,6 +184,9 @@ class Lexer:
                         return
                     elif buffer_l == "function":
                         self._current = Symbol.Function
+                        return
+                    elif buffer_l == "const":
+                        self._current = Symbol.Const
                         return
                     elif buffer_l == "return":
                         self._current = Symbol.Return

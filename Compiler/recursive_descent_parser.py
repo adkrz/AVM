@@ -81,6 +81,16 @@ class Variable:
         return s
 
 
+class Constant:
+    def __init__(self, type_: Type, value: int):
+        self.type = type_
+        self.value = value
+
+    @property
+    def is_16bit(self):
+        return self.type.size == 2
+
+
 class FunctionSignature:
     def __init__(self):
         self.args: Dict[str, Variable] = {}
@@ -130,6 +140,8 @@ class Parser:
         self._codes = {}  # per context
         self._local_variables: Dict[
             str, Dict[str, "Variable"]] = {}  # per context, then name+details, in order of occurrence
+        self._constants: Dict[
+            str, Dict[str, "Constant"]] = {}  # per context, then name+details, in order of occurrence
         self._current_context = ""  # empty = global, otherwise in function
         self._string_constants = []
 
@@ -166,6 +178,15 @@ class Parser:
             if name not in self._local_variables[self._current_context]:
                 self._local_variables[self._current_context][name] = vdef
         return vdef
+
+    def _register_constant(self, name: str, type_: Type, value: int) -> Constant:
+        cdef = Constant(type_, value)
+        if self._current_context not in self._constants:
+            self._constants[self._current_context] = {name: cdef}
+        else:
+            if name not in self._constants[self._current_context]:
+                self._constants[self._current_context][name] = cdef
+        return cdef
 
     def _gen_load_store_instruction(self, name: str, load: bool, context: ExprContext) -> "Variable":
 
@@ -209,6 +230,17 @@ class Parser:
         if name not in self._local_variables[self._current_context]:
             self._error(f"Unknown variable {name}")
         return self._local_variables[self._current_context][name]
+
+    def _get_constant(self, name: str) -> Optional[Constant]:
+        # Local context
+        if self._current_context in self._constants:
+            if name in self._constants[self._current_context]:
+                return self._constants[self._current_context][name]
+        # global context
+        if self._current_context != "" and "" in self._constants:
+            if name in self._constants[""]:
+                return self._constants[""][name]
+        return None
 
     def _offsetof(self, name: str) -> int:
         offs = 0
@@ -343,6 +375,13 @@ class Parser:
 
             if var in ("sizeof", "addressof", "pred", "succ"):
                 self._parse_intrinsic(var, context)
+                return
+
+            constant = self._get_constant(var)
+            if constant is not None:
+                self._append_code(f"PUSH {constant.value}" if not constant.is_16bit else f"PUSH16 #{constant.value}")
+                if constant.is_16bit:
+                    context.expr_is16bit = True
                 return
 
             var_def = self._get_variable(var)
@@ -484,6 +523,7 @@ class Parser:
             context.append_code("NEG" if not context.expect_16bit else "NEG16")  # not yet implemented
         while self._lex.current == Symbol.Plus or self._lex.current == Symbol.Minus:
             context.is_simple_constant = False
+            context.expect_16bit = context.expr_is16bit
             v = self._lex.current
             self._lex.next_symbol()
             self._parse_term(context)
@@ -804,6 +844,19 @@ class Parser:
         if self._accept(Symbol.EOF):
             return
 
+        elif self._accept(Symbol.Const):
+            if self._lex.current in (Symbol.Byte, Symbol.Addr):
+                const_type = Type.Byte if self._lex.current == Symbol.Byte else Type.Addr
+                self._lex.next_symbol()
+                self._expect(Symbol.Identifier)
+                const_name = self._lex.current_identifier
+                self._expect(Symbol.Becomes)
+                self._expect(Symbol.Number)
+                const_value = self._lex.current_number
+                self._expect(Symbol.Semicolon)
+                self._register_constant(const_name, const_type, const_value)
+            else:
+                self._error("Constant must be a simple type")
         elif self._accept(Symbol.Function):
             self._expect(Symbol.Identifier)
             old_ctx = self._current_context
@@ -955,12 +1008,8 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-byte a = 5;
-do begin
-print a;
-a = a -1;
-end
-while a > 0;
+const addr a = 5;
+print a + 3;
     """)
     parser.do_parse()
     parser.print_code()

@@ -61,6 +61,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_do_while(self):
         self.compare_programs("dowhile.prg", "dowhile.asm")
 
+    def test_const(self):
+        self.compare_programs("const.prg", "const.asm")
+
     def test_arrays_opt(self):
         self.compare_programs("typed_arrays.prg", "typed_arrays_opt.asm", optimize=True)
 

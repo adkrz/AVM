@@ -338,8 +338,8 @@ class Parser:
             context.append_code(f"PUSH16 #{self._offsetof(var_name)}")
             context.append_code("ADD16")
 
-    def _parse_intrinsic(self, function_name, context: ExprContext):
-        self._expect(Symbol.LParen)
+    def _parse_intrinsic(self, function_name, context: ExprContext, expected_return):
+        #self._expect(Symbol.LParen)
         if function_name == "sizeof":
             if self._accept(Symbol.Byte):
                 context.append_code(f"PUSH {Type.Byte.size}")
@@ -364,6 +364,41 @@ class Parser:
         elif function_name == "succ":
             self._parse_expression(context)
             context.append_code("INC") if not context.expr_is16bit else context.append_code("INC16")
+        elif function_name == "readkey":
+            context.append_code("SYSCALL Std.ReadKey")
+        elif function_name == "getrandomnumber":
+            self._parse_expression_typed(expect_16bit=False)
+            self._expect(Symbol.Comma)
+            self._parse_expression_typed(expect_16bit=False)
+            context.append_code("SYSCALL Std.GetRandomNumber")
+        elif function_name == "consoleclear":
+            if expected_return:
+                self._error(f"Function {function_name} does not return and cannot be used in expression")
+            context.append_code("SYSCALL Std.ConsoleClear")
+        elif function_name == "showconsolecursor":
+            if expected_return:
+                self._error(f"Function {function_name} does not return and cannot be used in expression")
+            self._parse_expression_typed(expect_16bit=False)
+            context.append_code("SYSCALL Std.ShowConsoleCursor")
+        elif function_name == "setconsolecursorposition":
+            if expected_return:
+                self._error(f"Function {function_name} does not return and cannot be used in expression")
+            self._parse_expression_typed(expect_16bit=False)
+            self._expect(Symbol.Comma)
+            self._parse_expression_typed(expect_16bit=False)
+            context.append_code("SYSCALL Std.SetConsoleCursorPosition")
+        elif function_name == "setconsolecolors":
+            if expected_return:
+                self._error(f"Function {function_name} does not return and cannot be used in expression")
+            self._parse_expression_typed(expect_16bit=False)
+            self._expect(Symbol.Comma)
+            self._parse_expression_typed(expect_16bit=False)
+            context.append_code("SYSCALL Std.SetConsoleColors")
+        elif function_name == "sleep":
+            if expected_return:
+                self._error(f"Function {function_name} does not return and cannot be used in expression")
+            self._parse_expression_typed(expect_16bit=True)
+            context.append_code("SYSCALL Std.Sleep")
         else:
             self._error(f"Unknown function {function_name}")
         self._expect(Symbol.RParen)
@@ -373,8 +408,9 @@ class Parser:
             context.is_simple_constant = False
             var = self._lex.current_identifier
 
-            if var in ("sizeof", "addressof", "pred", "succ"):
-                self._parse_intrinsic(var, context)
+            if self._accept(Symbol.LParen):
+                # Intrinsics that return value
+                self._parse_intrinsic(var, context, expected_return=True)
                 return
 
             constant = self._get_constant(var)
@@ -637,6 +673,12 @@ class Parser:
             self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.Identifier):
+            if self._accept(Symbol.LParen):
+                # Non-returning intrinsics
+                self._parse_intrinsic(self._lex.current_identifier, self._create_ec(), expected_return=False)
+                self._expect(Symbol.Semicolon)
+                return
+
             var_name = self._lex.current_identifier
             var = self._get_variable(var_name)
             if var.struct_def:

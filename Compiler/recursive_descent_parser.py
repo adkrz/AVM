@@ -454,6 +454,7 @@ class Parser:
                     context.expr_is16bit = True
                 if context.expect_16bit and not var_def.is_16bit:
                     context.append_code("EXTEND")
+                    context.expr_is16bit = True
         elif self._accept(Symbol.Number):
             if self._lex.current_number > 255 or context.expect_16bit or context.expr_is16bit:
                 context.expr_is16bit = True
@@ -1057,9 +1058,16 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-addr value = 1;
-if value == 0 then printch 'A';
-else printch 'b';
+// Test for found bug
+addr jump_cache[10];
+addr cache_pointer[] = jump_cache;
+// here was 8bit instead of 16
+addr X = succ(cache_pointer[]);
+
+// Bug2: after EXTEND, not switching to 16bit
+addr loc[];
+byte L;
+loc[] = L+1;
     """)
     parser.do_parse()
     parser.print_code()

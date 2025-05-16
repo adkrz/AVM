@@ -673,13 +673,13 @@ class Parser:
             self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.Identifier):
+            var_name = self._lex.current_identifier
             if self._accept(Symbol.LParen):
                 # Non-returning intrinsics
-                self._parse_intrinsic(self._lex.current_identifier, self._create_ec(), expected_return=False)
+                self._parse_intrinsic(var_name, self._create_ec(), expected_return=False)
                 self._expect(Symbol.Semicolon)
                 return
 
-            var_name = self._lex.current_identifier
             var = self._get_variable(var_name)
             if var.struct_def:
                 # LHS structure element assignment

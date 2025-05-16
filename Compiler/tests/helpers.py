@@ -54,7 +54,7 @@ class Helpers:
         path = os.path.join(this_module_dir, path)
         return path
 
-    def compare_programs(self, input_file: str, output_file: str):
+    def compare_programs(self, input_file: str, output_file: str, optimize=False):
         from recursive_descent_parser import Parser
         input_file = Helpers._fix_path(input_file)
         output_file = Helpers._fix_path(output_file)
@@ -62,6 +62,8 @@ class Helpers:
         program = self.read_file_to_string(input_file)
         parser = Parser(program)
         parser.do_parse()
+        if optimize:
+            parser.optimize()
         output = list(self.split_lines(parser.get_code()))
         expected_output = self.read_file_to_lines(output_file)
         self.assert_string_list_equal(expected_output, output)

@@ -61,6 +61,12 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_do_while(self):
         self.compare_programs("dowhile.prg", "dowhile.asm")
 
+    def test_arrays_opt(self):
+        self.compare_programs("typed_arrays.prg", "typed_arrays_opt.asm", optimize=True)
+
+    def test_bf_interpreter_opt(self):
+        self.compare_programs("bf_interpreter.prg", "bf_interpreter_opt.asm", optimize=True)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -455,7 +455,7 @@ class Parser:
                 if context.expect_16bit and not var_def.is_16bit:
                     context.append_code("EXTEND")
         elif self._accept(Symbol.Number):
-            if self._lex.current_number > 255 or context.expect_16bit:
+            if self._lex.current_number > 255 or context.expect_16bit or context.expr_is16bit:
                 context.expr_is16bit = True
                 context.append_code(f"PUSH16 #{self._lex.current_number}")
             else:
@@ -1057,8 +1057,9 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-const addr a = 5;
-print a + 3;
+addr value = 1;
+if value == 0 then printch 'A';
+else printch 'b';
     """)
     parser.do_parse()
     parser.print_code()

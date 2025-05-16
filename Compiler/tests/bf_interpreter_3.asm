@@ -80,6 +80,8 @@ STORE_LOCAL 15 ; count_brackets
 LOAD_LOCAL16 5 ; instruction_pointer
 STORE_LOCAL16 16 ; ip1
 :while4_begin
+PUSH 1
+JF @while4_endwhile
 LOAD_LOCAL16 5 ; instruction_pointer
 INC16
 STORE_LOCAL16 5 ; instruction_pointer
@@ -147,6 +149,8 @@ JMP @while3_begin
 LOAD_LOCAL16 0 ; program
 STORE_LOCAL16 5 ; instruction_pointer
 :while5_begin
+PUSH 1
+JF @while5_endwhile
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
 STORE_LOCAL 4 ; instruction

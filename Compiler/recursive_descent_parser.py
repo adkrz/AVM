@@ -701,6 +701,16 @@ class Parser:
             self._append_code(f"JMP @while{no}_begin")
             self._append_code(f":while{no}_endwhile")
 
+        elif self._accept(Symbol.Do):
+            no = self._while_counter
+            self._while_counter += 1
+            self._append_code(f":while{no}_begin")
+            self._parse_statement(inside_loop=no, inside_if=inside_if, inside_function=inside_function)
+            self._expect(Symbol.While)
+            self._parse_expression_typed(expect_16bit=False)
+            self._append_code(f"JT @while{no}_begin")
+            self._expect(Symbol.Semicolon)
+
         elif self._accept(Symbol.Break):
             self._expect(Symbol.Semicolon)
             if not inside_loop:
@@ -945,11 +955,12 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-byte a[5];
-a[0] = 1;
-
-
-
+byte a = 5;
+do begin
+print a;
+a = a -1;
+end
+while a > 0;
     """)
     parser.do_parse()
     parser.print_code()

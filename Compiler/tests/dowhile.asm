@@ -1,0 +1,17 @@
+; Byte a
+PUSHN 1
+PUSH 5
+STORE_LOCAL 0 ; a
+:while1_begin
+LOAD_LOCAL 0 ; a
+SYSCALL Std.PrintInt
+POP
+LOAD_LOCAL 0 ; a
+PUSH 1
+SUB2
+STORE_LOCAL 0 ; a
+LOAD_LOCAL 0 ; a
+PUSH 0
+LESS
+JT @while1_begin
+HALT

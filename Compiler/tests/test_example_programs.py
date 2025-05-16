@@ -58,6 +58,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_array_bug(self):
         self.compare_programs("array_bug.prg", "array_bug.asm")
 
+    def test_do_while(self):
+        self.compare_programs("dowhile.prg", "dowhile.asm")
+
 
 if __name__ == '__main__':
     unittest.main()

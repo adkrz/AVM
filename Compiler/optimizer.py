@@ -16,7 +16,8 @@ optimizations = [
     (re.compile(r"PUSH #0\nPUSH #\d+\nMUL\nADD\n", flags), ""),
     (re.compile(r"PUSH16 #\d+\nPUSH16 #0\nMUL16\nADD16\n", flags), ""),
     (re.compile(r"PUSH #\d+\nPUSH #0\nMUL\nADD\n", flags), ""),
-    (re.compile(r"PUSH o\nEQ", flags), "ZERO"),
+    (re.compile(r"PUSH 0\nEQ", flags), "ZERO"),
+    (re.compile(r"POPN 1\nPOPN 1", flags), "POPN 2"),  # todo: this requires a counter
 ]
 
 

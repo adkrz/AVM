@@ -893,8 +893,15 @@ class Parser:
                 self._expect(Symbol.Identifier)
                 const_name = self._lex.current_identifier
                 self._expect(Symbol.Becomes)
-                self._expect(Symbol.Number)
-                const_value = self._lex.current_number
+
+                if self._accept(Symbol.Number):
+                    const_value = self._lex.current_number
+                elif self._accept(Symbol.Char):
+                    const_value = ord(self._lex.current_string)
+                else:
+                    self._error("Const value must be number or char")
+                    return
+
                 self._expect(Symbol.Semicolon)
                 self._register_constant(const_name, const_type, const_value)
             else:

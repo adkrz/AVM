@@ -415,7 +415,8 @@ class Parser:
 
             constant = self._get_constant(var)
             if constant is not None:
-                context.append_code(f"PUSH {constant.value}" if not constant.is_16bit else f"PUSH16 #{constant.value}")
+                is16 = constant.is_16bit or context.expect_16bit
+                context.append_code(f"PUSH {constant.value}" if not is16 else f"PUSH16 #{constant.value}")
                 if constant.is_16bit:
                     context.expr_is16bit = True
                 return
@@ -812,6 +813,9 @@ class Parser:
             if func not in self._function_signatures:
                 self._error(f"Unknown function {func}")
             signature = self._function_signatures[func]
+
+            if func == "redraw":
+                brk = 1
 
             self._expect(Symbol.LParen)
 

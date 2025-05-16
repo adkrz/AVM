@@ -627,6 +627,7 @@ class Parser:
                     if not var_def.is_array:
                         self._error(f"Variable {var} is not an array!")
                 else:
+                    var_def = self._gen_load_store_instruction(var_name, True, self._create_ec())
                     self._parse_expression_typed(expect_16bit=True)
                     if element_size > 1:
                         self._append_code(f"PUSH16 #{element_size}")
@@ -634,7 +635,6 @@ class Parser:
 
                     self._expect(Symbol.RBracket)
                     self._expect(Symbol.Becomes)
-                    var_def = self._gen_load_store_instruction(var_name, True, self._create_ec())
                     if not var_def.is_array:
                         self._error(f"Variable {var} is not an array!")
                     self._append_code("ADD16")

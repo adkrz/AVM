@@ -19,8 +19,8 @@ PUSH16 #30000
 SWAP16
 LESS_OR_EQ16
 JF @while1_endwhile
-LOAD_LOCAL16 6 ; memory_pointer
 LOAD_LOCAL16 2 ; memory
+LOAD_LOCAL16 6 ; memory_pointer
 ADD16
 PUSH 0
 STORE_GLOBAL2
@@ -195,8 +195,8 @@ LOAD_LOCAL 4 ; instruction
 PUSH 43
 EQ
 JF @if13_else
-LOAD_LOCAL16 6 ; memory_pointer
 LOAD_LOCAL16 2 ; memory
+LOAD_LOCAL16 6 ; memory_pointer
 ADD16
 LOAD_LOCAL16 2 ; memory
 LOAD_LOCAL16 6 ; memory_pointer
@@ -211,8 +211,8 @@ LOAD_LOCAL 4 ; instruction
 PUSH 45
 EQ
 JF @if14_else
-LOAD_LOCAL16 6 ; memory_pointer
 LOAD_LOCAL16 2 ; memory
+LOAD_LOCAL16 6 ; memory_pointer
 ADD16
 LOAD_LOCAL16 2 ; memory
 LOAD_LOCAL16 6 ; memory_pointer

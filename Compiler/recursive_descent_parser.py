@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Dict, Sequence, Optional
 
 from lexer import Lexer, Symbol
+from optimizer import optimize
 
 """
 TODO:
@@ -935,6 +936,11 @@ class Parser:
         self._current_context = ""
         self._append_code("HALT")
         self._generate_preamble()
+
+    def optimize(self):
+        for context, code in self._codes.items():
+            c = optimize(code)
+            self._codes[context] = c
 
 
 if __name__ == '__main__':

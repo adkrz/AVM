@@ -1,0 +1,43 @@
+import re
+
+flags = re.MULTILINE | re.IGNORECASE
+optimizations = [
+    (re.compile(r"PUSH 0\nADD\n", flags), ""),
+    (re.compile(r"PUSH16 #0\nADD16\n", flags), ""),
+    (re.compile(r"PUSH 1\nMUL\n", flags), ""),
+    (re.compile(r"PUSH16 #1\nMUL16\n", flags), ""),
+    (re.compile(r"PUSH [1-9]\d*\nJF @\w+\n", flags), ""),
+    (re.compile(r"PUSH 0\nJT @\w+\n", flags), ""),
+    (re.compile(r"PUSH 1\nADD", flags), "INC"),
+    (re.compile(r"PUSH16 #1\nADD16", flags), "INC16"),
+    (re.compile(r"PUSH 1\nSUB2", flags), "DEC"),
+    (re.compile(r"PUSH16 #1\nSUB216", flags), "DEC16"),
+    (re.compile(r"PUSH16 #0\nPUSH16 #\d+\nMUL16\nADD16\n", flags), ""),
+    (re.compile(r"PUSH #0\nPUSH #\d+\nMUL\nADD\n", flags), ""),
+    (re.compile(r"PUSH16 #\d+\nPUSH16 #0\nMUL16\nADD16\n", flags), ""),
+    (re.compile(r"PUSH #\d+\nPUSH #0\nMUL\nADD\n", flags), ""),
+    (re.compile(r"PUSH o\nEQ", flags), "ZERO"),
+]
+
+
+def remove_comments(code: str) -> str:
+    code1 = []
+    for ll in code.split("\n"):
+        if ";" in ll:
+            ll = ll[:ll.index(";")]
+        ll = ll.strip()
+        if ll:
+            code1.append(ll)
+    return "\n".join(code1)
+
+
+def optimize(code: str) -> str:
+    code = remove_comments(code)
+    while 1:
+        nn = 0
+        for o in optimizations:
+            (code, n) = o[0].subn(o[1], code)
+            nn += n
+        if nn == 0:
+            break
+    return code

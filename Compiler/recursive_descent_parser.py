@@ -415,7 +415,7 @@ class Parser:
 
             constant = self._get_constant(var)
             if constant is not None:
-                self._append_code(f"PUSH {constant.value}" if not constant.is_16bit else f"PUSH16 #{constant.value}")
+                context.append_code(f"PUSH {constant.value}" if not constant.is_16bit else f"PUSH16 #{constant.value}")
                 if constant.is_16bit:
                     context.expr_is16bit = True
                 return

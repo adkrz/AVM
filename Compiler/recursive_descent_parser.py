@@ -498,9 +498,9 @@ class Parser:
             elif v == Symbol.NotEqual:
                 opcode = "NE" if not context.expr_is16bit else "NE16"
             elif v == Symbol.Gt:
-                opcode = "LESS_OR_EQ" if not context.expr_is16bit else "LESS_OR_EQ16"
-            elif v == Symbol.Ge:
                 opcode = "LESS" if not context.expr_is16bit else "LESS16"
+            elif v == Symbol.Ge:
+                opcode = "LESS_OR_EQ" if not context.expr_is16bit else "LESS_OR_EQ16"
             elif v == Symbol.Lt:
                 opcode = "SWAP\nLESS" if not context.expr_is16bit else "SWAP16\nLESS16"
             elif v == Symbol.Le:

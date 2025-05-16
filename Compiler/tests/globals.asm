@@ -11,7 +11,7 @@ DUP
 JF @cond1_expr_end
 LOAD_LOCAL 0 ; a
 PUSH 0
-LESS_OR_EQ
+LESS
 AND
 :cond1_expr_end
 JF @if1_else
@@ -27,7 +27,7 @@ EQ
 JF @if2_else
 LOAD_LOCAL 0 ; a
 PUSH 0
-LESS_OR_EQ
+LESS
 JF @if3_else
 PUSH16 @string_2
 SYSCALL Std.PrintString

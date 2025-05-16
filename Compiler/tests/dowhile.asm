@@ -12,6 +12,6 @@ SUB2
 STORE_LOCAL 0 ; a
 LOAD_LOCAL 0 ; a
 PUSH 0
-LESS
+LESS_OR_EQ
 JT @while1_begin
 HALT

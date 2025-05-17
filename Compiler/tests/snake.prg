@@ -143,7 +143,7 @@ function random_fruit_position(byte fruit_x&, byte fruit_y&)
 begin
     addr mem_ptr[];
     do begin
-        fruit_x = getrandomnumber(1, WIDTH-1);
+        fruit_x = getrandomnumber(2, WIDTH-1);
         fruit_y = getrandomnumber(1, HEIGHT-1);
         // check if we do not collide with the snake
         call xy_to_mem_loc(fruit_x, fruit_y, mem_ptr);
@@ -154,14 +154,14 @@ end
 function move_body()
 begin
     // Skip 1 in beginning and end due to margin
-    byte X = WIDTH - 1;
+    byte Y = HEIGHT - 1;
+    addr loc[];
     while 1 do begin
-        byte Y = HEIGHT - 1;
+        byte X = WIDTH - 1;
+        call xy_to_mem_loc(X, Y, loc);
         while 1 do begin
-            addr loc[];
-            call xy_to_mem_loc(X, Y, loc);
-            addr value = loc[];
 
+            addr value = loc[];
             if value > 0 then begin
                 setconsolecursorposition(X, Y);
                 value = value -1;
@@ -169,12 +169,12 @@ begin
                 else printch BODY_CHAR;
                 loc[] = value;
             end
-
-            Y = Y - 1;
-            if Y == 0 then break;
+            X = X -1;
+            loc = loc - 2;
+            if X == 1 then break;
         end
-        X = X -1;
-        if X == 1 then break;
+        Y = Y - 1;
+        if Y == 0 then break;
     end
 end
 

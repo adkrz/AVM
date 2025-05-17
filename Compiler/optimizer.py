@@ -17,8 +17,16 @@ optimizations = [
     (re.compile(r"PUSH16 #\d+\nPUSH16 #0\nMUL16\nADD16\n", flags), ""),
     (re.compile(r"PUSH #\d+\nPUSH #0\nMUL\nADD\n", flags), ""),
     (re.compile(r"PUSH 0\nEQ", flags), "ZERO"),
+    (re.compile(r"PUSH16 #0\nEQ16", flags), "ZERO16"),
     (re.compile(r"POPN 1\nPOPN 1", flags), "POPN 2"),  # todo: this requires a counter
 ]
+
+cfold1 = re.compile(r"PUSH (\d+)\nDEC", flags)
+cfold2 = re.compile(r"PUSH (\d+)\nINC", flags)
+cfold3 = re.compile(r"PUSH16 #(\d+)\nDEC16", flags)
+cfold4 = re.compile(r"PUSH16 #(\d+)\nINC16", flags)
+cfold_sum1 = re.compile(r"PUSH (\d+)\nPUSH (\d+)\nADD", flags)
+cfold_sum2 = re.compile(r"PUSH16 #(\d+)\nPUSH16 #(\d+)\nADD16", flags)
 
 
 def remove_comments(code: str) -> str:
@@ -39,6 +47,39 @@ def optimize(code: str) -> str:
         for o in optimizations:
             (code, n) = o[0].subn(o[1], code)
             nn += n
+
+        # constant folding
+        cfold = cfold1.search(code)
+        if cfold:
+            value = int(cfold.group(1)) - 1
+            code = code.replace(cfold.group(), f"PUSH {value}")
+            nn += 1
+        cfold = cfold2.search(code)
+        if cfold:
+            value = int(cfold.group(1)) + 1
+            code = code.replace(cfold.group(), f"PUSH {value}")
+            nn += 1
+        cfold = cfold3.search(code)
+        if cfold:
+            value = int(cfold.group(1)) - 1
+            code = code.replace(cfold.group(), f"PUSH16 #{value}")
+            nn += 1
+        cfold = cfold4.search(code)
+        if cfold:
+            value = int(cfold.group(1)) + 1
+            code = code.replace(cfold.group(), f"PUSH16 #{value}")
+            nn += 1
+        cfold = cfold_sum1.search(code)
+        if cfold:
+            value = int(cfold.group(1)) + int(cfold.group(2))
+            code = code.replace(cfold.group(), f"PUSH {value}")
+            nn += 1
+        cfold = cfold_sum2.search(code)
+        if cfold:
+            value = int(cfold.group(1)) + int(cfold.group(2))
+            code = code.replace(cfold.group(), f"PUSH16 #{value}")
+            nn += 1
+
         if nn == 0:
             break
     return code

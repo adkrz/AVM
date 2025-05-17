@@ -359,10 +359,10 @@ class Parser:
                 self._expect(Symbol.Identifier)
                 self._gen_address_of_variable(self._lex.current_identifier, context)
         elif function_name == "pred":
-            self._parse_expression(context)
+            self._parse_sum(context)
             context.append_code("DEC") if not context.expr_is16bit else context.append_code("DEC16")
         elif function_name == "succ":
-            self._parse_expression(context)
+            self._parse_sum(context)
             context.append_code("INC") if not context.expr_is16bit else context.append_code("INC16")
         elif function_name == "readkey":
             context.append_code("SYSCALL Std.ReadKey")
@@ -441,7 +441,7 @@ class Parser:
                 else:
                     new_context = context.clone_with_same_buffer()
                     new_context.expect_16bit = True   # array indexes are 16bit
-                    self._parse_expression(new_context)
+                    self._parse_sum(new_context)
                     self._expect(Symbol.RBracket)
                     if element_size > 1:
                         context.expr_is16bit = True
@@ -465,7 +465,7 @@ class Parser:
             context.simple_value = self._lex.current_number
         elif self._accept(Symbol.LParen):
             context.is_simple_constant = False
-            self._parse_expression(context)
+            self._parse_sum(context)
             self._expect(Symbol.RParen)
         elif self._accept(Symbol.Char):
             val = self._lex.current_string
@@ -489,12 +489,12 @@ class Parser:
             self._error("factor: syntax error")
 
     def _parse_logical(self, context: ExprContext):
-        self._parse_factor(context)
+        self._parse_sum(context)
         while self._lex.current in (Symbol.Equals, Symbol.NotEqual, Symbol.Ge, Symbol.Gt, Symbol.Le, Symbol.Lt):
             context.is_simple_constant = False
             v = self._lex.current
             self._lex.next_symbol()
-            self._parse_factor(context)
+            self._parse_sum(context)
             if v == Symbol.Equals:
                 opcode = "EQ" if not context.expr_is16bit else "EQ16"
             elif v == Symbol.NotEqual:
@@ -535,12 +535,12 @@ class Parser:
             self._condition_counter += 1
 
     def _parse_term(self, context: ExprContext):
-        self._parse_logical_chain(context)
+        self._parse_factor(context)
         while self._lex.current in (Symbol.Mult, Symbol.Divide, Symbol.Modulo):
             context.is_simple_constant = False
             v = self._lex.current
             self._lex.next_symbol()
-            self._parse_logical_chain(context)
+            self._parse_factor(context)
             if v == Symbol.Mult:
                 opcode = "MUL" if not context.expect_16bit else "MUL16"
             elif v == Symbol.Divide:
@@ -551,7 +551,7 @@ class Parser:
                 raise NotImplementedError(self._lex.current)
             context.append_code(opcode)
 
-    def _parse_expression(self, context: ExprContext):
+    def _parse_sum(self, context: ExprContext):
         um = False
         if self._lex.current == Symbol.Plus or self._lex.current == Symbol.Minus:
             um = True
@@ -577,7 +577,7 @@ class Parser:
         context = self._create_ec()
         context.dry_run = True
         context.expect_16bit = False
-        self._parse_expression(context)
+        self._parse_logical_chain(context)
 
         self._lex.restore_state(lex_backup)
         self._condition_counter = cond_backup
@@ -586,7 +586,7 @@ class Parser:
 
         context = self._create_ec()
         context.expect_16bit = expect_16bit
-        self._parse_expression(context)
+        self._parse_logical_chain(context)
 
         if downcast:
             context.append_code("POP")
@@ -856,7 +856,7 @@ class Parser:
                 self._append_code("SYSCALL Std.PrintString")
             else:
                 ctx = self._create_ec()
-                self._parse_expression(ctx)
+                self._parse_sum(ctx)
                 if not ctx.expr_is16bit:
                     self._append_code("SYSCALL Std.PrintInt\nPOP")
                 else:
@@ -865,7 +865,7 @@ class Parser:
 
         elif self._accept(Symbol.PrintChar):
             ctx = self._create_ec()
-            self._parse_expression(ctx)
+            self._parse_sum(ctx)
             if not ctx.expr_is16bit:
                 self._append_code("SYSCALL Std.PrintCharPop")
             else:

@@ -167,8 +167,8 @@ begin
                 value = value -1;
                 if value == 0 then printch ' ';
                 else printch BODY_CHAR;
+                loc[] = value;
             end
-            loc[] = value;
 
             Y = Y - 1;
             if Y == 0 then break;

@@ -600,8 +600,7 @@ class Parser:
             self._error("Expected structure")
         struct_beginning = True
         while 1:
-            if var.is_array:
-                self._expect(Symbol.LBracket)
+            if self._accept(Symbol.LBracket):
                 self._parse_expression_typed(expect_16bit=True)  # index of element
                 # if struct beginning, do full jump (array of struct), otherwise element jump
                 element_size = var.stack_size if struct_beginning else var.stack_size_single_element
@@ -827,6 +826,14 @@ class Parser:
                     self._expect(Symbol.Comma)
                 if not arg.by_ref and not arg.struct_def:
                     self._parse_expression_typed(expect_16bit=arg.is_16bit)
+                elif arg.struct_def:
+                    # Structs are also passed by ref
+                    self._expect(Symbol.Identifier)
+                    ctx = self._create_ec()
+                    var_name = self._lex.current_identifier
+                    self._generate_struct_address(self._get_variable(var_name), var_name, ctx)
+                    refs_mapping[arg] = self._lex.current_identifier
+
                 else:
                     self._expect(Symbol.Identifier)
                     self._gen_load_store_instruction(self._lex.current_identifier, True, self._create_ec())
@@ -841,6 +848,8 @@ class Parser:
             for arg in reversed(signature.args.values()):
                 if not arg.by_ref and not arg.struct_def:
                     self._append_code(f"POPN {arg.type.size}")
+                elif arg.struct_def:
+                    self._append_code(f"POPN 2")
                 else:
                     self._gen_load_store_instruction(refs_mapping[arg], False, self._create_ec())
 

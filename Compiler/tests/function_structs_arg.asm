@@ -2,12 +2,14 @@
 ; Struct zmienna_tablica[]
 PUSHN 30
 ;modify_by_ref(Struct Z)
-LOAD_LOCAL 0 ; zmienna
+PUSH_REG 2
+PUSH16 #0
+ADD16
 CALL @function_modify_by_ref
 ; stack cleanup
-STORE_LOCAL 0 ; zmienna
+POPN 2
 PUSH_REG 2
-PUSH16 #0 ; struct additional
+PUSH16 #0
 ADD16
 PUSH16 #0
 PUSH16 #13
@@ -30,7 +32,7 @@ PUSHN2 ; zmienna_tablica alloc
 LOAD_LOCAL16 28 ; zmienna_tablica
 CALL @function_modify_by_ref2
 ; stack cleanup
-STORE_LOCAL16 28 ; zmienna_tablica
+POPN 2
 PUSH16 #2
 PUSH16 #28
 MUL16

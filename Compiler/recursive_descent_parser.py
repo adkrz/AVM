@@ -404,7 +404,11 @@ class Parser:
         self._expect(Symbol.RParen)
 
     def _parse_factor(self, context: ExprContext):
-        if self._accept(Symbol.Identifier):
+        if self._accept(Symbol.Hash):
+            context.expr_is16bit = True
+            self._expect(Symbol.Number)
+            context.append_code(f"PUSH16 #{self._lex.current_number}")
+        elif self._accept(Symbol.Identifier):
             context.is_simple_constant = False
             var = self._lex.current_identifier
 

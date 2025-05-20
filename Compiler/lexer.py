@@ -54,6 +54,7 @@ class Symbol(Enum):
     Debugger = 296
     Halt = 297
     Const = 298
+    Hash = 299
 
 
 class Lexer:
@@ -328,4 +329,7 @@ class Lexer:
                 return
             elif t == '%':
                 self._current = Symbol.Modulo
+                return
+            elif t == '#':
+                self._current = Symbol.Hash
                 return

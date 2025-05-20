@@ -421,6 +421,8 @@ class Parser:
             if constant is not None:
                 is16 = constant.is_16bit or context.expect_16bit
                 context.append_code(f"PUSH {constant.value}" if not is16 else f"PUSH16 #{constant.value}")
+                context.is_simple_constant = True
+                context.simple_value = constant.value
                 if constant.is_16bit:
                     context.expr_is16bit = True
                 return

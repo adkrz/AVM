@@ -51,7 +51,7 @@ HALT
 
 :function_modify_by_ref
 ;(Struct Z)
-LOAD_ARG 28 ; Z
+LOAD_ARG16 2 ; Z
 PUSH16 #0
 PUSH16 #13
 MUL16
@@ -64,9 +64,9 @@ RET
 :function_modify_by_ref2
 ;(Struct Z[])
 PUSH16 #2
-PUSH16 #28
+PUSH16 #2
 MUL16
-LOAD_ARG16 28 ; Z
+LOAD_ARG16 2 ; Z
 ADD16
 PUSH16 #0
 PUSH16 #13

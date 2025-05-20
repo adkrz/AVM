@@ -63,7 +63,8 @@ class Variable:
 
     @property
     def is_16bit(self):
-        return self.is_array or (self.type != Type.Struct and self.type.size == 2)
+        return (self.is_array or (self.type != Type.Struct and self.type.size == 2)
+                or (self.struct_def and self.is_arg))  # structs are passed as ptr
 
     @property
     def stack_size(self):
@@ -75,6 +76,8 @@ class Variable:
     @property
     def stack_size_single_element(self):
         if self.type == Type.Struct:
+            if self.is_arg:
+                return 2  # structs are passed as ptr
             s = self.struct_def.stack_size
         else:
             s = 2 if self.is_16bit else 1
@@ -818,9 +821,6 @@ class Parser:
             if func not in self._function_signatures:
                 self._error(f"Unknown function {func}")
             signature = self._function_signatures[func]
-
-            if func == "redraw":
-                brk = 1
 
             self._expect(Symbol.LParen)
 

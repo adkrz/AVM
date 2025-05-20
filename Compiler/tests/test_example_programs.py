@@ -28,6 +28,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_function_structs_arg(self):
         self.compare_programs("function_structs_arg.prg", "function_structs_arg.asm")
 
+    def test_function_structs_2(self):
+        self.compare_programs("function_structs_2.prg", "function_structs_2.asm")
+
     def test_simple_pointers(self):
         self.compare_programs("simple_pointers.prg", "simple_pointers.asm")
 

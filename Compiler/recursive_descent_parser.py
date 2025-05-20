@@ -411,6 +411,8 @@ class Parser:
             context.expr_is16bit = True
             self._expect(Symbol.Number)
             context.append_code(f"PUSH16 #{self._lex.current_number}")
+            if context.is_simple_constant:  # is STILL simple constant
+                context.simple_value = self._lex.current_number
         elif self._accept(Symbol.Identifier):
             context.is_simple_constant = False
             var = self._lex.current_identifier
@@ -424,8 +426,8 @@ class Parser:
             if constant is not None:
                 is16 = constant.is_16bit or context.expect_16bit
                 context.append_code(f"PUSH {constant.value}" if not is16 else f"PUSH16 #{constant.value}")
-                context.is_simple_constant = True
-                context.simple_value = constant.value
+                if context.is_simple_constant:  # is STILL simple constant
+                    context.simple_value = constant.value
                 if constant.is_16bit:
                     context.expr_is16bit = True
                 return

@@ -1017,7 +1017,7 @@ class Parser:
                         arg = Variable(Type.Struct, is_array=True, struct_def=self._struct_definitions[struct_name])
                         arg.array_fixed_size = size
                     else:
-                        arg = Variable(Type.Struct, struct_def=definition)
+                        arg = Variable(Type.Struct, struct_def=self._struct_definitions[struct_name])
                     definition.members[var_name] = arg
 
                 else:

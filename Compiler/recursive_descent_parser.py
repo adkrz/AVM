@@ -402,6 +402,13 @@ class Parser:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
             self._parse_expression_typed(expect_16bit=True)
             context.append_code("SYSCALL Std.Sleep")
+        elif function_name == "readstring":
+            if expected_return:
+                self._error(f"Function {function_name} does not return and cannot be used in expression")
+            self._parse_expression_typed(expect_16bit=True)
+            self._expect(Symbol.Comma)
+            self._parse_expression_typed(expect_16bit=False)
+            context.append_code("SYSCALL Std.ReadString")
         else:
             self._error(f"Unknown function {function_name}")
         self._expect(Symbol.RParen)
@@ -887,6 +894,12 @@ class Parser:
                 self._append_code("SYSCALL Std.PrintCharPop")
             else:
                 self._append_code("POP\nSYSCALL Std.PrintCharPop")
+            self._expect(Symbol.Semicolon)
+
+        elif self._accept(Symbol.PrintStr):
+            # print string from pointer
+            self._parse_expression_typed(expect_16bit=True)
+            self._append_code("SYSCALL Std.PrintString")
             self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.PrintNewLine):

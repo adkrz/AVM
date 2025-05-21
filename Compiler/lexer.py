@@ -55,6 +55,7 @@ class Symbol(Enum):
     Halt = 297
     Const = 298
     Hash = 299
+    PrintStr = 300
 
 
 class Lexer:
@@ -221,6 +222,9 @@ class Lexer:
                         return
                     elif buffer_l == "struct":
                         self._current = Symbol.Struct
+                        return
+                    elif buffer_l == "printstr":
+                        self._current = Symbol.PrintStr
                         return
 
                     self._current_identifier = buffer

@@ -683,6 +683,7 @@ void VM::STDLIB(int callNumber)
         do
         {
             arg = memory[address++];
+            if (!arg) break;
             std::cout << (char)arg;
         } while (arg != 0);
         break;

@@ -991,7 +991,7 @@ class Parser:
                     if self._accept(Symbol.LBracket):
                         self._expect(Symbol.RBracket)
                         arg = Variable(var_type, is_array=True)
-                    elif self._accept(Symbol.Reference):
+                    elif self._accept(Symbol.Ampersand):
                         arg = Variable(var_type, by_ref=True)
                     else:
                         arg = Variable(var_type)

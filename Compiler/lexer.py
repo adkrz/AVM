@@ -39,7 +39,7 @@ class Symbol(Enum):
     Function = 279
     Return = 280
     Call = 281
-    Reference = 282
+    Ampersand = 282
     Comma = 283
     Print = 284
     PrintNewLine = 285
@@ -58,6 +58,11 @@ class Symbol(Enum):
     Const = 298
     Hash = 299
     PrintStr = 300
+    Rsh = 301
+    Lsh = 302
+    Pipe = ord("|")
+    Hat = ord("^")
+    Tilde = ord("~")
 
 
 class Lexer:
@@ -293,12 +298,18 @@ class Lexer:
                 if self._peek() == "=":
                     self._current = Symbol.Ge
                     self._getchar()
+                elif self._peek() == ">":
+                    self._current = Symbol.Rsh
+                    self._getchar()
                 else:
                     self._current = Symbol.Gt
                 return
             elif t == "<":
                 if self._peek() == "=":
                     self._current = Symbol.Le
+                    self._getchar()
+                elif self._peek() == "<":
+                    self._current = Symbol.Lsh
                     self._getchar()
                 else:
                     self._current = Symbol.Lt
@@ -315,11 +326,14 @@ class Lexer:
                     self._current = Symbol.And
                     self._getchar()
                 else:
-                    self._current = Symbol.Reference
+                    self._current = Symbol.Ampersand
                 return
-            elif t == "|" and self._peek() == "|":
-                self._current = Symbol.Or
-                self._getchar()
+            elif t == "|":
+                if self._peek() == "|":
+                    self._current = Symbol.Or
+                    self._getchar()
+                else:
+                    self._current = Symbol.Pipe
                 return
             elif t == "/" and self._peek() == "/":
                 while self._peek() != '\n':
@@ -338,6 +352,15 @@ class Lexer:
                 return
             elif t == '}':
                 self._current = Symbol.RCurly
+                return
+            elif t == '|':
+                self._current = Symbol.Pipe
+                return
+            elif t == '~':
+                self._current = Symbol.Tilde
+                return
+            elif t == '^':
+                self._current = Symbol.Hat
                 return
             elif t == '%':
                 self._current = Symbol.Modulo

@@ -327,6 +327,27 @@ I VM::StepProgram()
         case I::FLIP:
             PUSHI(~POP());
             break;
+
+
+        case I::AND16:
+            PUSHI_ADDR(POP_ADDR() & POP_ADDR());
+            break;
+        case I::OR16:
+            PUSHI_ADDR(POP_ADDR() & POP_ADDR());
+            break;
+        case I::XOR16:
+            PUSHI_ADDR(POP_ADDR() ^ POP_ADDR());
+            break;
+        case I::LSH16:
+            PUSHI_ADDR(POP_ADDR() << POP_ADDR());
+            break;
+        case I::RSH16:
+            PUSHI_ADDR(POP_ADDR() >> POP_ADDR());
+            break;
+        case I::NOT16:
+            PUSHI_ADDR(~POP_ADDR());
+            break;
+
         case I::NOT:
             sp_value = READ_REGISTER(SP_REGISTER);
             memory[sp_value - 1] = (word)(memory[sp_value - 1] ? 0 : 1);

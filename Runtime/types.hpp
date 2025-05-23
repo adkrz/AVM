@@ -517,7 +517,34 @@ enum I
     /// <summary>
     /// Stop execution.
     /// </summary>
-    HALT = 99
+    HALT = 99,
+
+	// 16-bit bitwise operations:
+    /// <summary>
+    /// pop: 2x address16bit, push: address16bit
+    /// </summary>
+	AND16, 
+    /// <summary>
+    /// pop: 2x address16bit, push: address16bit
+    /// </summary>
+    OR16, 
+    /// <summary>
+    /// pop: 2x address16bit, push: address16bit
+    /// </summary>
+    XOR16, 
+    /// <summary>
+	/// Bitwise NOT (flip bits)
+    /// pop: address16bit, push: address16bit
+    /// </summary>
+    NOT16, 
+    /// <summary>
+    /// pop: 2x address16bit, push: address16bit
+    /// </summary>
+    LSH16, 
+    /// <summary>
+    /// pop: 2x address16bit, push: address16bit
+    /// </summary>
+    RSH16
 };
 
 enum InterruptCodes

@@ -291,10 +291,28 @@ class Parser:
         vdef = self._register_variable(new_var_name, vtype, is_array=True, struct_def=struct_def)
 
         if self._accept(Symbol.RBracket):
-            # this is a raw pointer, no memory reservation, but read address
             if self._accept(Symbol.Becomes):
-                self._parse_expression_typed(expect_16bit=True)
-                self._gen_load_store_instruction(new_var_name, False, context)
+                if self._accept(Symbol.LCurly):
+                    # initializer list
+                    context.append_code("PUSH_NEXT_SP")
+                    context.append_code("PUSH16 #2")
+                    context.append_code("SUB216")
+                    self._gen_load_store_instruction(new_var_name, False, context)
+                    is_16bit = vdef.type.size == 2  # type of element, not of array variable
+                    size = 0
+                    while 1:
+                        if size > 0:
+                            self._expect(Symbol.Comma)
+                        self._expect(Symbol.Number)
+                        size += 1
+                        context.append_code(f"PUSH {self._lex.current_number}" if not is_16bit else f"PUSH16 #{self._lex.current_number}")
+                        if self._accept(Symbol.RCurly):
+                            break
+                        vdef.array_fixed_size = size
+                else:
+                    # this is a raw pointer, no memory reservation, but read address
+                    self._parse_expression_typed(expect_16bit=True)
+                    self._gen_load_store_instruction(new_var_name, False, context)
             return vdef
 
         context.append_code("PUSH_NEXT_SP")
@@ -354,6 +372,16 @@ class Parser:
                     context.append_code(f"PUSH {self._struct_definitions[self._lex.current_identifier].stack_size}")
                 else:
                     self._error(f"Unknown data type {self._lex.current_identifier}")
+        elif function_name == "length":
+            self._expect(Symbol.Identifier)
+            var = self._get_variable(self._lex.current_identifier)
+            if not var.is_array:
+                self._error(f"Variable {self._lex.current_identifier} is not an array")
+            if var.array_fixed_size <= 255:
+                context.append_code(f"PUSH {var.array_fixed_size}")
+            else:
+                context.append_code(f"PUSH16 #{var.array_fixed_size}")
+                context.expr_is16bit = True
         elif function_name == "addressof":
             context.expr_is16bit = True
             if self._accept(Symbol.String):
@@ -1055,7 +1083,12 @@ class Parser:
                     total_stack_size += var.stack_size
                     txt += f"; struct {var.struct_def.name} {name}\n"
                 else:
-                    total_stack_size += var.stack_size if not var.is_array else 2
+                    if var.is_array and var.array_fixed_size == 0:
+                        # pointer
+                        total_stack_size += 2
+                    else:
+                        # normal variable or array of known size from initializer list
+                        total_stack_size += var.stack_size
                     txt += f"; {var.type.name} {name}\n"
         # todo: initial value instead of just push
         if total_stack_size > 0:

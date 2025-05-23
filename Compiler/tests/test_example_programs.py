@@ -79,6 +79,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_read_string(self):
         self.compare_programs("read_string.prg", "read_string.asm", optimize=True)
 
+    def test_initializer_list(self):
+        self.compare_programs("initializer_list.prg", "initializer_list.asm", optimize=True)
+
 
 if __name__ == '__main__':
     unittest.main()

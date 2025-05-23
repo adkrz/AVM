@@ -13,6 +13,8 @@ class Symbol(Enum):
     RParen = ord(')')
     LBracket = ord('[')
     RBracket = ord(']')
+    LCurly = ord('{')
+    RCurly = ord('}')
     Number = 256
     Identifier = 259
     EOF = 260
@@ -330,6 +332,12 @@ class Lexer:
                 return
             elif t == ']':
                 self._current = Symbol.RBracket
+                return
+            elif t == '{':
+                self._current = Symbol.LCurly
+                return
+            elif t == '}':
+                self._current = Symbol.RCurly
                 return
             elif t == '%':
                 self._current = Symbol.Modulo

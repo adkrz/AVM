@@ -343,7 +343,7 @@ I VM::StepProgram()
             PUSHI_ADDR(POP_ADDR() & POP_ADDR());
             break;
         case I::OR16:
-            PUSHI_ADDR(POP_ADDR() & POP_ADDR());
+            PUSHI_ADDR(POP_ADDR() | POP_ADDR());
             break;
         case I::XOR16:
             PUSHI_ADDR(POP_ADDR() ^ POP_ADDR());

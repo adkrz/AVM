@@ -473,6 +473,8 @@ class Parser:
                 last_var_in_chain = self._generate_struct_address(var_def, var, context)
                 context.append_code("LOAD_GLOBAL") if not last_var_in_chain.is_16bit else context.append_code("LOAD_GLOBAL16")
                 context.expr_is16bit = last_var_in_chain.is_16bit
+                if not last_var_in_chain.is_16bit and context.expect_16bit:
+                    context.append_code("EXTEND")
                 return
 
             if self._accept(Symbol.LBracket):
@@ -495,6 +497,8 @@ class Parser:
                         context.append_code("MUL16")
                     context.append_code("ADD16")
                     context.append_code("LOAD_GLOBAL") if element_size == 1 else context.append_code("LOAD_GLOBAL16")
+                if element_size == 1 and context.expect_16bit:
+                    context.append_code("EXTEND")
             else:
                 var_def = self._gen_load_store_instruction(var, True, context)
                 if var_def.is_16bit:

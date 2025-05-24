@@ -10,3 +10,10 @@ const addr one = 1;
 byte offs = 3;
 print one << offs;
 printnl;
+
+// Also with array:
+byte mat[] = {3,4,5};
+addr val = 1 << mat[1];
+print val;
+printnl;
+halt;

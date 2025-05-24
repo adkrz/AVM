@@ -48,7 +48,7 @@ void VM::LoadProgram(word* program, int program_length, int memory_size, const c
     stackStartPos = (addr)(program_length + PROGRAM_BEGIN);
     WRITE_REGISTER(SP_REGISTER, stackStartPos);
     WRITE_REGISTER(FP_REGISTER, stackStartPos);
-    max_sp = READ_REGISTER(SP_REGISTER);
+    //max_sp = READ_REGISTER(SP_REGISTER);
     xic = 0;
     handlers.clear();
     nvram_file = nvr_file;
@@ -67,20 +67,20 @@ addr VM::READ_REGISTER(int r) { return registers[r]; };
 
 void VM::WRITE_REGISTER(int r, addr value) { registers[r] = value; }
 
-void VM::ADD_TO_REGISTER(int r, int value) { registers[r] = (addr)(registers[r] + value); }
+void VM::ADD_TO_REGISTER(int r, int value) { registers[r] += value; }
 
 
-void VM::PUSH(word arg) { auto sp_val = READ_REGISTER(SP_REGISTER); memory[sp_val] = arg; ADD_TO_REGISTER(SP_REGISTER, 1); if (sp_val + 1 > max_sp) max_sp = sp_val + 1; }
+void VM::PUSH(word arg) { memory[registers[SP_REGISTER]] = arg; ADD_TO_REGISTER(SP_REGISTER, 1);}
 
-void VM::PUSH_ADDR(addr arg) { auto sp_val = READ_REGISTER(SP_REGISTER); write16(memory, sp_val, arg); ADD_TO_REGISTER(SP_REGISTER, ADDRESS_SIZE); if (sp_val + ADDRESS_SIZE > max_sp) max_sp = sp_val + ADDRESS_SIZE; }
+void VM::PUSH_ADDR(addr arg) {write16(memory, registers[SP_REGISTER], arg); ADD_TO_REGISTER(SP_REGISTER, ADDRESS_SIZE);}
 
 void VM::PUSHI(int arg) { PUSH((word)arg); }
 
 void VM::PUSHI_ADDR(int arg) { PUSH_ADDR((addr)arg); };
 
-word VM::POP() { auto sp_val = READ_REGISTER(SP_REGISTER); auto v = memory[sp_val - 1]; ADD_TO_REGISTER(SP_REGISTER, -1); return v; }
+word VM::POP() { auto v = memory[registers[SP_REGISTER] - 1]; ADD_TO_REGISTER(SP_REGISTER, -1); return v; }
 
-addr VM::POP_ADDR() { auto sp_val = READ_REGISTER(SP_REGISTER); auto v = read16(memory, sp_val - ADDRESS_SIZE); ADD_TO_REGISTER(SP_REGISTER, -ADDRESS_SIZE); return v; }
+addr VM::POP_ADDR() { auto v = read16(memory, registers[SP_REGISTER] - ADDRESS_SIZE); ADD_TO_REGISTER(SP_REGISTER, -ADDRESS_SIZE); return v; }
 
 word VM::read_next_program_byte(word& skip, int offset)
 {
@@ -161,12 +161,12 @@ I VM::StepProgram()
             arg = read_next_program_byte(skip);
             ADD_TO_REGISTER(SP_REGISTER, arg);
             sp_value = READ_REGISTER(SP_REGISTER);
-            if (sp_value > max_sp) max_sp = sp_value;
+            //if (sp_value > max_sp) max_sp = sp_value;
             break;
         case I::PUSHN2:
             ADD_TO_REGISTER(SP_REGISTER, POP());
             sp_value = READ_REGISTER(SP_REGISTER);
-            if (sp_value > max_sp) max_sp = sp_value;
+            //if (sp_value > max_sp) max_sp = sp_value;
             break;
         case I::PUSH_NEXT_SP:
             sp_value = READ_REGISTER(SP_REGISTER);

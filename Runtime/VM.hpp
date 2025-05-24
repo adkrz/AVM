@@ -42,7 +42,7 @@ private:
     std::fstream nvram;
 
     
-    int max_sp = 0;
+    //int max_sp = 0;
     unsigned long long xic = 0;
     std::map<InterruptCodes, addr> handlers;
 

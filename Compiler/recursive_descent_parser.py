@@ -584,6 +584,7 @@ class Parser:
         self._parse_factor(context)
         while self._lex.current in (Symbol.Mult, Symbol.Divide, Symbol.Modulo, Symbol.Ampersand, Symbol.Lsh, Symbol.Rsh):
             context.is_simple_constant = False
+            context.expect_16bit = context.expr_is16bit
             v = self._lex.current
             self._lex.next_symbol()
             self._parse_factor(context)

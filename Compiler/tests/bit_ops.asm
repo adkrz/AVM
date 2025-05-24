@@ -1,3 +1,4 @@
+PUSHN 1
 PUSH 3
 PUSH 2
 LSH
@@ -59,6 +60,15 @@ SYSCALL Std.PrintString
 JMP @if5_endif
 :if5_else
 :if5_endif
+SYSCALL Std.PrintNewLine
+PUSH 3
+STORE_LOCAL 0
+PUSH16 #1
+LOAD_LOCAL 0
+EXTEND
+LSH16
+SYSCALL Std.PrintInt16
+POPN 2
 SYSCALL Std.PrintNewLine
 HALT
 :string_1

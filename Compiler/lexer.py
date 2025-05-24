@@ -336,7 +336,7 @@ class Lexer:
                     self._current = Symbol.Pipe
                 return
             elif t == "/" and self._peek() == "/":
-                while self._peek() != '\n':
+                while self._peek() != '\n' and self._peek() != "":
                     self._getchar()
             elif t == ',':
                 self._current = Symbol.Comma

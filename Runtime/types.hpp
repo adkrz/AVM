@@ -138,11 +138,11 @@ enum I
     /// </summary>
     XOR,
     /// <summary>
-    /// pop: 2x val8bit, push: val8bit
+	/// pop: 2x val8bit, push: val8bit (offset on top of stack)
     /// </summary>
     LSH,
     /// <summary>
-    /// pop: 2x val8bit, push: val8bit
+    /// pop: 2x val8bit, push: val8bit (offset on top of stack)
     /// </summary>
     RSH,
 
@@ -538,11 +538,11 @@ enum I
     /// </summary>
     NOT16, 
     /// <summary>
-    /// pop: 2x address16bit, push: address16bit
+    /// pop: 2x address16bit, push: address16bit (offset on top of stack)
     /// </summary>
     LSH16, 
     /// <summary>
-    /// pop: 2x address16bit, push: address16bit
+    /// pop: 2x address16bit, push: address16bit (offset on top of stack)
     /// </summary>
     RSH16
 };

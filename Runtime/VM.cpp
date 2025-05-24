@@ -319,11 +319,21 @@ I VM::StepProgram()
             PUSHI(POP() ^ POP());
             break;
         case I::LSH:
-            PUSHI(POP() << POP());
+        {
+            auto tmp1 = POP();
+            auto tmp2 = POP();
+            signedResult = tmp2 << tmp1;
+            PUSHI(signedResult);
             break;
+        }
         case I::RSH:
-            PUSHI(POP() >> POP());
+        {
+            auto tmp1 = POP();
+            auto tmp2 = POP();
+            signedResult = tmp2 >> tmp1;
+            PUSHI(signedResult);
             break;
+        }
         case I::FLIP:
             PUSHI(~POP());
             break;
@@ -339,11 +349,21 @@ I VM::StepProgram()
             PUSHI_ADDR(POP_ADDR() ^ POP_ADDR());
             break;
         case I::LSH16:
-            PUSHI_ADDR(POP_ADDR() << POP_ADDR());
+        {
+            auto tmp1 = POP_ADDR();
+            auto tmp2 = POP_ADDR();
+            signedResult = tmp2 << tmp1;
+            PUSHI_ADDR(signedResult);
             break;
+        }
         case I::RSH16:
-            PUSHI_ADDR(POP_ADDR() >> POP_ADDR());
+        {
+            auto tmp1 = POP_ADDR();
+            auto tmp2 = POP_ADDR();
+            signedResult = tmp2 >> tmp1;
+            PUSHI_ADDR(signedResult);
             break;
+        }
         case I::NOT16:
             PUSHI_ADDR(~POP_ADDR());
             break;

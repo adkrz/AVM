@@ -582,7 +582,7 @@ class Parser:
 
     def _parse_term(self, context: ExprContext):
         self._parse_factor(context)
-        while self._lex.current in (Symbol.Mult, Symbol.Divide, Symbol.Modulo):
+        while self._lex.current in (Symbol.Mult, Symbol.Divide, Symbol.Modulo, Symbol.Ampersand, Symbol.Lsh, Symbol.Rsh):
             context.is_simple_constant = False
             v = self._lex.current
             self._lex.next_symbol()
@@ -593,28 +593,53 @@ class Parser:
                 opcode = "SWAP\nDIV" if not context.expect_16bit else "SWAP16\nDIV16"
             elif v == Symbol.Modulo:
                 opcode = "SWAP\nMOD" if not context.expect_16bit else "SWAP16\nMOD16"
+            elif v == Symbol.Ampersand:
+                opcode = "AND" if not context.expect_16bit else "AND16"
+            elif v == Symbol.Lsh:
+                opcode = "LSH" if not context.expect_16bit else "LSH16"
+            elif v == Symbol.Rsh:
+                opcode = "RSH" if not context.expect_16bit else "RSH16"
             else:
                 raise NotImplementedError(self._lex.current)
             context.append_code(opcode)
 
     def _parse_sum(self, context: ExprContext):
-        um = False
-        if self._lex.current == Symbol.Plus or self._lex.current == Symbol.Minus:
-            um = True
+        unary_minus = False
+        negate = False
+
+        if self._lex.current == Symbol.Minus:
+            unary_minus = True
             self._lex.next_symbol()
+        elif self._lex.current == Symbol.Tilde:
+            negate = True
+            self._lex.next_symbol()
+
         self._parse_term(context)
-        if um:
+
+        if unary_minus:
             context.append_code("NEG" if not context.expect_16bit else "NEG16")  # not yet implemented
-        while self._lex.current == Symbol.Plus or self._lex.current == Symbol.Minus:
+        if negate:
+            context.append_code("FLIP" if not context.expect_16bit else "FLIP16")  # not yet implemented
+
+        while self._lex.current in (Symbol.Plus, Symbol.Minus, Symbol.Pipe, Symbol.Hat):
             context.is_simple_constant = False
             context.expect_16bit = context.expr_is16bit
             v = self._lex.current
             self._lex.next_symbol()
             self._parse_term(context)
-            if not context.expect_16bit:
-                context.append_code("ADD" if v == Symbol.Plus else "SUB2")
+
+            if v == Symbol.Plus:
+                op = "ADD"
+            elif v == Symbol.Minus:
+                op = "SUB2"
+            elif v == Symbol.Pipe:
+                op = "OR"
+            elif v == Symbol.Hat:
+                op = "XOR"
             else:
-                context.append_code("ADD16" if v == Symbol.Plus else "SUB216")
+                raise NotImplementedError(v)
+
+            context.append_code(op if not context.expect_16bit else f"{op}16")
 
     def _parse_expression_typed(self, expect_16bit=False) -> ExprContext:
         lex_backup = self._lex.backup_state()

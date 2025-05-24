@@ -18,7 +18,6 @@ optimizations = [
     (re.compile(r"PUSH #\d+\nPUSH #0\nMUL\nADD\n", flags), ""),
     (re.compile(r"PUSH 0\nEQ", flags), "ZERO"),
     (re.compile(r"PUSH16 #0\nEQ16", flags), "ZERO16"),
-    (re.compile(r"POPN 1\nPOPN 1", flags), "POPN 2"),  # todo: this requires a counter
     (re.compile(r"PUSH_NEXT_SP\nPUSH16 #2\nSUB216", flags), "PUSH_REG 1"),
 ]
 
@@ -28,6 +27,7 @@ cfold3 = re.compile(r"PUSH16 #(\d+)\nDEC16", flags)
 cfold4 = re.compile(r"PUSH16 #(\d+)\nINC16", flags)
 cfold_sum1 = re.compile(r"PUSH (\d+)\nPUSH (\d+)\nADD", flags)
 cfold_sum2 = re.compile(r"PUSH16 #(\d+)\nPUSH16 #(\d+)\nADD16", flags)
+cfold_sum3 = re.compile(r"POPN (\d+)\nPOPN (\d+)", flags)
 
 
 def remove_comments(code: str) -> str:
@@ -79,6 +79,11 @@ def optimize(code: str) -> str:
         if cfold:
             value = int(cfold.group(1)) + int(cfold.group(2))
             code = code.replace(cfold.group(), f"PUSH16 #{value}")
+            nn += 1
+        cfold = cfold_sum3.search(code)
+        if cfold:
+            value = int(cfold.group(1)) + int(cfold.group(2))
+            code = code.replace(cfold.group(), f"POPN {value}")
             nn += 1
 
         if nn == 0:

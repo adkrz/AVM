@@ -45,13 +45,6 @@ function print_sudoku(byte matrix[]) begin
     end
 end
 
-function is_valid(byte i, byte j, byte num, addr row[], addr col[], addr box[], byte ret&) begin
-    byte box_pos = i / 3 * 3 + j / 3;  // ensure type - DIV16 is not implemented
-    addr v = one << num;
-    if (row[i] & v) || (col[j] & v) || (box[box_pos] & v) then ret = 0;
-    else ret = 1;
-end
-
 function sudokuSolverRec(byte mat[], byte i, byte j, addr row[], addr col[], addr box[], byte ret&)
 begin
     ret = 0;
@@ -81,7 +74,13 @@ begin
     byte num = 1;
 
     while num <= size do begin
-        call is_valid(i, j, num, row, col, box, ok);
+
+        // Check if solution with that number is valid:
+        byte box_index = i / 3 * 3 + j / 3; // ensure type - DIV16 not implemented
+        addr v = one << num;
+        if (row[i] & v) || (col[j] & v) || (box[box_index] & v) then ok = 0;
+        else ok = 1;
+
         if ok then begin
             mat[index] = num;
             addr val = one << num;

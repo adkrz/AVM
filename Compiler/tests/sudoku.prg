@@ -47,8 +47,6 @@ end
 
 function sudokuSolverRec(byte mat[], byte i, byte j, addr row[], addr col[], addr box[], byte ret&)
 begin
-    ret = 0;
-
     // base case: Reached nth column of last row
     if i == size-1 && j == size then begin
     ret = 1;

@@ -933,7 +933,7 @@ class Parser:
                 self._append_code("SYSCALL Std.PrintString")
             else:
                 ctx = self._create_ec()
-                self._parse_sum(ctx)
+                self._parse_logical_chain(ctx)
                 if not ctx.expr_is16bit:
                     self._append_code("SYSCALL Std.PrintInt\nPOP")
                 else:

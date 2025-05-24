@@ -6,8 +6,7 @@ from optimizer import optimize
 
 """
 TODO:
-structure expression that does not end on simple variable and can be passed to function under other type
-pass struct to function
+optimize functions with single return value, use them directly in expressions
 """
 
 
@@ -574,12 +573,16 @@ class Parser:
                 context.append_code(f" @cond{self._condition_counter}_expr_end")
                 self._parse_logical(context)
                 context.append_code("OR")
+                if context.expect_16bit:
+                    context.append_code("EXTEND")
             elif self._accept(Symbol.And):
                 has_chain = True
                 context.append_code("DUP\nJF" if not context.expect_16bit else "DUP16\nPOP\nJF", newline=False)
                 context.append_code(f" @cond{self._condition_counter}_expr_end")
                 self._parse_logical(context)
                 context.append_code("AND")
+                if context.expect_16bit:
+                    context.append_code("EXTEND")
         if has_chain:
             context.append_code(f":cond{self._condition_counter}_expr_end")
             self._condition_counter += 1

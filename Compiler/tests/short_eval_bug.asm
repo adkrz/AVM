@@ -6,6 +6,7 @@ POP
 JT @cond1_expr_end
 PUSH16 #1
 OR
+EXTEND
 :cond1_expr_end
 STORE_LOCAL16 0 ; expr
 HALT

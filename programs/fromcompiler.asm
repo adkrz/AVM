@@ -1,0 +1,665 @@
+; Byte mat[]
+; Addr row[]
+; Addr col[]
+; Addr box[]
+; Byte r
+; Byte c
+; Byte index
+; Addr val
+; Byte box_index
+; Byte ok
+PUSHN 215
+PUSH_NEXT_SP
+PUSH16 #2
+SUB216
+STORE_LOCAL16 0 ; mat
+PUSH 3
+PUSH 0
+PUSH 6
+PUSH 5
+PUSH 0
+PUSH 8
+PUSH 4
+PUSH 0
+PUSH 0
+PUSH 5
+PUSH 2
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 8
+PUSH 7
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 3
+PUSH 1
+PUSH 0
+PUSH 0
+PUSH 3
+PUSH 0
+PUSH 1
+PUSH 0
+PUSH 0
+PUSH 8
+PUSH 0
+PUSH 9
+PUSH 0
+PUSH 0
+PUSH 8
+PUSH 6
+PUSH 3
+PUSH 0
+PUSH 0
+PUSH 5
+PUSH 0
+PUSH 5
+PUSH 0
+PUSH 0
+PUSH 9
+PUSH 0
+PUSH 6
+PUSH 0
+PUSH 0
+PUSH 1
+PUSH 3
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 2
+PUSH 5
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 0
+PUSH 7
+PUSH 4
+PUSH 0
+PUSH 0
+PUSH 5
+PUSH 2
+PUSH 0
+PUSH 6
+PUSH 3
+PUSH 0
+PUSH 0
+PUSH_NEXT_SP
+PUSH16 #2
+SUB216
+STORE_LOCAL16 160 ; row
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH_NEXT_SP
+PUSH16 #2
+SUB216
+STORE_LOCAL16 176 ; col
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH_NEXT_SP
+PUSH16 #2
+SUB216
+STORE_LOCAL16 192 ; box
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH16 #0
+PUSH 0
+STORE_LOCAL 208 ; r
+:while4_begin
+LOAD_LOCAL 208 ; r
+PUSH 9
+SWAP
+LESS
+JF @while4_endwhile
+PUSH 0
+STORE_LOCAL 209 ; c
+:while5_begin
+LOAD_LOCAL 209 ; c
+PUSH 9
+SWAP
+LESS
+JF @while5_endwhile
+LOAD_LOCAL 208 ; r
+PUSH 9
+MUL
+LOAD_LOCAL 209 ; c
+ADD
+STORE_LOCAL 210 ; index
+LOAD_LOCAL16 0 ; mat
+LOAD_LOCAL 210 ; index
+EXTEND
+ADD16
+LOAD_GLOBAL
+PUSH 0
+NE
+JF @if7_else
+PUSH16 #1
+LOAD_LOCAL16 0 ; mat
+LOAD_LOCAL 210 ; index
+EXTEND
+ADD16
+LOAD_GLOBAL
+EXTEND
+LSH16
+STORE_LOCAL16 211 ; val
+LOAD_LOCAL16 160 ; row
+LOAD_LOCAL 208 ; r
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_LOCAL16 160 ; row
+LOAD_LOCAL 208 ; r
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+LOAD_LOCAL16 211 ; val
+OR16
+STORE_GLOBAL216
+LOAD_LOCAL16 176 ; col
+LOAD_LOCAL 208 ; r
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_LOCAL16 176 ; col
+LOAD_LOCAL 208 ; r
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+LOAD_LOCAL16 211 ; val
+OR16
+STORE_GLOBAL216
+LOAD_LOCAL 208 ; r
+PUSH 3
+SWAP
+DIV
+PUSH 3
+MUL
+LOAD_LOCAL 209 ; c
+PUSH 3
+SWAP
+DIV
+ADD
+STORE_LOCAL 213 ; box_index
+LOAD_LOCAL16 192 ; box
+LOAD_LOCAL 213 ; box_index
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_LOCAL16 192 ; box
+LOAD_LOCAL 213 ; box_index
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+LOAD_LOCAL16 211 ; val
+OR16
+STORE_GLOBAL216
+JMP @if7_endif
+:if7_else
+:if7_endif
+LOAD_LOCAL 209 ; c
+PUSH 1
+ADD
+STORE_LOCAL 209 ; c
+JMP @while5_begin
+:while5_endwhile
+LOAD_LOCAL 208 ; r
+PUSH 1
+ADD
+STORE_LOCAL 208 ; r
+JMP @while4_begin
+:while4_endwhile
+;sudokuSolverRec(Byte mat[], Byte i, Byte j, Addr row[], Addr col[], Addr box[], Byte ret&)
+LOAD_LOCAL16 0 ; mat
+PUSH 0
+PUSH 0
+LOAD_LOCAL16 160 ; row
+LOAD_LOCAL16 176 ; col
+LOAD_LOCAL16 192 ; box
+LOAD_LOCAL 214 ; ok
+CALL @function_sudokuSolverRec
+; stack cleanup
+STORE_LOCAL 214 ; ok
+POPN 2
+POPN 2
+POPN 2
+POPN 1
+POPN 1
+POPN 1
+;print_sudoku(Byte matrix[])
+LOAD_LOCAL16 0 ; mat
+CALL @function_print_sudoku
+; stack cleanup
+POPN 1
+HALT
+
+:function_print_sudoku
+;(Byte matrix[])
+; Byte r
+; Byte c
+; Byte index
+PUSHN 3
+PUSH 0
+STORE_LOCAL 0 ; r
+:while1_begin
+LOAD_LOCAL 0 ; r
+PUSH 9
+SWAP
+LESS
+JF @while1_endwhile
+PUSH 0
+STORE_LOCAL 1 ; c
+:while2_begin
+LOAD_LOCAL 1 ; c
+PUSH 9
+SWAP
+LESS
+JF @while2_endwhile
+LOAD_LOCAL 0 ; r
+PUSH 9
+MUL
+LOAD_LOCAL 1 ; c
+ADD
+STORE_LOCAL 2 ; index
+LOAD_ARG16 2 ; matrix
+LOAD_LOCAL 2 ; index
+EXTEND
+ADD16
+LOAD_GLOBAL
+SYSCALL Std.PrintInt
+POP
+PUSH16 @string_1
+SYSCALL Std.PrintString
+LOAD_LOCAL 1 ; c
+PUSH 1
+ADD
+STORE_LOCAL 1 ; c
+JMP @while2_begin
+:while2_endwhile
+SYSCALL Std.PrintNewLine
+LOAD_LOCAL 0 ; r
+PUSH 1
+ADD
+STORE_LOCAL 0 ; r
+JMP @while1_begin
+:while1_endwhile
+RET
+
+:function_is_valid
+;(Byte i, Byte j, Byte num, Addr row[], Addr col[], Addr box[], Byte ret&)
+; Byte box_pos
+; Addr v
+PUSHN 3
+LOAD_ARG 10 ; i
+PUSH 3
+SWAP
+DIV
+PUSH 3
+MUL
+LOAD_ARG 9 ; j
+PUSH 3
+SWAP
+DIV
+ADD
+STORE_LOCAL 0 ; box_pos
+PUSH16 #1
+LOAD_ARG 8 ; num
+EXTEND
+LSH16
+STORE_LOCAL16 1 ; v
+LOAD_ARG16 7 ; row
+LOAD_ARG 10 ; i
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+LOAD_LOCAL16 1 ; v
+AND16
+DUP16
+POP
+JT @cond1_expr_end
+LOAD_ARG16 5 ; col
+LOAD_ARG 9 ; j
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+LOAD_LOCAL16 1 ; v
+AND16
+OR
+DUP16
+POP
+JT @cond1_expr_end
+LOAD_ARG16 3 ; box
+LOAD_LOCAL 0 ; box_pos
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+LOAD_LOCAL16 1 ; v
+AND16
+OR
+:cond1_expr_end
+POP
+JF @if1_else
+PUSH 0
+STORE_ARG 1 ; ret
+JMP @if1_endif
+:if1_else
+PUSH 1
+STORE_ARG 1 ; ret
+:if1_endif
+RET
+
+:function_sudokuSolverRec
+;(Byte mat[], Byte i, Byte j, Addr row[], Addr col[], Addr box[], Byte ret&)
+; Byte index
+; Byte num
+; Byte ok
+; Addr val
+; Byte box_index
+PUSHN 6
+LOAD_ARG 9 ; i
+PUSH 9
+PUSH 1
+SUB2
+EQ
+DUP
+JF @cond2_expr_end
+LOAD_ARG 8 ; j
+PUSH 9
+EQ
+AND
+:cond2_expr_end
+JF @if2_else
+PUSH 1
+STORE_ARG 1 ; ret
+RET
+JMP @if2_endif
+:if2_else
+:if2_endif
+LOAD_ARG 8 ; j
+PUSH 9
+EQ
+JF @if3_else
+LOAD_ARG 9 ; i
+PUSH 1
+ADD
+STORE_ARG 9 ; i
+PUSH 0
+STORE_ARG 8 ; j
+JMP @if3_endif
+:if3_else
+:if3_endif
+LOAD_ARG 9 ; i
+PUSH 9
+MUL
+LOAD_ARG 8 ; j
+ADD
+STORE_LOCAL 0 ; index
+LOAD_ARG16 11 ; mat
+LOAD_LOCAL 0 ; index
+EXTEND
+ADD16
+LOAD_GLOBAL
+PUSH 0
+NE
+JF @if4_else
+;sudokuSolverRec(Byte mat[], Byte i, Byte j, Addr row[], Addr col[], Addr box[], Byte ret&)
+LOAD_ARG16 11 ; mat
+LOAD_ARG 9 ; i
+LOAD_ARG 8 ; j
+PUSH 1
+ADD
+LOAD_ARG16 7 ; row
+LOAD_ARG16 5 ; col
+LOAD_ARG16 3 ; box
+LOAD_ARG 1 ; ret
+CALL @function_sudokuSolverRec
+; stack cleanup
+STORE_ARG 1 ; ret
+POPN 2
+POPN 2
+POPN 2
+POPN 1
+POPN 1
+POPN 1
+JMP @if4_endif
+:if4_else
+:if4_endif
+PUSH 1
+STORE_LOCAL 1 ; num
+:while3_begin
+LOAD_LOCAL 1 ; num
+PUSH 9
+SWAP
+LESS_OR_EQ
+JF @while3_endwhile
+;is_valid(Byte i, Byte j, Byte num, Addr row[], Addr col[], Addr box[], Byte ret&)
+LOAD_ARG 9 ; i
+LOAD_ARG 8 ; j
+LOAD_LOCAL 1 ; num
+LOAD_ARG16 7 ; row
+LOAD_ARG16 5 ; col
+LOAD_ARG16 3 ; box
+LOAD_LOCAL 2 ; ok
+CALL @function_is_valid
+; stack cleanup
+STORE_LOCAL 2 ; ok
+POPN 2
+POPN 2
+POPN 2
+POPN 1
+POPN 1
+POPN 1
+LOAD_LOCAL 2 ; ok
+JF @if5_else
+LOAD_ARG16 11 ; mat
+LOAD_LOCAL 0 ; index
+EXTEND
+ADD16
+LOAD_LOCAL 1 ; num
+STORE_GLOBAL2
+PUSH16 #1
+LOAD_LOCAL 1 ; num
+EXTEND
+LSH16
+STORE_LOCAL16 3 ; val
+LOAD_ARG 9 ; i
+PUSH 3
+SWAP
+DIV
+PUSH 3
+MUL
+LOAD_ARG 8 ; j
+PUSH 3
+SWAP
+DIV
+ADD
+STORE_LOCAL 5 ; box_index
+LOAD_ARG16 7 ; row
+LOAD_ARG 9 ; i
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_ARG16 7 ; row
+LOAD_ARG 9 ; i
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+LOAD_LOCAL16 3 ; val
+OR16
+STORE_GLOBAL216
+LOAD_ARG16 5 ; col
+LOAD_ARG 8 ; j
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_ARG16 5 ; col
+LOAD_ARG 8 ; j
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+LOAD_LOCAL16 3 ; val
+OR16
+STORE_GLOBAL216
+LOAD_ARG16 3 ; box
+LOAD_LOCAL 5 ; box_index
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_ARG16 3 ; box
+LOAD_LOCAL 5 ; box_index
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+LOAD_LOCAL16 3 ; val
+OR16
+STORE_GLOBAL216
+;sudokuSolverRec(Byte mat[], Byte i, Byte j, Addr row[], Addr col[], Addr box[], Byte ret&)
+LOAD_ARG16 11 ; mat
+LOAD_ARG 9 ; i
+LOAD_ARG 8 ; j
+PUSH 1
+ADD
+LOAD_ARG16 7 ; row
+LOAD_ARG16 5 ; col
+LOAD_ARG16 3 ; box
+LOAD_LOCAL 2 ; ok
+CALL @function_sudokuSolverRec
+; stack cleanup
+STORE_LOCAL 2 ; ok
+POPN 2
+POPN 2
+POPN 2
+POPN 1
+POPN 1
+POPN 1
+LOAD_LOCAL 2 ; ok
+JF @if6_else
+RET
+JMP @if6_endif
+:if6_else
+:if6_endif
+LOAD_ARG16 11 ; mat
+LOAD_LOCAL 0 ; index
+EXTEND
+ADD16
+PUSH 0
+STORE_GLOBAL2
+LOAD_LOCAL16 3 ; val
+FLIP16
+STORE_LOCAL16 3 ; val
+LOAD_ARG16 7 ; row
+LOAD_ARG 9 ; i
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_ARG16 7 ; row
+LOAD_ARG 9 ; i
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+LOAD_LOCAL16 3 ; val
+AND16
+STORE_GLOBAL216
+LOAD_ARG16 5 ; col
+LOAD_ARG 8 ; j
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_ARG16 5 ; col
+LOAD_ARG 8 ; j
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+LOAD_LOCAL16 3 ; val
+AND16
+STORE_GLOBAL216
+LOAD_ARG16 3 ; box
+LOAD_LOCAL 5 ; box_index
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_ARG16 3 ; box
+LOAD_LOCAL 5 ; box_index
+EXTEND
+PUSH16 #2
+MUL16
+ADD16
+LOAD_GLOBAL16
+LOAD_LOCAL16 3 ; val
+AND16
+STORE_GLOBAL216
+JMP @if5_endif
+:if5_else
+:if5_endif
+LOAD_LOCAL 1 ; num
+PUSH 1
+ADD
+STORE_LOCAL 1 ; num
+JMP @while3_begin
+:while3_endwhile
+PUSH 0
+STORE_ARG 1 ; ret
+RET
+
+:string_1
+" "

@@ -536,7 +536,7 @@ enum I
 	/// Bitwise NOT (flip bits)
     /// pop: address16bit, push: address16bit
     /// </summary>
-    NOT16, 
+    FLIP16, 
     /// <summary>
     /// pop: 2x address16bit, push: address16bit (offset on top of stack)
     /// </summary>

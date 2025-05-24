@@ -627,7 +627,7 @@ class Parser:
         if unary_minus:
             context.append_code("NEG" if not context.expect_16bit else "NEG16")  # not yet implemented
         if negate:
-            context.append_code("FLIP" if not context.expect_16bit else "NOT16")
+            context.append_code("FLIP" if not context.expect_16bit else "FLIP16")
 
         while self._lex.current in (Symbol.Plus, Symbol.Minus, Symbol.Pipe, Symbol.Hat):
             context.is_simple_constant = False

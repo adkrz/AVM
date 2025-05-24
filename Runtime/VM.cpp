@@ -364,7 +364,7 @@ I VM::StepProgram()
             PUSHI_ADDR(signedResult);
             break;
         }
-        case I::NOT16:
+        case I::FLIP16:
             PUSHI_ADDR(~POP_ADDR());
             break;
 

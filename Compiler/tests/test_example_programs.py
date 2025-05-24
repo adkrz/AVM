@@ -82,6 +82,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_initializer_list(self):
         self.compare_programs("initializer_list.prg", "initializer_list.asm", optimize=True)
 
+    def test_bit_ops(self):
+        self.compare_programs("bit_ops.prg", "bit_ops.asm", optimize=True)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -77,14 +77,12 @@ begin
 
         // Check if solution with that number is valid:
         byte box_index = i / 3 * 3 + j / 3; // ensure type - DIV16 not implemented
-        addr v = one << num;
-        if (row[i] & v) || (col[j] & v) || (box[box_index] & v) then ok = 0;
+        addr val = one << num;
+        if (row[i] & val) || (col[j] & val) || (box[box_index] & val) then ok = 0;
         else ok = 1;
 
         if ok then begin
             mat[index] = num;
-            addr val = one << num;
-            byte box_index = i / 3 * 3 + j / 3;
 
             //Update masks for the corresponding row, column and box
             row[i] = row[i] | val;

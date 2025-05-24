@@ -192,11 +192,11 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
 
     for (auto& pair : labelsToFill)
     {
-        VM::write16(program.data(), pair.first - VM::PROGRAM_BEGIN, labels[pair.second]);
+        write16(program.data(), pair.first - VM::PROGRAM_BEGIN, labels[pair.second]);
     }
     for (auto& pair : relLabelsToFill)
     {
-        VM::write16(program.data(), pair.first - VM::PROGRAM_BEGIN, (offs)(labels[pair.second] - pair.first + 1));
+        write16(program.data(), pair.first - VM::PROGRAM_BEGIN, (offs)(labels[pair.second] - pair.first + 1));
     }
 
     program.push_back((word)I::HALT);

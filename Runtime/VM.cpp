@@ -31,6 +31,11 @@ VM::~VM()
     Free();
 }
 
+#define read16(list, pos) (*reinterpret_cast<addr*>(list + pos))
+#define READ_REGISTER(r) registers[r]
+#define WRITE_REGISTER(r, value) registers[r] = value
+#define ADD_TO_REGISTER(r, value) registers[r] += value
+
 void VM::LoadProgram(word* program, int program_length, int memory_size, const char* nvr_file)
 {
     if (memory_size < program_length + 3) // plus registers
@@ -54,20 +59,8 @@ void VM::LoadProgram(word* program, int program_length, int memory_size, const c
     nvram_file = nvr_file;
 }
 
-addr VM::read16(word* list, int pos) { return list[pos + 1] * 256 + list[pos]; }
 
 offs VM::readoffs(word* list, int pos) { return list[pos + 1] * 256 + list[pos]; }
-
-void VM::write16(word* list, int pos, addr value) {
-    list[pos] = (word)(value);
-    list[pos + 1] = (word)(value >> 8);
-}
-
-addr VM::READ_REGISTER(int r) { return registers[r]; };
-
-void VM::WRITE_REGISTER(int r, addr value) { registers[r] = value; }
-
-void VM::ADD_TO_REGISTER(int r, int value) { registers[r] += value; }
 
 
 void VM::PUSH(word arg) { memory[registers[SP_REGISTER]] = arg; ADD_TO_REGISTER(SP_REGISTER, 1);}

@@ -11,6 +11,8 @@ typedef short int offs;
 #include "types.hpp"
 class VM
 {
+#define write16(list, pos, value) *reinterpret_cast<addr*>(list+pos) = value
+
 public:
     VM();
 	void LoadProgram(word* program, int program_length, int memory_size, const char* nvram_file = "nvr.bin");
@@ -20,7 +22,6 @@ public:
 
     static const int PROGRAM_BEGIN = 0; // place where the program starts in memory
     static const word ADDRESS_SIZE = 2; // size in bytes of address (register, memory slot)
-    static void write16(word* list, int pos, addr value);
 private:
     word* memory;
     static const int IP_REGISTER = 0;
@@ -46,13 +47,8 @@ private:
     unsigned long long xic = 0;
     std::map<InterruptCodes, addr> handlers;
 
-
-    static inline addr read16(word* list, int pos);
     static inline offs readoffs(word* list, int pos);
-    inline addr READ_REGISTER(int r);
-    inline void WRITE_REGISTER(int r, addr value);
-    inline void ADD_TO_REGISTER(int r, int value);
-
+   
     inline void PUSH(word arg);
     inline void PUSH_ADDR(addr arg);
     inline void PUSHI(int arg);

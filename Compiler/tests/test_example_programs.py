@@ -85,6 +85,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_bit_ops(self):
         self.compare_programs("bit_ops.prg", "bit_ops.asm", optimize=True)
 
+    def test_short_eval_bug(self):
+        self.compare_programs("short_eval_bug.prg", "short_eval_bug.asm", optimize=True)
+
 
 if __name__ == '__main__':
     unittest.main()

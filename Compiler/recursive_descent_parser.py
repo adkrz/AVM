@@ -57,7 +57,8 @@ class Variable:
         self.is_array = is_array
         self.from_global = from_global
         self.struct_def = struct_def
-        self.array_fixed_size = 0
+        self.array_fixed_size = 0  # for stack size
+        self.array_fixed_len = 0  # only for initializer lists
         self.is_arg = False
 
     @property
@@ -307,7 +308,7 @@ class Parser:
                         context.append_code(f"PUSH {self._lex.current_number}" if not is_16bit else f"PUSH16 #{self._lex.current_number}")
                         if self._accept(Symbol.RCurly):
                             break
-                        vdef.array_fixed_size = size
+                        vdef.array_fixed_len = size
                 else:
                     # this is a raw pointer, no memory reservation, but read address
                     self._parse_expression_typed(expect_16bit=True)
@@ -376,10 +377,11 @@ class Parser:
             var = self._get_variable(self._lex.current_identifier)
             if not var.is_array:
                 self._error(f"Variable {self._lex.current_identifier} is not an array")
-            if var.array_fixed_size <= 255:
-                context.append_code(f"PUSH {var.array_fixed_size}")
+            size = var.array_fixed_len if var.array_fixed_len > 0 else var.array_fixed_size
+            if size <= 255:
+                context.append_code(f"PUSH {size}")
             else:
-                context.append_code(f"PUSH16 #{var.array_fixed_size}")
+                context.append_code(f"PUSH16 #{size}")
                 context.expr_is16bit = True
         elif function_name == "addressof":
             context.expr_is16bit = True

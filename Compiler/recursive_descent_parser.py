@@ -483,7 +483,8 @@ class Parser:
                 if not var_def.is_array:
                     self._error(f"Variable {var} is not an array!")
                 element_size = var_def.type.size
-                context.expr_is16bit = element_size == 2
+                if element_size == 2:
+                    context.expr_is16bit = True
                 if self._accept(Symbol.RBracket):
                     # arr[] is the same as arr[0]
                     context.append_code("LOAD_GLOBAL") if element_size == 1 else context.append_code("LOAD_GLOBAL16")

@@ -266,6 +266,8 @@ class Parser:
         if name not in self._local_variables[self._current_context]:
             self._error(f"Unknown variable {name}")
         for k, v in self._local_variables[self._current_context].items():
+            if v.from_global:
+                continue
             if k == name:
                 return offs
             offs += v.stack_size

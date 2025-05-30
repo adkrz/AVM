@@ -88,6 +88,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_short_eval_bug(self):
         self.compare_programs("short_eval_bug.prg", "short_eval_bug.asm", optimize=True)
 
+    def test_array_global_bug(self):
+        self.compare_programs("array_bug_global.prg", "array_bug_global.asm", optimize=True)
+
 
 if __name__ == '__main__':
     unittest.main()

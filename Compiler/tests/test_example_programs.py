@@ -94,6 +94,12 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_direct_return(self):
         self.compare_programs("fibonacci_direct_return.prg", "fibonacci_direct_return.asm")
 
+    def test_sudoku(self):
+        self.compare_programs("sudoku.prg", "sudoku.asm", optimize=True)
+
+    def test_snake(self):
+        self.compare_programs("snake.prg", "snake.asm", optimize=True)
+
 
 if __name__ == '__main__':
     unittest.main()

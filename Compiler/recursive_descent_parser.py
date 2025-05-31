@@ -95,8 +95,23 @@ class Constant:
 
 
 class FunctionSignature:
+    RETURN_VALUE_NAME = "@ret"
+
     def __init__(self):
         self.args: Dict[str, Variable] = {}
+
+    @property
+    def true_args(self) -> Sequence[Variable]:
+        """ Arguments, except special return value argument """
+        for k, v in self.args.items():
+            if k != self.RETURN_VALUE_NAME:
+                yield v
+
+    @property
+    def return_value(self) -> Optional[Variable]:
+        if self.RETURN_VALUE_NAME in self.args:
+            return self.args[self.RETURN_VALUE_NAME]
+        return None
 
     def __str__(self):
         def suffix(v: Variable):
@@ -227,7 +242,7 @@ class Parser:
             return self._function_signatures[self._current_context].args[name]
 
         if self._current_context not in self._local_variables:
-            self._error(f"Current context is empty: {self._current_context}")
+            self._error(f"Current context is empty: {self._current_context}, unknown variable {name}")
 
         # Check local variables, this includes global declarations
         if name not in self._local_variables[self._current_context]:
@@ -539,6 +554,10 @@ class Parser:
             else:
                 context.append_code(f"PUSH {ord(val)}")
             context.simple_value = ord(val)
+
+        elif self._accept(Symbol.Call):
+            self._parse_function_call(inside_expression=True)
+
         else:
             self._error("factor: syntax error")
 
@@ -894,54 +913,19 @@ class Parser:
             self._append_code(f"JMP @while{inside_loop}_begin")
 
         elif self._accept(Symbol.Call):
-            self._expect(Symbol.Identifier)
-            func = self._lex.current_identifier
-            if func not in self._function_signatures:
-                self._error(f"Unknown function {func}")
-            signature = self._function_signatures[func]
-
-            self._expect(Symbol.LParen)
-
-            self._append_code(";" + func + str(signature))
-
-            refs_mapping = {}
-            for i, arg in enumerate(signature.args.values()):
-                if i > 0:
-                    self._expect(Symbol.Comma)
-                if not arg.by_ref and not arg.struct_def:
-                    self._parse_expression_typed(expect_16bit=arg.is_16bit)
-                elif arg.struct_def:
-                    # Structs are also passed by ref
-                    self._expect(Symbol.Identifier)
-                    ctx = self._create_ec()
-                    var_name = self._lex.current_identifier
-                    self._generate_struct_address(self._get_variable(var_name), var_name, ctx)
-                    refs_mapping[arg] = self._lex.current_identifier
-
-                else:
-                    self._expect(Symbol.Identifier)
-                    self._gen_load_store_instruction(self._lex.current_identifier, True, self._create_ec())
-                    refs_mapping[arg] = self._lex.current_identifier
-
-            self._expect(Symbol.RParen)
-
-            self._expect(Symbol.Semicolon)
-            self._append_code(f"CALL @function_{func}")
-
-            self._append_code("; stack cleanup")
-            for arg in reversed(signature.args.values()):
-                if not arg.by_ref and not arg.struct_def:
-                    self._append_code(f"POPN {arg.type.size}")
-                elif arg.struct_def:
-                    self._append_code(f"POPN 2")
-                else:
-                    self._gen_load_store_instruction(refs_mapping[arg], False, self._create_ec())
+            self._parse_function_call()
 
         elif self._accept(Symbol.Return):
             if not inside_function:
                 self._error("Return outside function")
+
+            if not self._accept(Symbol.Semicolon):
+                ctx = self._create_ec()
+                self._parse_logical_chain(ctx)
+                self._expect(Symbol.Semicolon)
+                self._gen_load_store_instruction(FunctionSignature.RETURN_VALUE_NAME, False, ctx)
+
             self._append_code("RET")
-            self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.Print):
             if self._accept(Symbol.String):
@@ -985,6 +969,69 @@ class Parser:
 
         else:
             self._error("parse statement")
+
+    def _parse_function_call(self, inside_expression=False):
+        self._expect(Symbol.Identifier)
+        func = self._lex.current_identifier
+        if func not in self._function_signatures:
+            self._error(f"Unknown function {func}")
+        signature = self._function_signatures[func]
+
+        self._expect(Symbol.LParen)
+
+        self._append_code(";" + func + str(signature))
+
+        refs_mapping = {}
+
+        return_value = signature.return_value
+
+        if inside_expression and return_value is None:
+            self._error(f"Function {func} does not return anything to be used in expression")
+
+        if return_value is not None:
+            ctx = self._create_ec()
+            ctx.append_code("PUSHN 1 ; rv" if not return_value.is_16bit else "PUSHN 2 ; rv")
+
+        first_arg = True
+        for arg in signature.true_args:
+            if not first_arg:
+                self._expect(Symbol.Comma)
+            first_arg = False
+            if not arg.by_ref and not arg.struct_def:
+                self._parse_expression_typed(expect_16bit=arg.is_16bit)
+            elif arg.struct_def:
+                # Structs are also passed by ref
+                self._expect(Symbol.Identifier)
+                ctx = self._create_ec()
+                var_name = self._lex.current_identifier
+                self._generate_struct_address(self._get_variable(var_name), var_name, ctx)
+                refs_mapping[arg] = self._lex.current_identifier
+
+            else:
+                self._expect(Symbol.Identifier)
+                self._gen_load_store_instruction(self._lex.current_identifier, True, self._create_ec())
+                refs_mapping[arg] = self._lex.current_identifier
+
+        self._expect(Symbol.RParen)
+
+        if not inside_expression:
+            self._expect(Symbol.Semicolon)
+        self._append_code(f"CALL @function_{func}")
+
+        self._append_code("; stack cleanup")
+        for arg in reversed(signature.args.values()):
+            if not arg.by_ref and not arg.struct_def:
+                self._append_code(f"POPN {arg.type.size}")
+            elif arg.struct_def:
+                self._append_code(f"POPN 2")
+            else:
+                if arg != return_value:
+                    self._gen_load_store_instruction(refs_mapping[arg], False, self._create_ec())
+
+        if return_value is not None and not inside_expression:
+            ctx = self._create_ec()
+            # do not change POPN1 to POP, optimizer will take care
+            ctx.append_code("POPN 1 ; rv" if not return_value.is_16bit else "POPN 2 ; rv")
 
     def _parse_block(self, inside_function=False):
         if self._accept(Symbol.EOF):
@@ -1053,6 +1100,23 @@ class Parser:
                     signature.args[var_name] = arg
                 else:
                     self._error("Expected type")
+
+            if self._accept(Symbol.Arrow):
+                if self._lex.current in (Symbol.Byte, Symbol.Addr):
+                    ret_type = Type.Byte if self._lex.current == Symbol.Byte else Type.Addr
+                    virtual_arg = Variable(ret_type, by_ref=True)
+                    # Return value is like another function argument
+                    virtual_arg.is_arg = True
+                    signature.args[FunctionSignature.RETURN_VALUE_NAME] = virtual_arg
+                    # Ensure the return value is first in args!
+                    keys = [FunctionSignature.RETURN_VALUE_NAME]
+                    for k in signature.args.keys():
+                        if k != FunctionSignature.RETURN_VALUE_NAME:
+                            keys.append(k)
+                    signature.args = {k: signature.args[k] for k in keys}
+                    self._lex.next_symbol()
+                else:
+                    self._error("Expected simple return type")
 
             if self._accept(Symbol.Semicolon):
                 # just a declaration

@@ -91,6 +91,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_array_global_bug(self):
         self.compare_programs("array_bug_global.prg", "array_bug_global.asm", optimize=True)
 
+    def test_direct_return(self):
+        self.compare_programs("fibonacci_direct_return.prg", "fibonacci_direct_return.asm")
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -63,6 +63,7 @@ class Symbol(Enum):
     Pipe = ord("|")
     Hat = ord("^")
     Tilde = ord("~")
+    Arrow = 303
 
 
 class Lexer:
@@ -277,7 +278,11 @@ class Lexer:
                 self._current = Symbol.Plus
                 return
             elif t == "-":
-                self._current = Symbol.Minus
+                if self._peek() == '>':
+                    self._current = Symbol.Arrow
+                    self._getchar()
+                else:
+                    self._current = Symbol.Minus
                 return
             elif t == "*":
                 self._current = Symbol.Mult

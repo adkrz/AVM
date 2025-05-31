@@ -87,6 +87,11 @@ enum I
     /// </summary>
     DIV,
     /// <summary>
+    /// Raises <see cref="InterruptCodes.DivisionByZeroError"/>
+    /// pop: 2x val8bit, push: val8bit, inverse order
+    /// </summary>
+    DIV2,
+    /// <summary>
     /// pop: 2x val8bit, push: val8bit
     /// </summary>
     MOD,
@@ -166,6 +171,14 @@ enum I
     /// pop: 2x val8bit, push: val8bit 0 or 1
     /// </summary>
     LESS_OR_EQ,
+    /// <summary>
+    /// pop: 2x val8bit, push: val8bit 0 or 1
+    /// </summary>
+    GREATER,
+    /// <summary>
+    /// pop: 2x val8bit, push: val8bit 0 or 1
+    /// </summary>
+    GREATER_OR_EQ,
     /// <summary>
     /// Checks if value is zero
     /// pop: val8bit, push: val8bit 0 or 1
@@ -420,6 +433,16 @@ enum I
     /// </summary>
     LESS_OR_EQ16,
     /// <summary>
+    /// 16bit version of <see cref="I.GREATER"/>. Note: result is 1 byte.
+    /// pop: 2x address16bit, push: val8bit
+    /// </summary>
+    GREATER16,
+    /// <summary>
+    /// 16bit version of <see cref="I.GREATER_OR_EQ"/>. Note: result is 1 byte.
+    /// pop: 2x address16bit, push: val8bit
+    /// </summary>
+    GREATER_OR_EQ16,
+    /// <summary>
     /// 16bit version of <see cref="I.ZERO"/>. Note: result is 1 byte.
     /// pop: address16bit, push: val8bit
     /// </summary>
@@ -533,7 +556,7 @@ enum I
     /// <summary>
     /// Stop execution.
     /// </summary>
-    HALT = 99,
+    HALT,
 
 	// 16-bit bitwise operations:
     /// <summary>

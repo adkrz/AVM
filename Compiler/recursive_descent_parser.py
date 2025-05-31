@@ -554,13 +554,13 @@ class Parser:
             elif v == Symbol.NotEqual:
                 opcode = "NE" if not context.expr_is16bit else "NE16"
             elif v == Symbol.Gt:
-                opcode = "LESS" if not context.expr_is16bit else "LESS16"
+                opcode = "LESS" if not context.expr_is16bit else "LESS16"  # inverse because of order on stack
             elif v == Symbol.Ge:
                 opcode = "LESS_OR_EQ" if not context.expr_is16bit else "LESS_OR_EQ16"
             elif v == Symbol.Lt:
-                opcode = "SWAP\nLESS" if not context.expr_is16bit else "SWAP16\nLESS16"
+                opcode = "GREATER" if not context.expr_is16bit else "GREATER16"
             elif v == Symbol.Le:
-                opcode = "SWAP\nLESS_OR_EQ" if not context.expr_is16bit else "SWAP16\nLESS_OR_EQ16"
+                opcode = "GREATER_OR_EQ" if not context.expr_is16bit else "GREATER_OR_EQ16"
             else:
                 raise NotImplementedError(self._lex.current)
             context.expr_is16bit = False  # bool result is 8-bit
@@ -603,7 +603,7 @@ class Parser:
             if v == Symbol.Mult:
                 opcode = "MUL" if not context.expect_16bit else "MUL16"
             elif v == Symbol.Divide:
-                opcode = "SWAP\nDIV" if not context.expect_16bit else "SWAP16\nDIV16"
+                opcode = "DIV2" if not context.expect_16bit else "SWAP16\nDIV16"  # div16 not implemented
             elif v == Symbol.Modulo:
                 opcode = "SWAP\nMOD" if not context.expect_16bit else "SWAP16\nMOD16"
             elif v == Symbol.Ampersand:

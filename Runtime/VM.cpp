@@ -266,7 +266,14 @@ I VM::StepProgram()
             tmp = POP();
             if (tmp == 0)
                 throw InterruptException(InterruptCodes::DivisionByZeroError);
-            PUSHI((arg / tmp));
+            PUSHI(arg / tmp);
+            break;
+        case I::DIV2:
+            arg = POP();
+            tmp = POP();
+            if (arg == 0)
+                throw InterruptException(InterruptCodes::DivisionByZeroError);
+            PUSHI(tmp / arg);
             break;
         case I::MOD:
             arg = POP();
@@ -305,6 +312,12 @@ I VM::StepProgram()
         case I::LESS_OR_EQ:
             PUSHI(POP() <= POP() ? 1 : 0);
             break;
+        case I::GREATER:
+            PUSHI(POP() > POP() ? 1 : 0);
+            break;
+        case I::GREATER_OR_EQ:
+            PUSHI(POP() >= POP() ? 1 : 0);
+            break;
         case I::ZERO:
             sp_value = READ_REGISTER(SP_REGISTER);
             memory[sp_value - 1] = (word)(memory[sp_value - 1] == 0 ? 1 : 0);
@@ -322,6 +335,12 @@ I VM::StepProgram()
             break;
         case I::LESS_OR_EQ16:
             PUSHI(POP_ADDR() <= POP_ADDR() ? 1 : 0);
+            break;
+        case I::GREATER16:
+            PUSHI(POP_ADDR() > POP_ADDR() ? 1 : 0);
+            break;
+        case I::GREATER_OR_EQ16:
+            PUSHI(POP_ADDR() >= POP_ADDR() ? 1 : 0);
             break;
         case I::ZERO16:
             PUSHI(POP_ADDR() == 0 ? 1 : 0);

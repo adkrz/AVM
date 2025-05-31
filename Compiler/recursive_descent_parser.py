@@ -556,7 +556,7 @@ class Parser:
             context.simple_value = ord(val)
 
         elif self._accept(Symbol.Call):
-            self._parse_function_call(inside_expression=True)
+            self._parse_function_call(context, inside_expression=True)
 
         else:
             self._error("factor: syntax error")
@@ -913,7 +913,7 @@ class Parser:
             self._append_code(f"JMP @while{inside_loop}_begin")
 
         elif self._accept(Symbol.Call):
-            self._parse_function_call()
+            self._parse_function_call(self._create_ec())
 
         elif self._accept(Symbol.Return):
             if not inside_function:
@@ -970,7 +970,7 @@ class Parser:
         else:
             self._error("parse statement")
 
-    def _parse_function_call(self, inside_expression=False):
+    def _parse_function_call(self, context: ExprContext, inside_expression=False):
         self._expect(Symbol.Identifier)
         func = self._lex.current_identifier
         if func not in self._function_signatures:
@@ -989,8 +989,7 @@ class Parser:
             self._error(f"Function {func} does not return anything to be used in expression")
 
         if return_value is not None:
-            ctx = self._create_ec()
-            ctx.append_code("PUSHN 1 ; rv" if not return_value.is_16bit else "PUSHN 2 ; rv")
+            context.append_code("PUSHN 1 ; rv" if not return_value.is_16bit else "PUSHN 2 ; rv")
 
         first_arg = True
         for arg in signature.true_args:
@@ -1002,9 +1001,8 @@ class Parser:
             elif arg.struct_def:
                 # Structs are also passed by ref
                 self._expect(Symbol.Identifier)
-                ctx = self._create_ec()
                 var_name = self._lex.current_identifier
-                self._generate_struct_address(self._get_variable(var_name), var_name, ctx)
+                self._generate_struct_address(self._get_variable(var_name), var_name, context)
                 refs_mapping[arg] = self._lex.current_identifier
 
             else:

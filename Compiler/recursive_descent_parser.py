@@ -997,7 +997,9 @@ class Parser:
                 self._expect(Symbol.Comma)
             first_arg = False
             if not arg.by_ref and not arg.struct_def:
-                self._parse_expression_typed(expect_16bit=arg.is_16bit)
+                ctx2 = context.clone_with_same_buffer()
+                ctx2.expect_16bit = arg.is_16bit
+                self._parse_logical_chain(ctx2)
             elif arg.struct_def:
                 # Structs are also passed by ref
                 self._expect(Symbol.Identifier)

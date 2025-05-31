@@ -1,6 +1,5 @@
 ; Byte result
 PUSHN 1
-PUSH 6
 ;fibonacci(Byte @ret&, Byte X)
 PUSHN 1 ; rv
 PUSH 6

@@ -13,13 +13,15 @@ int main(int argc, char** argv)
     {
         std::cout << "Arguments: program_file.(asm|avm) -c [-r]\n"
             << "Option -c compiles the ASM to AVM file\n"
-            << "Option -r runs the file in addition to compilation\n";
+            << "Option -r runs the file in addition to compilation\n"
+            << "Option -p runs the profiler\n";
         return 1;
     }
 
     auto run = false;
     auto compile = false;
     auto fromBinary = false;
+    auto profile = false;
     auto inputFile = argv[1];
 
     if (!std::filesystem::exists(inputFile))
@@ -43,6 +45,8 @@ int main(int argc, char** argv)
                 compile = true;
             else if (std::string(argv[i]) == "-r")
                 run = true;
+            else if (std::string(argv[i]) == "-p")
+                profile = true;
         }
     }
     else if (ext == ".avm")
@@ -103,7 +107,10 @@ int main(int argc, char** argv)
     using std::chrono::milliseconds;
 
     auto t1 = high_resolution_clock::now();
-    vm.RunProgram();
+    if (profile)
+        vm.ProfileProgram();
+    else
+        vm.RunProgram();
     auto t2 = high_resolution_clock::now();
     duration<double, std::milli> ms_double = t2 - t1;
     std::cout << ms_double.count() << "ms\n";

@@ -17,6 +17,7 @@ public:
     VM();
 	void LoadProgram(word* program, int program_length, int memory_size, const char* nvram_file = "nvr.bin");
 	void RunProgram();
+    void ProfileProgram();
     I StepProgram();
     virtual ~VM();
 

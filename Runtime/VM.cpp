@@ -4,6 +4,7 @@
 #include <thread>
 #include <chrono>
 #include <fstream>
+#include "magic_enum.hpp"
 
 #define NOMINMAX
 #ifdef _WIN32
@@ -114,6 +115,32 @@ void VM::RunProgram()
         auto lastInstr = StepProgram();
         if (lastInstr == I::HALT)
             break;
+    }
+}
+
+void VM::ProfileProgram()
+{
+    std::map<I, long> counters;
+    while (true)
+    {
+        auto lastInstr = StepProgram();
+        if (counters.count(lastInstr))
+            counters[lastInstr]++;
+        else
+            counters[lastInstr] = 1;
+        if (lastInstr == I::HALT)
+            break;
+    }
+
+    // Sort counters by value (descending)
+    std::vector<std::pair<I, long>> sortedCounters(counters.begin(), counters.end());
+    std::sort(sortedCounters.begin(), sortedCounters.end(),
+        [](const auto& a, const auto& b) { return a.second > b.second; });
+
+    // Print sorted counters
+    for (const auto& [instr, count] : sortedCounters)
+    {
+        std::cout << magic_enum::enum_name(instr) << ": " << count << std::endl;
     }
 }
 

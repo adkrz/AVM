@@ -760,6 +760,22 @@ I VM::StepProgram()
             PUSH_ADDR(POP_ADDR() * 2);
             break;
         }
+        case I::MACRO_INC_LOCAL:
+            arg = read_next_program_byte(skip);
+			memory[READ_REGISTER(FP_REGISTER) + arg] += 1;
+			break;
+        case I::MACRO_DEC_LOCAL:
+            arg = read_next_program_byte(skip);
+            memory[READ_REGISTER(FP_REGISTER) + arg] -= 1;
+            break;
+        case I::MACRO_INC_LOCAL16:
+            arg = read_next_program_byte(skip);
+            write16(memory, READ_REGISTER(FP_REGISTER) + arg, read16(memory, READ_REGISTER(FP_REGISTER) + arg) + 1);
+            break;
+        case I::MACRO_DEC_LOCAL16:
+            arg = read_next_program_byte(skip);
+            write16(memory, READ_REGISTER(FP_REGISTER) + arg, read16(memory, READ_REGISTER(FP_REGISTER) + arg) - 1);
+            break;
         default:
             throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));
         }

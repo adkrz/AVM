@@ -191,14 +191,10 @@ STORE_GLOBAL216
 JMP @if7_endif
 :if7_else
 :if7_endif
-LOAD_LOCAL 9
-INC
-STORE_LOCAL 9
+MACRO_INC_LOCAL 9
 JMP @while5_begin
 :while5_endwhile
-LOAD_LOCAL 8
-INC
-STORE_LOCAL 8
+MACRO_INC_LOCAL 8
 JMP @while4_begin
 :while4_endwhile
 LOAD_LOCAL16 0
@@ -245,15 +241,11 @@ SYSCALL Std.PrintInt
 POP
 PUSH 32
 SYSCALL Std.PrintCharPop
-LOAD_LOCAL 1
-INC
-STORE_LOCAL 1
+MACRO_INC_LOCAL 1
 JMP @while2_begin
 :while2_endwhile
 SYSCALL Std.PrintNewLine
-LOAD_LOCAL 0
-INC
-STORE_LOCAL 0
+MACRO_INC_LOCAL 0
 JMP @while1_begin
 :while1_endwhile
 RET
@@ -468,9 +460,7 @@ STORE_GLOBAL216
 JMP @if5_endif
 :if5_else
 :if5_endif
-LOAD_LOCAL 2
-INC
-STORE_LOCAL 2
+MACRO_INC_LOCAL 2
 JMP @while3_begin
 :while3_endwhile
 PUSH 0

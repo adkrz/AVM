@@ -25,15 +25,11 @@ SYSCALL Std.PrintInt
 POP
 PUSH 32
 SYSCALL Std.PrintCharPop
-LOAD_LOCAL 1
-INC
-STORE_LOCAL 1
+MACRO_INC_LOCAL 1
 JMP @while2_begin
 :while2_endwhile
 SYSCALL Std.PrintNewLine
-LOAD_LOCAL 0
-INC
-STORE_LOCAL 0
+MACRO_INC_LOCAL 0
 JMP @while1_begin
 :while1_endwhile
 RET

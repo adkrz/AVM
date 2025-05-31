@@ -622,6 +622,22 @@ enum I
     /// Combines PUSH16 #2, MUL16
     /// </summary>
     MACRO_X216,
+    /// <summary>
+	/// Combines LOAD_LOCAL X, INC, STORE_LOCAL X
+    /// </summary>
+    MACRO_INC_LOCAL,
+    /// <summary>
+    /// Combines LOAD_LOCAL X, DEC, STORE_LOCAL X
+    /// </summary>
+    MACRO_DEC_LOCAL,
+    /// <summary>
+    /// Combines LOAD_LOCAL16 X, INC16, STORE_LOCAL16 X
+    /// </summary>
+    MACRO_INC_LOCAL16,
+    /// <summary>
+    /// Combines LOAD_LOCAL16 X, DEC16, STORE_LOCAL16 X
+    /// </summary>
+    MACRO_DEC_LOCAL16,
 };
 
 enum InterruptCodes

@@ -13,4 +13,4 @@ with open("output.asm", "wt") as asm:
     asm.writelines("\n".join(parser.get_code()))
 
 runtime = r"..\x64\Release\Runtime.exe"
-os.system(f"{runtime} output.asm -r -p")
+os.system(f"{runtime} output.asm -r")

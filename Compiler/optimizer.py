@@ -31,6 +31,7 @@ optimizations = [
     (re.compile(r"PUSH16 #2\nMUL16", flags), "MACRO_X216"),
 ]
 
+# Constant folding
 cfold1 = re.compile(r"PUSH (\d+)\nDEC", flags)
 cfold2 = re.compile(r"PUSH (\d+)\nINC", flags)
 cfold3 = re.compile(r"PUSH16 #(\d+)\nDEC16", flags)
@@ -38,6 +39,12 @@ cfold4 = re.compile(r"PUSH16 #(\d+)\nINC16", flags)
 cfold_sum1 = re.compile(r"PUSH (\d+)\nPUSH (\d+)\nADD", flags)
 cfold_sum2 = re.compile(r"PUSH16 #(\d+)\nPUSH16 #(\d+)\nADD16", flags)
 cfold_sum3 = re.compile(r"POPN (\d+)\nPOPN (\d+)", flags)
+
+# Counters = load + inc/dec + store
+counter1 = re.compile(r"LOAD_LOCAL (\d+)\nINC\nSTORE_LOCAL (\d+)", flags)
+counter2 = re.compile(r"LOAD_LOCAL (\d+)\nDEC\nSTORE_LOCAL (\d+)", flags)
+counter3 = re.compile(r"LOAD_LOCAL16 (\d+)\nINC16\nSTORE_LOCAL16 (\d+)", flags)
+counter4 = re.compile(r"LOAD_LOCAL16 (\d+)\nDEC16\nSTORE_LOCAL16 (\d+)", flags)
 
 
 def remove_comments(code: str) -> str:
@@ -95,6 +102,31 @@ def optimize(code: str) -> str:
             value = int(cfold.group(1)) + int(cfold.group(2))
             code = code.replace(cfold.group(), f"POPN {value}")
             nn += 1
+
+        counter = counter1.search(code)
+        if counter:
+            value1 = int(counter.group(1))
+            value2 = int(counter.group(2))
+            if value1 == value2:
+                code = code.replace(counter.group(), f"MACRO_INC_LOCAL {value1}")
+        counter = counter2.search(code)
+        if counter:
+            value1 = int(counter.group(1))
+            value2 = int(counter.group(2))
+            if value1 == value2:
+                code = code.replace(counter.group(), f"MACRO_DEC_LOCAL {value1}")
+        counter = counter3.search(code)
+        if counter:
+            value1 = int(counter.group(1))
+            value2 = int(counter.group(2))
+            if value1 == value2:
+                code = code.replace(counter.group(), f"MACRO_INC_LOCAL16 {value1}")
+        counter = counter4.search(code)
+        if counter:
+            value1 = int(counter.group(1))
+            value2 = int(counter.group(2))
+            if value1 == value2:
+                code = code.replace(counter.group(), f"MACRO_DEC_LOCAL16 {value1}")
 
         if nn == 0:
             break

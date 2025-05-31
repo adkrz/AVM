@@ -1019,11 +1019,11 @@ class Parser:
         context.append_code(f"CALL @function_{func}")
 
         context.append_code("; stack cleanup")
-        for arg in reversed(signature.args.values()):
+        for name, arg in reversed(signature.args.items()):
             if not arg.by_ref and not arg.struct_def:
-                context.append_code(f"POPN {arg.type.size}")
+                context.append_code(f"POPN {arg.stack_size} ; {name}")
             elif arg.struct_def:
-                context.append_code(f"POPN 2")
+                context.append_code(f"POPN 2 ; {name}")
             else:
                 if arg != return_value:
                     self._gen_load_store_instruction(refs_mapping[arg], False, context)

@@ -74,7 +74,7 @@ LOAD_LOCAL 4 ; sum8
 CALL @function_sum8bit
 ; stack cleanup
 STORE_LOCAL 4 ; sum8
-POPN 1
+POPN 2 ; data
 LOAD_LOCAL 4 ; sum8
 SYSCALL Std.PrintInt
 POP
@@ -157,7 +157,7 @@ LOAD_LOCAL16 7 ; sum16
 CALL @function_sum16bit
 ; stack cleanup
 STORE_LOCAL16 7 ; sum16
-POPN 2
+POPN 2 ; data
 LOAD_LOCAL16 7 ; sum16
 SYSCALL Std.PrintInt16
 POPN 2

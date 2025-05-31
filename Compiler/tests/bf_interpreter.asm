@@ -16,8 +16,7 @@ STORE_LOCAL16 6 ; memory_pointer
 :while1_begin
 LOAD_LOCAL16 6 ; memory_pointer
 PUSH16 #30000
-SWAP16
-LESS_OR_EQ16
+GREATER_OR_EQ16
 JF @while1_endwhile
 LOAD_LOCAL16 2 ; memory
 LOAD_LOCAL16 6 ; memory_pointer

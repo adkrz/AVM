@@ -7,16 +7,14 @@ STORE_LOCAL 0 ; c1
 :while1_begin
 LOAD_LOCAL 0 ; c1
 PUSH 10
-SWAP
-LESS_OR_EQ
+GREATER_OR_EQ
 JF @while1_endwhile
 PUSH 1
 STORE_LOCAL 1 ; c2
 :while2_begin
 LOAD_LOCAL 1 ; c2
 PUSH 10
-SWAP
-LESS_OR_EQ
+GREATER_OR_EQ
 JF @while2_endwhile
 LOAD_LOCAL 0 ; c1
 LOAD_LOCAL 1 ; c2
@@ -48,8 +46,7 @@ STORE_LOCAL 0 ; c1
 :while3_begin
 LOAD_LOCAL 0 ; c1
 PUSH 10
-SWAP
-LESS_OR_EQ
+GREATER_OR_EQ
 JF @while3_endwhile
 LOAD_LOCAL 0 ; c1
 PUSH 3
@@ -76,8 +73,7 @@ STORE_LOCAL 1 ; c2
 :while4_begin
 LOAD_LOCAL 1 ; c2
 PUSH 10
-SWAP
-LESS_OR_EQ
+GREATER_OR_EQ
 JF @while4_endwhile
 LOAD_LOCAL 0 ; c1
 LOAD_LOCAL 1 ; c2

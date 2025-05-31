@@ -25,8 +25,7 @@ EXTEND
 AND16
 STORE_LOCAL16 0 ; a
 LOAD_LOCAL16 0 ; a
-DOWNCAST
-JF @if1_else
+JF16 @if1_else
 PUSH16 @string_1
 SYSCALL Std.PrintString
 JMP @if1_endif

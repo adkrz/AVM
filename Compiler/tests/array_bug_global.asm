@@ -11,16 +11,14 @@ STORE_LOCAL 0
 :while1_begin
 LOAD_LOCAL 0
 PUSH 9
-SWAP
-LESS
+GREATER
 JF @while1_endwhile
 PUSH 0
 STORE_LOCAL 1
 :while2_begin
 LOAD_LOCAL 1
 PUSH 9
-SWAP
-LESS
+GREATER
 JF @while2_endwhile
 LOAD_LOCAL 1
 SYSCALL Std.PrintInt

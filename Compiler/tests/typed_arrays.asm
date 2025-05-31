@@ -48,8 +48,7 @@ STORE_LOCAL 3 ; counter
 :while3_begin
 LOAD_LOCAL 3 ; counter
 PUSH 4
-SWAP
-LESS_OR_EQ
+GREATER_OR_EQ
 JF @while3_endwhile
 LOAD_LOCAL16 0 ; arr
 LOAD_LOCAL 3 ; counter
@@ -130,8 +129,7 @@ STORE_LOCAL 3 ; counter
 :while4_begin
 LOAD_LOCAL 3 ; counter
 PUSH 4
-SWAP
-LESS_OR_EQ
+GREATER_OR_EQ
 JF @while4_endwhile
 LOAD_LOCAL16 5 ; arr2
 LOAD_LOCAL 3 ; counter
@@ -177,8 +175,7 @@ STORE_ARG 1 ; sum
 :while1_begin
 LOAD_LOCAL 0 ; counter
 PUSH 4
-SWAP
-LESS_OR_EQ
+GREATER_OR_EQ
 JF @while1_endwhile
 LOAD_ARG 1 ; sum
 LOAD_ARG16 3 ; data
@@ -207,8 +204,7 @@ STORE_ARG16 2 ; sum
 :while2_begin
 LOAD_LOCAL 0 ; counter
 PUSH 4
-SWAP
-LESS_OR_EQ
+GREATER_OR_EQ
 JF @while2_endwhile
 LOAD_ARG16 2 ; sum
 LOAD_ARG16 4 ; data

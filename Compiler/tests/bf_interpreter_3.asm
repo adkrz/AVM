@@ -56,7 +56,7 @@ PUSH16 #2
 SUB216
 STORE_LOCAL16 11 ; jump_cache
 LOAD_LOCAL16 9 ; strlen
-POP
+DOWNCAST
 PUSH 2
 MUL
 PUSHN2 ; jump_cache alloc

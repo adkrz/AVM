@@ -2,7 +2,7 @@
 PUSHN 2
 PUSH16 #1
 DUP16
-POP
+DOWNCAST
 JT @cond1_expr_end
 PUSH16 #1
 OR

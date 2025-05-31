@@ -216,7 +216,7 @@ I VM::StepProgram()
             carry = signedResult < 0;
             PUSHI(signedResult);
         }
-            break;
+        break;
         case I::SUB16:
             signedResult = POP_ADDR() - POP_ADDR();
             carry = signedResult < 0;
@@ -230,7 +230,7 @@ I VM::StepProgram()
             carry = signedResult < 0;
             PUSHI_ADDR(signedResult);
         }
-            break;
+        break;
         case I::CARRY:
             PUSH(carry ? 1 : 0);
             break;
@@ -239,7 +239,7 @@ I VM::StepProgram()
             tmp = POP();
             if (tmp == 0)
                 throw InterruptException(InterruptCodes::DivisionByZeroError);
-            PUSHI((arg / tmp));            
+            PUSHI((arg / tmp));
             break;
         case I::MOD:
             arg = POP();
@@ -384,6 +384,12 @@ I VM::StepProgram()
         case I::EXTEND:
             PUSH_ADDR(POP());
             break;
+        case I::DOWNCAST:
+        {
+            address = POP_ADDR();
+            PUSH(address <= 255 ? (word)address : 255);
+            break;
+        }
         case I::JMP:
             address = read_addr_from_program(skip);
             WRITE_REGISTER(IP_REGISTER, address);

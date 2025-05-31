@@ -574,7 +574,7 @@ class Parser:
             # TODO: precedence
             if self._accept(Symbol.Or):
                 has_chain = True
-                context.append_code("DUP\nJT" if not context.expect_16bit else "DUP16\nPOP\nJT", newline=False)
+                context.append_code("DUP\nJT" if not context.expect_16bit else "DUP16\nDOWNCAST\nJT", newline=False)
                 context.append_code(f" @cond{self._condition_counter}_expr_end")
                 self._parse_logical(context)
                 context.append_code("OR")
@@ -582,7 +582,7 @@ class Parser:
                     context.append_code("EXTEND")
             elif self._accept(Symbol.And):
                 has_chain = True
-                context.append_code("DUP\nJF" if not context.expect_16bit else "DUP16\nPOP\nJF", newline=False)
+                context.append_code("DUP\nJF" if not context.expect_16bit else "DUP16\nDOWNCAST\nJF", newline=False)
                 context.append_code(f" @cond{self._condition_counter}_expr_end")
                 self._parse_logical(context)
                 context.append_code("AND")
@@ -673,7 +673,7 @@ class Parser:
         self._parse_logical_chain(context)
 
         if downcast:
-            context.append_code("POP")
+            context.append_code("DOWNCAST")
         return context
 
     def _generate_struct_address(self, var: Variable, var_name: str, context: ExprContext) -> Variable:

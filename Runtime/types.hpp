@@ -379,6 +379,12 @@ enum I
     /// </summary>
     EXTEND,
     /// <summary>
+    /// Convert 16 bit value to 8bit.
+	/// In case of overflow, pushes 255 (0xFF) to the stack.
+    /// pop: address16bit, push: val8bit
+    /// </summary>
+    DOWNCAST,
+    /// <summary>
     /// 16bit version of <see cref="I.LOAD_LOCAL"/>
     /// read: offset8bit, push: address16bit
     /// </summary>

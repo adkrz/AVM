@@ -574,7 +574,7 @@ class Parser:
             # TODO: precedence
             if self._accept(Symbol.Or):
                 has_chain = True
-                context.append_code("DUP\nJT" if not context.expect_16bit else "DUP16\nDOWNCAST\nJT", newline=False)
+                context.append_code("DUP\nJT" if not context.expect_16bit else "DUP16\nJT16", newline=False)
                 context.append_code(f" @cond{self._condition_counter}_expr_end")
                 self._parse_logical(context)
                 context.append_code("OR")
@@ -582,7 +582,7 @@ class Parser:
                     context.append_code("EXTEND")
             elif self._accept(Symbol.And):
                 has_chain = True
-                context.append_code("DUP\nJF" if not context.expect_16bit else "DUP16\nDOWNCAST\nJF", newline=False)
+                context.append_code("DUP\nJF" if not context.expect_16bit else "DUP16\nJF16", newline=False)
                 context.append_code(f" @cond{self._condition_counter}_expr_end")
                 self._parse_logical(context)
                 context.append_code("AND")
@@ -836,9 +836,10 @@ class Parser:
             # TODO: optimize unnecessary jumps if IF without ELSE
             no = self._if_counter
             self._if_counter += 1  # increment right away, because we may nest code
-            self._parse_expression_typed(expect_16bit=False)
+            ctx = self._create_ec()
+            self._parse_logical_chain(ctx)
 
-            self._append_code(f"JF @if{no}_else")
+            self._append_code(f"JF @if{no}_else" if not ctx.expr_is16bit else f"JF16 @if{no}_else")
 
             inside_if = True
 
@@ -858,8 +859,9 @@ class Parser:
             no = self._while_counter
             self._while_counter += 1
             self._append_code(f":while{no}_begin")
-            self._parse_expression_typed(expect_16bit=False)
-            self._append_code(f"JF @while{no}_endwhile")
+            ctx = self._create_ec()
+            self._parse_logical_chain(ctx)
+            self._append_code(f"JF @while{no}_endwhile" if not ctx.expr_is16bit else f"JF16 @while{no}_endwhile")
 
             self._expect(Symbol.Do)
 
@@ -874,8 +876,9 @@ class Parser:
             self._append_code(f":while{no}_begin")
             self._parse_statement(inside_loop=no, inside_if=inside_if, inside_function=inside_function)
             self._expect(Symbol.While)
-            self._parse_expression_typed(expect_16bit=False)
-            self._append_code(f"JT @while{no}_begin")
+            ctx = self._create_ec()
+            self._parse_logical_chain(ctx)
+            self._append_code(f"JT @while{no}_begin" if not ctx.expr_is16bit else f"JT16 @while{no}_begin")
             self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.Break):

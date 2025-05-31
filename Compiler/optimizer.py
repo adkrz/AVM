@@ -19,6 +19,7 @@ optimizations = [
     (re.compile(r"PUSH 0\nEQ", flags), "ZERO"),
     (re.compile(r"PUSH16 #0\nEQ16", flags), "ZERO16"),
     (re.compile(r"PUSH_NEXT_SP\nPUSH16 #2\nSUB216", flags), "PUSH_REG 1"),
+    (re.compile(r"EXTEND\nPUSH16 #2\nMUL16\nADD16", flags), "MACRO_POP_EXT_X2_ADD16"),
 ]
 
 cfold1 = re.compile(r"PUSH (\d+)\nDEC", flags)

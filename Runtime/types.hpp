@@ -550,7 +550,21 @@ enum I
     /// <summary>
     /// pop: 2x address16bit, push: address16bit (offset on top of stack)
     /// </summary>
-    RSH16
+    RSH16,
+
+    /// <summary>
+	/// Like JT, but uses 16-bit address instead of 8-bit.
+    /// </summary>
+    JT16,
+	/// <summary>
+	/// Like JF, but uses 16-bit address instead of 8-bit.
+	/// </summary>
+	JF16,
+    /// <summary>
+    /// Macro istruction common in 16-bit arrays:
+	/// Combines: EXTEND, PUSH16#2, MUL16, ADD16
+    /// </summary>
+    MACRO_POP_EXT_X2_ADD16,
 };
 
 enum InterruptCodes

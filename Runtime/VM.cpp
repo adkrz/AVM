@@ -404,6 +404,13 @@ I VM::StepProgram()
             offset = READ_REGISTER(SP_REGISTER) - ADDRESS_SIZE;
             write16(memory, offset, (addr)(read16(memory, offset) + 1));
             break;
+        case I::MACRO_POP_EXT_X2_ADD16:
+        {
+            address = POP() * 2; // extends to addr
+            addr a2 = POP_ADDR();
+            PUSH_ADDR(address + a2);
+        }
+            break;
         case I::DEC16:
             offset = READ_REGISTER(SP_REGISTER) - ADDRESS_SIZE;
             write16(memory, offset, (addr)(read16(memory, offset) - 1));
@@ -435,9 +442,25 @@ I VM::StepProgram()
                 skip = 0;
             }
             break;
+        case I::JF16:
+            address = read_addr_from_program(skip);
+            if (!POP_ADDR())
+            {
+                WRITE_REGISTER(IP_REGISTER, address);
+                skip = 0;
+            }
+            break;
         case I::JT:
             address = read_addr_from_program(skip);
             if (POP())
+            {
+                WRITE_REGISTER(IP_REGISTER, address);
+                skip = 0;
+            }
+            break;
+        case I::JT16:
+            address = read_addr_from_program(skip);
+            if (POP_ADDR())
             {
                 WRITE_REGISTER(IP_REGISTER, address);
                 skip = 0;

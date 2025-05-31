@@ -6,6 +6,6 @@ begin
     return call fibonacci(X - 2) + call fibonacci(X - 1);
 end
 
-
-print call fibonacci(6);
+byte result = call fibonacci(6);
+print result;
 PRINTNL;

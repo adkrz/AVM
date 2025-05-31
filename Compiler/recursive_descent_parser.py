@@ -979,7 +979,7 @@ class Parser:
 
         self._expect(Symbol.LParen)
 
-        self._append_code(";" + func + str(signature))
+        context.append_code(";" + func + str(signature))
 
         refs_mapping = {}
 
@@ -1007,29 +1007,28 @@ class Parser:
 
             else:
                 self._expect(Symbol.Identifier)
-                self._gen_load_store_instruction(self._lex.current_identifier, True, self._create_ec())
+                self._gen_load_store_instruction(self._lex.current_identifier, True, context)
                 refs_mapping[arg] = self._lex.current_identifier
 
         self._expect(Symbol.RParen)
 
         if not inside_expression:
             self._expect(Symbol.Semicolon)
-        self._append_code(f"CALL @function_{func}")
+        context.append_code(f"CALL @function_{func}")
 
-        self._append_code("; stack cleanup")
+        context.append_code("; stack cleanup")
         for arg in reversed(signature.args.values()):
             if not arg.by_ref and not arg.struct_def:
-                self._append_code(f"POPN {arg.type.size}")
+                context.append_code(f"POPN {arg.type.size}")
             elif arg.struct_def:
-                self._append_code(f"POPN 2")
+                context.append_code(f"POPN 2")
             else:
                 if arg != return_value:
-                    self._gen_load_store_instruction(refs_mapping[arg], False, self._create_ec())
+                    self._gen_load_store_instruction(refs_mapping[arg], False, context)
 
         if return_value is not None and not inside_expression:
-            ctx = self._create_ec()
             # do not change POPN1 to POP, optimizer will take care
-            ctx.append_code("POPN 1 ; rv" if not return_value.is_16bit else "POPN 2 ; rv")
+            context.append_code("POPN 1 ; rv" if not return_value.is_16bit else "POPN 2 ; rv")
 
     def _parse_block(self, inside_function=False):
         if self._accept(Symbol.EOF):

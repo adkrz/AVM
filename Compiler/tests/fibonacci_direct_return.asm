@@ -1,9 +1,14 @@
+; Byte result
+PUSHN 1
+PUSH 6
 ;fibonacci(Byte @ret&, Byte X)
 PUSHN 1 ; rv
 PUSH 6
 CALL @function_fibonacci
 ; stack cleanup
 POPN 1
+STORE_LOCAL 0 ; result
+LOAD_LOCAL 0 ; result
 SYSCALL Std.PrintInt
 POP
 SYSCALL Std.PrintNewLine

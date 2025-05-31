@@ -121,9 +121,12 @@ void VM::RunProgram()
 void VM::ProfileProgram()
 {
     std::map<I, long> counters;
+	addr max_sp = 0;
     while (true)
     {
         auto lastInstr = StepProgram();
+        if (READ_REGISTER(SP_REGISTER) > max_sp)
+			max_sp = READ_REGISTER(SP_REGISTER);
         if (counters.count(lastInstr))
             counters[lastInstr]++;
         else
@@ -142,6 +145,7 @@ void VM::ProfileProgram()
     {
         std::cout << magic_enum::enum_name(instr) << ": " << count << std::endl;
     }
+	std::cout << "Max stack pointer: " << max_sp << std::endl;
 }
 
 I VM::StepProgram()

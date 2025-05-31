@@ -309,6 +309,10 @@ I VM::StepProgram()
             sp_value = READ_REGISTER(SP_REGISTER);
             memory[sp_value - 1] = (word)(memory[sp_value - 1] == 0 ? 1 : 0);
             break;
+        case I::NZERO:
+            sp_value = READ_REGISTER(SP_REGISTER);
+            memory[sp_value - 1] = (word)(memory[sp_value - 1] != 0 ? 1 : 0);
+            break;
 
         case I::EQ16:
             PUSHI(POP_ADDR() == POP_ADDR() ? 1 : 0);
@@ -321,6 +325,9 @@ I VM::StepProgram()
             break;
         case I::ZERO16:
             PUSHI(POP_ADDR() == 0 ? 1 : 0);
+            break;
+        case I::NZERO16:
+            PUSHI(POP_ADDR() != 0 ? 1 : 0);
             break;
 
         case I::AND:
@@ -403,13 +410,6 @@ I VM::StepProgram()
         case I::INC16:
             offset = READ_REGISTER(SP_REGISTER) - ADDRESS_SIZE;
             write16(memory, offset, (addr)(read16(memory, offset) + 1));
-            break;
-        case I::MACRO_POP_EXT_X2_ADD16:
-        {
-            address = POP() * 2; // extends to addr
-            addr a2 = POP_ADDR();
-            PUSH_ADDR(address + a2);
-        }
             break;
         case I::DEC16:
             offset = READ_REGISTER(SP_REGISTER) - ADDRESS_SIZE;
@@ -699,6 +699,20 @@ I VM::StepProgram()
                 nvram.close();
             }
             return instr;
+        case I::MACRO_POP_EXT_X2_ADD16:
+        {
+            address = POP() * 2; // extends to addr
+            addr a2 = POP_ADDR();
+            PUSH_ADDR(address + a2);
+        }
+        break;
+        case I::MACRO_ADD8_TO_16:
+        {
+            address = POP(); // extends to addr
+            addr a2 = POP_ADDR();
+            PUSH_ADDR(address + a2);
+        }
+        break;
         default:
             throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));
         }

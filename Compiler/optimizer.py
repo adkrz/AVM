@@ -17,9 +17,11 @@ optimizations = [
     (re.compile(r"PUSH16 #\d+\nPUSH16 #0\nMUL16\nADD16\n", flags), ""),
     (re.compile(r"PUSH #\d+\nPUSH #0\nMUL\nADD\n", flags), ""),
     (re.compile(r"PUSH 0\nEQ", flags), "ZERO"),
+    (re.compile(r"PUSH 0\nNE", flags), "NZERO"),
     (re.compile(r"PUSH16 #0\nEQ16", flags), "ZERO16"),
     (re.compile(r"PUSH_NEXT_SP\nPUSH16 #2\nSUB216", flags), "PUSH_REG 1"),
     (re.compile(r"EXTEND\nPUSH16 #2\nMUL16\nADD16", flags), "MACRO_POP_EXT_X2_ADD16"),
+    (re.compile(r"EXTEND\nADD16", flags), "MACRO_ADD8_TO_16"),
 ]
 
 cfold1 = re.compile(r"PUSH (\d+)\nDEC", flags)

@@ -171,6 +171,11 @@ enum I
     /// pop: val8bit, push: val8bit 0 or 1
     /// </summary>
     ZERO,
+    /// <summary>
+    /// Checks if value is non zero
+    /// pop: val8bit, push: val8bit 0 or 1
+    /// </summary>
+    NZERO,
 
     // Control flow
 
@@ -420,6 +425,11 @@ enum I
     /// </summary>
     ZERO16,
     /// <summary>
+    /// 16bit version of <see cref="I.NZERO"/>. Note: result is 1 byte.
+    /// pop: address16bit, push: val8bit
+    /// </summary>
+    NZERO16,
+    /// <summary>
     /// 16bit version of <see cref="I.EQ"/>. Note: result is 1 byte.
     /// pop: 2x address16bit, push: val8bit
     /// </summary>
@@ -565,6 +575,10 @@ enum I
 	/// Combines: EXTEND, PUSH16#2, MUL16, ADD16
     /// </summary>
     MACRO_POP_EXT_X2_ADD16,
+    /// <summary>
+    /// Combines EXTEND, ADD16
+    /// </summary>
+    MACRO_ADD8_TO_16,
 };
 
 enum InterruptCodes

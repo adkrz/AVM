@@ -613,7 +613,15 @@ enum I
     /// <summary>
     /// Combines EXTEND, LSH16
     /// </summary>
-    MACRO_LSH16_BY8
+    MACRO_LSH16_BY8,
+    /// <summary>
+    /// Combines PUSH2, MUL
+    /// </summary>
+    MACRO_X2,
+    /// <summary>
+    /// Combines PUSH16 #2, MUL16
+    /// </summary>
+    MACRO_X216,
 };
 
 enum InterruptCodes

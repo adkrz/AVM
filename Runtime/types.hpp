@@ -602,6 +602,18 @@ enum I
     /// Combines EXTEND, ADD16
     /// </summary>
     MACRO_ADD8_TO_16,
+    /// <summary>
+    /// Combines AND, EXTEND
+    /// </summary>
+    MACRO_ANDX,
+    /// <summary>
+    /// Combines OR, EXTEND
+    /// </summary>
+    MACRO_ORX,
+    /// <summary>
+    /// Combines EXTEND, LSH16
+    /// </summary>
+    MACRO_LSH16_BY8
 };
 
 enum InterruptCodes

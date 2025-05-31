@@ -732,6 +732,20 @@ I VM::StepProgram()
             PUSH_ADDR(address + a2);
         }
         break;
+        case I::MACRO_ANDX:
+            PUSH_ADDR(POP() & POP());
+            break;
+        case I::MACRO_ORX:
+            PUSH_ADDR(POP() | POP());
+            break;
+        case I::MACRO_LSH16_BY8:
+        {
+            auto tmp1 = POP();
+            auto tmp2 = POP_ADDR();
+            signedResult = tmp2 << tmp1;
+            PUSHI_ADDR(signedResult);
+            break;
+        }
         default:
             throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));
         }

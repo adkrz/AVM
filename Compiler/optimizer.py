@@ -25,6 +25,8 @@ optimizations = [
     (re.compile(r"AND\nEXTEND", flags), "MACRO_ANDX"),
     (re.compile(r"OR\nEXTEND", flags), "MACRO_ORX"),
     (re.compile(r"EXTEND\nLSH16", flags), "MACRO_LSH16_BY8"),
+    (re.compile(r"PUSH 2\nMUL", flags), "MACRO_X2"),
+    (re.compile(r"PUSH16 #2\nMUL16", flags), "MACRO_X216"),
 ]
 
 cfold1 = re.compile(r"PUSH (\d+)\nDEC", flags)

@@ -235,6 +235,18 @@ I VM::StepProgram()
             carry = signedResult > 35535;
             PUSHI_ADDR(signedResult);
             break;
+        case I::ADDC:
+            address = read_next_program_byte(skip);
+            signedResult = POP() + address;
+            carry = signedResult > 255;
+            PUSHI(signedResult);
+            break;
+        case I::MULC:
+            address = read_next_program_byte(skip);
+            signedResult = POP() * address;
+            carry = signedResult > 255;
+            PUSHI(signedResult);
+            break;
         case I::SUB:
             signedResult = POP() - POP();
             carry = signedResult < 0;
@@ -749,16 +761,6 @@ I VM::StepProgram()
             auto tmp2 = POP_ADDR();
             signedResult = tmp2 << tmp1;
             PUSHI_ADDR(signedResult);
-            break;
-        }
-        case I::MACRO_X2:
-        {
-            PUSH(POP() * 2);
-            break;
-        }
-        case I::MACRO_X216:
-        {
-            PUSH_ADDR(POP_ADDR() * 2);
             break;
         }
         case I::MACRO_INC_LOCAL:

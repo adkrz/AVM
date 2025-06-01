@@ -27,8 +27,6 @@ optimizations = [
     (re.compile(r"AND\nEXTEND", flags), "MACRO_ANDX"),
     (re.compile(r"OR\nEXTEND", flags), "MACRO_ORX"),
     (re.compile(r"EXTEND\nLSH16", flags), "MACRO_LSH16_BY8"),
-    (re.compile(r"PUSH 2\nMUL", flags), "MACRO_X2"),
-    (re.compile(r"PUSH16 #2\nMUL16", flags), "MACRO_X216"),
 ]
 
 # Constant folding
@@ -38,7 +36,13 @@ cfold3 = re.compile(r"PUSH16 #(\d+)\nDEC16", flags)
 cfold4 = re.compile(r"PUSH16 #(\d+)\nINC16", flags)
 cfold_sum1 = re.compile(r"PUSH (\d+)\nPUSH (\d+)\nADD", flags)
 cfold_sum2 = re.compile(r"PUSH16 #(\d+)\nPUSH16 #(\d+)\nADD16", flags)
+cfold_mul1 = re.compile(r"PUSH (\d+)\nPUSH (\d+)\nMUL", flags)
+cfold_mul2 = re.compile(r"PUSH16 #(\d+)\nPUSH16 #(\d+)\nMUL16", flags)
 cfold_sum3 = re.compile(r"POPN (\d+)\nPOPN (\d+)", flags)
+cfold_addc1 = re.compile(r"PUSH (\d+)\nADD\n", flags)
+cfold_addc2 = re.compile(r"PUSH16 #(\d+)\nADD16\n", flags)
+cfold_mulc1 = re.compile(r"PUSH (\d+)\nMUL\n", flags)
+cfold_mulc2 = re.compile(r"PUSH16 #(\d+)\nMUL16\n", flags)
 
 # Counters = load + inc/dec + store
 counter1 = re.compile(r"LOAD_LOCAL (\d+)\nINC\nSTORE_LOCAL (\d+)", flags)
@@ -97,10 +101,40 @@ def optimize(code: str) -> str:
             value = int(cfold.group(1)) + int(cfold.group(2))
             code = code.replace(cfold.group(), f"PUSH16 #{value}")
             nn += 1
+        cfold = cfold_mul1.search(code)
+        if cfold:
+            value = int(cfold.group(1)) * int(cfold.group(2))
+            code = code.replace(cfold.group(), f"PUSH {value}")
+            nn += 1
+        cfold = cfold_mul2.search(code)
+        if cfold:
+            value = int(cfold.group(1)) * int(cfold.group(2))
+            code = code.replace(cfold.group(), f"PUSH16 #{value}")
+            nn += 1
         cfold = cfold_sum3.search(code)
         if cfold:
             value = int(cfold.group(1)) + int(cfold.group(2))
             code = code.replace(cfold.group(), f"POPN {value}")
+            nn += 1
+        cfold = cfold_addc1.search(code)
+        if cfold:
+            value = int(cfold.group(1))
+            code = code.replace(cfold.group(), f"ADDC {value}\n")
+            nn += 1
+        cfold = cfold_addc2.search(code)
+        if cfold:
+            value = int(cfold.group(1))
+            code = code.replace(cfold.group(), f"ADD16C #{value}\n")
+            nn += 1
+        cfold = cfold_mulc1.search(code)
+        if cfold:
+            value = int(cfold.group(1))
+            code = code.replace(cfold.group(), f"MULC {value}\n")
+            nn += 1
+        cfold = cfold_mulc2.search(code)
+        if cfold:
+            value = int(cfold.group(1))
+            code = code.replace(cfold.group(), f"MUL16C #{value}\n")
             nn += 1
 
         counter = counter1.search(code)

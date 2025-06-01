@@ -68,6 +68,11 @@ enum I
     /// </summary>
     ADD,
     /// <summary>
+    /// Adds constant value from program to the value on the stack.
+    /// read val8bit, pop val8bit, push: val8bit
+    /// </summary>
+    ADDC,
+    /// <summary>
     /// Subtraction: value on top - next value
     /// pop: 2x val8bit, push: val8bit
     /// </summary>
@@ -81,6 +86,11 @@ enum I
     /// pop: 2x val8bit, push: val8bit
     /// </summary>
     MUL,
+    /// <summary>
+    /// Multiplies by constant value from program to the value on the stack.
+    /// read val8bit, pop val8bit, push: val8bit
+    /// </summary>
+    MULC,
     /// <summary>
     /// Raises <see cref="InterruptCodes.DivisionByZeroError"/>
     /// pop: 2x val8bit, push: val8bit
@@ -614,14 +624,6 @@ enum I
     /// Combines EXTEND, LSH16
     /// </summary>
     MACRO_LSH16_BY8,
-    /// <summary>
-    /// Combines PUSH2, MUL
-    /// </summary>
-    MACRO_X2,
-    /// <summary>
-    /// Combines PUSH16 #2, MUL16
-    /// </summary>
-    MACRO_X216,
     /// <summary>
 	/// Combines LOAD_LOCAL X, INC, STORE_LOCAL X
     /// </summary>

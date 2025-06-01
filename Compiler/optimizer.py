@@ -43,6 +43,10 @@ cfold_addc1 = re.compile(r"PUSH (\d+)\nADD\n", flags)
 cfold_addc2 = re.compile(r"PUSH16 #(\d+)\nADD16\n", flags)
 cfold_mulc1 = re.compile(r"PUSH (\d+)\nMUL\n", flags)
 cfold_mulc2 = re.compile(r"PUSH16 #(\d+)\nMUL16\n", flags)
+cfold_push_addc1 = re.compile(r"PUSH (\d+)\nADDC (\d+)\n", flags)
+cfold_push_addc2 = re.compile(r"PUSH16 #(\d+)\nADD16C #(\d+)\n", flags)
+cfold_push_mulc1 = re.compile(r"PUSH (\d+)\nMULC (\d+)\n", flags)
+cfold_push_mulc2 = re.compile(r"PUSH16 #(\d+)\nMUL16C #(\d+)\n", flags)
 
 # Counters = load + inc/dec + store
 counter1 = re.compile(r"LOAD_LOCAL (\d+)\nINC\nSTORE_LOCAL (\d+)", flags)
@@ -135,6 +139,26 @@ def optimize(code: str) -> str:
         if cfold:
             value = int(cfold.group(1))
             code = code.replace(cfold.group(), f"MUL16C #{value}\n")
+            nn += 1
+        cfold = cfold_push_addc1.search(code)
+        if cfold:
+            value = int(cfold.group(1)) + int(cfold.group(2))
+            code = code.replace(cfold.group(), f"PUSH {value}\n")
+            nn += 1
+        cfold = cfold_push_addc2.search(code)
+        if cfold:
+            value = int(cfold.group(1)) + int(cfold.group(2))
+            code = code.replace(cfold.group(), f"PUSH16 #{value}\n")
+            nn += 1
+        cfold = cfold_push_mulc1.search(code)
+        if cfold:
+            value = int(cfold.group(1)) * int(cfold.group(2))
+            code = code.replace(cfold.group(), f"PUSH {value}\n")
+            nn += 1
+        cfold = cfold_push_mulc2.search(code)
+        if cfold:
+            value = int(cfold.group(1)) * int(cfold.group(2))
+            code = code.replace(cfold.group(), f"PUSH16 #{value}\n")
             nn += 1
 
         counter = counter1.search(code)

@@ -61,22 +61,22 @@ void VM::LoadProgram(word* program, int program_length, int memory_size, const c
 }
 
 
-offs VM::readoffs(word* list, int pos) { return list[pos + 1] * 256 + list[pos]; }
+inline offs VM::readoffs(word* list, int pos) { return list[pos + 1] * 256 + list[pos]; }
 
 
-void VM::PUSH(word arg) { memory[registers[SP_REGISTER]] = arg; ADD_TO_REGISTER(SP_REGISTER, 1);}
+inline void VM::PUSH(word arg) { memory[registers[SP_REGISTER]] = arg; ADD_TO_REGISTER(SP_REGISTER, 1);}
 
-void VM::PUSH_ADDR(addr arg) {write16(memory, registers[SP_REGISTER], arg); ADD_TO_REGISTER(SP_REGISTER, ADDRESS_SIZE);}
+inline void VM::PUSH_ADDR(addr arg) {write16(memory, registers[SP_REGISTER], arg); ADD_TO_REGISTER(SP_REGISTER, ADDRESS_SIZE);}
 
-void VM::PUSHI(int arg) { PUSH((word)arg); }
+inline void VM::PUSHI(int arg) { PUSH((word)arg); }
 
-void VM::PUSHI_ADDR(int arg) { PUSH_ADDR((addr)arg); };
+inline void VM::PUSHI_ADDR(int arg) { PUSH_ADDR((addr)arg); };
 
-word VM::POP() { auto v = memory[registers[SP_REGISTER] - 1]; ADD_TO_REGISTER(SP_REGISTER, -1); return v; }
+inline word VM::POP() { auto v = memory[registers[SP_REGISTER] - 1]; ADD_TO_REGISTER(SP_REGISTER, -1); return v; }
 
-addr VM::POP_ADDR() { auto v = read16(memory, registers[SP_REGISTER] - ADDRESS_SIZE); ADD_TO_REGISTER(SP_REGISTER, -ADDRESS_SIZE); return v; }
+inline addr VM::POP_ADDR() { auto v = read16(memory, registers[SP_REGISTER] - ADDRESS_SIZE); ADD_TO_REGISTER(SP_REGISTER, -ADDRESS_SIZE); return v; }
 
-word VM::read_next_program_byte(word& skip, int offset)
+inline word VM::read_next_program_byte(word& skip, int offset)
 {
     auto instr = READ_REGISTER(IP_REGISTER);
     auto targ = memory[instr + offset];
@@ -84,7 +84,7 @@ word VM::read_next_program_byte(word& skip, int offset)
     return targ;
 }
 
-addr VM::read_addr_from_program(word& skip, int offset)
+inline addr VM::read_addr_from_program(word& skip, int offset)
 {
     auto instr = READ_REGISTER(IP_REGISTER);
     auto targ = read16(memory, instr + offset);
@@ -92,7 +92,7 @@ addr VM::read_addr_from_program(word& skip, int offset)
     return targ;
 }
 
-offs VM::read_offs_from_program(word& skip, int offset)
+inline offs VM::read_offs_from_program(word& skip, int offset)
 {
     auto instr = READ_REGISTER(IP_REGISTER);
     auto targ = readoffs(memory, instr + offset);
@@ -100,7 +100,7 @@ offs VM::read_offs_from_program(word& skip, int offset)
     return targ;
 }
 
-void VM::CALL(addr address, int offset)
+inline void VM::CALL(addr address, int offset)
 {
     PUSHI_ADDR((READ_REGISTER(IP_REGISTER) + offset));
     PUSH_ADDR(READ_REGISTER(FP_REGISTER));

@@ -14,6 +14,7 @@
     #include <termios.h>
     #include <unistd.h>
     #include <sys/ioctl.h>
+#undef NZERO // avoid conflict with <sys/ioctl.h>
 #endif
 
 VM::VM() : memory(nullptr), registers{ 0, 0, 0 }, mt(rd())

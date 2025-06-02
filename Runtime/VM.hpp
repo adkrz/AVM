@@ -45,7 +45,6 @@ private:
 
     
     //int max_sp = 0;
-    unsigned long long xic = 0;
     std::map<InterruptCodes, addr> handlers;
 
     static inline offs readoffs(word* list, int pos);

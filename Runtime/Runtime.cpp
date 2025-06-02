@@ -14,7 +14,10 @@ int main(int argc, char** argv)
         std::cout << "Arguments: program_file.(asm|avm) -c [-r]\n"
             << "Option -c compiles the ASM to AVM file\n"
             << "Option -r runs the file in addition to compilation\n"
-            << "Option -p runs the profiler\n";
+#ifdef WITH_PROFILER
+            << "Option -p runs the profiler\n"
+#endif
+        ;
         return 1;
     }
 
@@ -45,8 +48,10 @@ int main(int argc, char** argv)
                 compile = true;
             else if (std::string(argv[i]) == "-r")
                 run = true;
+#ifdef WITH_PROFILER
             else if (std::string(argv[i]) == "-p")
                 profile = true;
+#endif
         }
     }
     else if (ext == ".avm")

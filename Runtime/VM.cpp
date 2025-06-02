@@ -136,13 +136,16 @@ void VM::RunProgram(bool profile)
     word tmp;
     int signedResult;
 
+#ifdef WITH_PROFILER
+
     std::map<I, long> counters;
     addr max_sp = 0;
+#endif
 
     while (true)
     {
         instr = (I)memory[READ_REGISTER(IP_REGISTER)];
-
+#ifdef WITH_PROFILER
         if (profile)
         {
             if (READ_REGISTER(SP_REGISTER) > max_sp)
@@ -152,6 +155,7 @@ void VM::RunProgram(bool profile)
             else
                 counters[instr] = 1;
         }
+#endif
 
         skip = WORD_SIZE;
 
@@ -729,7 +733,11 @@ void VM::RunProgram(bool profile)
             {
                 nvram.close();
             }
+#ifdef WITH_PROFILER
             goto end;
+#else
+			return; // end of program
+#endif
         case I::MACRO_POP_EXT_X2_ADD16:
         {
             address = POP() * 2; // extends to addr
@@ -781,8 +789,10 @@ void VM::RunProgram(bool profile)
         ADD_TO_REGISTER(IP_REGISTER, skip);
     }
 
-    end:
+    
 
+#ifdef WITH_PROFILER
+    end :
     if (profile)
     {
         // Sort counters by value (descending)
@@ -797,6 +807,7 @@ void VM::RunProgram(bool profile)
         }
         std::cout << "Max stack pointer: " << max_sp << std::endl;
     }
+#endif
 }
 
 void VM::WriteStringToMemory(const std::string& str, int addr, int maxLen)

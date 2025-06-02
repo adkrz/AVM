@@ -62,7 +62,7 @@ private:
     
     inline void CALL(addr address, int offset = 0);
     
-    void STDLIB(int callNumber);
+    InterruptCodes STDLIB(int callNumber); // returns error in case of problem, or 0
     void Free();
     void WriteStringToMemory(const std::string& str, int addr, int maxLen);
     std::string ReadStringFromMemory(int addr);
@@ -78,9 +78,3 @@ private:
 #endif
 };
 
-class InterruptException : public std::exception
-{
-public:
-    InterruptException(InterruptCodes code);
-    InterruptCodes Code;
-};

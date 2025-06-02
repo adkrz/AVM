@@ -644,6 +644,7 @@ enum I
 
 enum InterruptCodes
 {
+    NoError,
     DivisionByZeroError,
     ParseError
 };

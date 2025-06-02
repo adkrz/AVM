@@ -38,9 +38,9 @@ VM::~VM()
 #define WRITE_REGISTER(r, value) registers[r] = value
 #define ADD_TO_REGISTER(r, value) registers[r] += value
 
-#define HANDLE_EXCEPTION(ex) if (handlers.count(ex.Code))\
+#define HANDLE_EXCEPTION(code) if (handlers.count(code))\
 {\
-    CALL(handlers[ex.Code], -ADDRESS_SIZE);\
+    CALL(handlers[code], -ADDRESS_SIZE);\
     skip = 0;\
 }\
 else\
@@ -49,7 +49,7 @@ else\
     {\
         nvram.close();\
     }\
-    std::cerr << "Program interrupted: " << ex.Code;\
+    std::cerr << "Program interrupted: " << code;\
     return;\
 }
 
@@ -274,28 +274,28 @@ void VM::RunProgram(bool profile)
             arg = POP();
             tmp = POP();
             if (tmp == 0)
-                HANDLE_EXCEPTION(InterruptException(InterruptCodes::DivisionByZeroError));
+                HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
             PUSHI(arg / tmp);
             break;
         case I::DIV2:
             arg = POP();
             tmp = POP();
             if (arg == 0)
-                HANDLE_EXCEPTION(InterruptException(InterruptCodes::DivisionByZeroError));
+                HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
             PUSHI(tmp / arg);
             break;
         case I::MOD:
             arg = POP();
             tmp = POP();
             if (tmp == 0)
-                HANDLE_EXCEPTION(InterruptException(InterruptCodes::DivisionByZeroError));
+                HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
             PUSHI((arg % tmp));
             break;
         case I::MOD16:
             address = POP_ADDR();
             val = POP_ADDR();
             if (val == 0)
-                HANDLE_EXCEPTION(InterruptException(InterruptCodes::DivisionByZeroError));
+                HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
             PUSHI_ADDR(address % val);
             break;
         case I::MUL:
@@ -718,13 +718,10 @@ void VM::RunProgram(bool profile)
         case I::SYSCALL:
         case I::SYSCALL2:
             arg = instr == I::SYSCALL ? read_next_program_byte(skip) : POP();
-            try
             {
-                STDLIB(arg);
-            }
-            catch (const InterruptException& ex)
-            {
-                HANDLE_EXCEPTION(ex);
+                auto result = STDLIB(arg);
+                if (result != InterruptCodes::NoError)
+                    HANDLE_EXCEPTION(result);
             }
             break;
         case I::HALT:
@@ -823,7 +820,7 @@ std::string VM::ReadStringFromMemory(int addr)
     return std::string(reinterpret_cast<const char*>(memory + addr));
 }
 
-void VM::STDLIB(int callNumber)
+InterruptCodes VM::STDLIB(int callNumber)
 {
     word arg, maxLen, len, arg2;
     addr address, srcAddress, targetAddress;
@@ -923,7 +920,7 @@ void VM::STDLIB(int callNumber)
         }
         catch (...)
         {
-            throw InterruptException(InterruptCodes::ParseError);
+            return InterruptCodes::ParseError;
         }
         break;
     case Stdlib::IntToString:
@@ -1003,6 +1000,8 @@ void VM::STDLIB(int callNumber)
     default:
         throw std::runtime_error("Syscall not implemented: " + std::to_string(callNumber));
     }
+
+    return InterruptCodes::NoError;
 }
 
 void VM::Free()
@@ -1070,9 +1069,6 @@ void VM::disableEcho()
     tcsetattr(0, TCSANOW, &term2);
 }
 #endif
-
-InterruptException::InterruptException(InterruptCodes code) : Code(code)
-{}
 
 /*
 *     Black,

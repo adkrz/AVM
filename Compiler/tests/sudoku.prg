@@ -45,12 +45,11 @@ function print_sudoku(byte matrix[]) begin
     end
 end
 
-function sudokuSolverRec(byte mat[], byte i, byte j, addr row[], addr col[], addr box[], byte ret&)
+function sudokuSolverRec(byte mat[], byte i, byte j, addr row[], addr col[], addr box[]) -> byte
 begin
     // base case: Reached nth column of last row
     if i == size-1 && j == size then begin
-    ret = 1;
-    return;
+    return 1;
     end
 
     // If reached last column of the row go to next row
@@ -64,9 +63,7 @@ begin
     // If cell is already occupied then move forward
     byte index = i * size + j;
     if mat[index] != 0 then begin
-        call sudokuSolverRec(mat, i, j + 1, row, col, box, ok);
-        ret = ok;
-        return;
+        return call sudokuSolverRec(mat, i, j + 1, row, col, box);
     end
 
     byte num = 1;
@@ -87,11 +84,8 @@ begin
             col[j] = col[j] | val;
             box[box_index] = box[box_index] | val;
 
-            call sudokuSolverRec(mat, i, j+1, row, col, box, ok);
-            if ok then begin
-                ret = ok;
-                return;
-            end
+            ok = call sudokuSolverRec(mat, i, j+1, row, col, box);
+            if ok then return 1;
 
             //Unmask the number num in the corresponding row, column and box masks
             mat[index] = 0;
@@ -103,7 +97,7 @@ begin
         num = num + 1;
     end
 
-    ret = 0;
+    return 0;
 end
 
 // Set the bit masks:
@@ -124,7 +118,6 @@ while r < size do begin
     r = r + 1;
 end
 
-byte ok;
-call sudokuSolverRec(mat, 0, 0, row, col, box, ok);
+call sudokuSolverRec(mat, 0, 0, row, col, box);
 
 call print_sudoku(mat);

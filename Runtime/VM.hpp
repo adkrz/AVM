@@ -16,9 +16,7 @@ class VM
 public:
     VM();
 	void LoadProgram(word* program, int program_length, int memory_size, const char* nvram_file = "nvr.bin");
-	void RunProgram();
-    void ProfileProgram();
-    I StepProgram();
+	void RunProgram(bool profile=false);
     virtual ~VM();
 
     static const int PROGRAM_BEGIN = 0; // place where the program starts in memory

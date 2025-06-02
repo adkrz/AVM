@@ -50,7 +50,7 @@ else\
         nvram.close();\
     }\
     std::cerr << "Program interrupted: " << ex.Code;\
-    return I::HALT;\
+    return;\
 }
 
 void VM::LoadProgram(word* program, int program_length, int memory_size, const char* nvr_file)
@@ -123,47 +123,7 @@ inline void VM::CALL(addr address, int offset)
     WRITE_REGISTER(FP_REGISTER, READ_REGISTER(SP_REGISTER));
 }
 
-void VM::RunProgram()
-{
-    while (true)
-    {
-        auto lastInstr = StepProgram();
-        if (lastInstr == I::HALT)
-            break;
-    }
-}
-
-void VM::ProfileProgram()
-{
-    std::map<I, long> counters;
-	addr max_sp = 0;
-    while (true)
-    {
-        auto lastInstr = StepProgram();
-        if (READ_REGISTER(SP_REGISTER) > max_sp)
-			max_sp = READ_REGISTER(SP_REGISTER);
-        if (counters.count(lastInstr))
-            counters[lastInstr]++;
-        else
-            counters[lastInstr] = 1;
-        if (lastInstr == I::HALT)
-            break;
-    }
-
-    // Sort counters by value (descending)
-    std::vector<std::pair<I, long>> sortedCounters(counters.begin(), counters.end());
-    std::sort(sortedCounters.begin(), sortedCounters.end(),
-        [](const auto& a, const auto& b) { return a.second > b.second; });
-
-    // Print sorted counters
-    for (const auto& [instr, count] : sortedCounters)
-    {
-        std::cout << magic_enum::enum_name(instr) << ": " << count << std::endl;
-    }
-	std::cout << "Max stack pointer: " << max_sp << std::endl;
-}
-
-I VM::StepProgram()
+void VM::RunProgram(bool profile)
 {
     word skip;
     I instr;
@@ -176,635 +136,667 @@ I VM::StepProgram()
     word tmp;
     int signedResult;
 
-    instr = (I)memory[READ_REGISTER(IP_REGISTER)];
-    skip = WORD_SIZE;
+    std::map<I, long> counters;
+    addr max_sp = 0;
 
-    switch (instr)
+    while (true)
     {
-    case I::PUSH:
-        arg = read_next_program_byte(skip);
-        PUSH(arg);
-        break;
-    case I::PUSH16:
-        address = read_addr_from_program(skip);
-        PUSH_ADDR(address);
-        break;
-    case I::PUSH16_REL:
-        offset = read_offs_from_program(skip);
-        address = (addr)(READ_REGISTER(IP_REGISTER) + offset);
-        PUSH_ADDR(address);
-        break;
-    case I::PUSHN:
-        arg = read_next_program_byte(skip);
-        ADD_TO_REGISTER(SP_REGISTER, arg);
-        sp_value = READ_REGISTER(SP_REGISTER);
-        //if (sp_value > max_sp) max_sp = sp_value;
-        break;
-    case I::PUSHN2:
-        ADD_TO_REGISTER(SP_REGISTER, POP());
-        sp_value = READ_REGISTER(SP_REGISTER);
-        //if (sp_value > max_sp) max_sp = sp_value;
-        break;
-    case I::PUSH_NEXT_SP:
-        sp_value = READ_REGISTER(SP_REGISTER);
-        PUSHI_ADDR(sp_value + ADDRESS_SIZE);
-        break;
-    case I::PUSH_STACK_START:
-        PUSH_ADDR(stackStartPos);
-        break;
-        break;
-    case I::POP:
-        POP();
-        break;
-    case I::POPN:
-        arg = read_next_program_byte(skip);
-        ADD_TO_REGISTER(SP_REGISTER, -arg);
-        break;
-    case I::POPN2:
-        ADD_TO_REGISTER(SP_REGISTER, -POP());
-        break;
-    case I::PUSH_REG:
-        arg = read_next_program_byte(skip);
-        PUSHI_ADDR(READ_REGISTER(arg));
-        break;
-    case I::POP_REG:
-        arg = read_next_program_byte(skip);
-        WRITE_REGISTER(arg, POP_ADDR());
-        break;
-    case I::ADD:
-        signedResult = POP() + POP();
-        carry = signedResult > 255;
-        PUSHI(signedResult);
-        break;
-    case I::ADD16:
-        signedResult = POP_ADDR() + POP_ADDR();
-        carry = signedResult > 65535;
-        PUSHI_ADDR(signedResult);
-        break;
-    case I::ADD16C:
-        address = read_addr_from_program(skip);
-        signedResult = POP_ADDR() + address;
-        carry = signedResult > 35535;
-        PUSHI_ADDR(signedResult);
-        break;
-    case I::ADDC:
-        address = read_next_program_byte(skip);
-        signedResult = POP() + address;
-        carry = signedResult > 255;
-        PUSHI(signedResult);
-        break;
-    case I::MULC:
-        address = read_next_program_byte(skip);
-        signedResult = POP() * address;
-        carry = signedResult > 255;
-        PUSHI(signedResult);
-        break;
-    case I::SUB:
-        signedResult = POP() - POP();
-        carry = signedResult < 0;
-        PUSHI(signedResult);
-        break;
-    case I::SUB2:
-    {
-        auto tmp1 = POP();
-        auto tmp2 = POP();
-        signedResult = tmp2 - tmp1;
-        carry = signedResult < 0;
-        PUSHI(signedResult);
-    }
-    break;
-    case I::SUB16:
-        signedResult = POP_ADDR() - POP_ADDR();
-        carry = signedResult < 0;
-        PUSHI_ADDR(signedResult);
-        break;
-    case I::SUB216:
-    {
-        auto tmp1 = POP_ADDR();
-        auto tmp2 = POP_ADDR();
-        signedResult = tmp2 - tmp1;
-        carry = signedResult < 0;
-        PUSHI_ADDR(signedResult);
-    }
-    break;
-    case I::CARRY:
-        PUSH(carry ? 1 : 0);
-        break;
-    case I::DIV:
-        arg = POP();
-        tmp = POP();
-        if (tmp == 0)
-			HANDLE_EXCEPTION(InterruptException(InterruptCodes::DivisionByZeroError));
-        PUSHI(arg / tmp);
-        break;
-    case I::DIV2:
-        arg = POP();
-        tmp = POP();
-        if (arg == 0)
-            HANDLE_EXCEPTION(InterruptException(InterruptCodes::DivisionByZeroError));
-        PUSHI(tmp / arg);
-        break;
-    case I::MOD:
-        arg = POP();
-        tmp = POP();
-        if (tmp == 0)
-            HANDLE_EXCEPTION(InterruptException(InterruptCodes::DivisionByZeroError));
-        PUSHI((arg % tmp));
-        break;
-    case I::MOD16:
-        address = POP_ADDR();
-        val = POP_ADDR();
-        if (val == 0)
-            HANDLE_EXCEPTION(InterruptException(InterruptCodes::DivisionByZeroError));
-        PUSHI_ADDR(address % val);
-        break;
-    case I::MUL:
-        PUSHI((POP() * POP()));
-        break;
-    case I::MUL16:
-        PUSHI_ADDR((POP_ADDR() * POP_ADDR()));
-        break;
-    case I::MUL16C:
-        address = read_addr_from_program(skip);
-        PUSHI_ADDR((POP_ADDR() * address));
-        break;
+        instr = (I)memory[READ_REGISTER(IP_REGISTER)];
 
-    case I::EQ:
-        PUSHI(POP() == POP() ? 1 : 0);
-        break;
-    case I::NE:
-        PUSHI(POP() == POP() ? 0 : 1);
-        break;
-    case I::LESS:
-        PUSHI(POP() < POP() ? 1 : 0);
-        break;
-    case I::LESS_OR_EQ:
-        PUSHI(POP() <= POP() ? 1 : 0);
-        break;
-    case I::GREATER:
-        PUSHI(POP() > POP() ? 1 : 0);
-        break;
-    case I::GREATER_OR_EQ:
-        PUSHI(POP() >= POP() ? 1 : 0);
-        break;
-    case I::ZERO:
-        sp_value = READ_REGISTER(SP_REGISTER);
-        memory[sp_value - 1] = (word)(memory[sp_value - 1] == 0 ? 1 : 0);
-        break;
-    case I::NZERO:
-        sp_value = READ_REGISTER(SP_REGISTER);
-        memory[sp_value - 1] = (word)(memory[sp_value - 1] != 0 ? 1 : 0);
-        break;
+        if (profile)
+        {
+            if (READ_REGISTER(SP_REGISTER) > max_sp)
+                max_sp = READ_REGISTER(SP_REGISTER);
+            if (counters.count(instr))
+                counters[instr]++;
+            else
+                counters[instr] = 1;
+        }
 
-    case I::EQ16:
-        PUSHI(POP_ADDR() == POP_ADDR() ? 1 : 0);
-        break;
-    case I::LESS16:
-        PUSHI(POP_ADDR() < POP_ADDR() ? 1 : 0);
-        break;
-    case I::LESS_OR_EQ16:
-        PUSHI(POP_ADDR() <= POP_ADDR() ? 1 : 0);
-        break;
-    case I::GREATER16:
-        PUSHI(POP_ADDR() > POP_ADDR() ? 1 : 0);
-        break;
-    case I::GREATER_OR_EQ16:
-        PUSHI(POP_ADDR() >= POP_ADDR() ? 1 : 0);
-        break;
-    case I::ZERO16:
-        PUSHI(POP_ADDR() == 0 ? 1 : 0);
-        break;
-    case I::NZERO16:
-        PUSHI(POP_ADDR() != 0 ? 1 : 0);
-        break;
+        skip = WORD_SIZE;
 
-    case I::AND:
-        PUSHI(POP() & POP());
-        break;
-    case I::OR:
-        PUSHI(POP() | POP());
-        break;
-    case I::LAND:
-        PUSHI((POP() != 0) && (POP() != 0) ? 1 : 0);
-        break;
-    case I::LOR:
-        PUSHI((POP() != 0) || (POP() != 0) ? 1 : 0);
-        break;
-    case I::XOR:
-        PUSHI(POP() ^ POP());
-        break;
-    case I::LSH:
-    {
-        auto tmp1 = POP();
-        auto tmp2 = POP();
-        signedResult = tmp2 << tmp1;
-        PUSHI(signedResult);
-        break;
-    }
-    case I::RSH:
-    {
-        auto tmp1 = POP();
-        auto tmp2 = POP();
-        signedResult = tmp2 >> tmp1;
-        PUSHI(signedResult);
-        break;
-    }
-    case I::FLIP:
-        PUSHI(~POP());
-        break;
-
-
-    case I::AND16:
-        PUSHI_ADDR(POP_ADDR() & POP_ADDR());
-        break;
-    case I::OR16:
-        PUSHI_ADDR(POP_ADDR() | POP_ADDR());
-        break;
-    case I::XOR16:
-        PUSHI_ADDR(POP_ADDR() ^ POP_ADDR());
-        break;
-    case I::LSH16:
-    {
-        auto tmp1 = POP_ADDR();
-        auto tmp2 = POP_ADDR();
-        signedResult = tmp2 << tmp1;
-        PUSHI_ADDR(signedResult);
-        break;
-    }
-    case I::RSH16:
-    {
-        auto tmp1 = POP_ADDR();
-        auto tmp2 = POP_ADDR();
-        signedResult = tmp2 >> tmp1;
-        PUSHI_ADDR(signedResult);
-        break;
-    }
-    case I::FLIP16:
-        PUSHI_ADDR(~POP_ADDR());
-        break;
-
-    case I::NOT:
-        sp_value = READ_REGISTER(SP_REGISTER);
-        memory[sp_value - 1] = (word)(memory[sp_value - 1] ? 0 : 1);
-        break;
-    case I::INC:
-        sp_value = READ_REGISTER(SP_REGISTER);
-        memory[sp_value - 1]++;
-        break;
-    case I::DEC:
-        sp_value = READ_REGISTER(SP_REGISTER);
-        memory[sp_value - 1]--;
-        break;
-    case I::INC16:
-        offset = READ_REGISTER(SP_REGISTER) - ADDRESS_SIZE;
-        write16(memory, offset, (addr)(read16(memory, offset) + 1));
-        break;
-    case I::DEC16:
-        offset = READ_REGISTER(SP_REGISTER) - ADDRESS_SIZE;
-        write16(memory, offset, (addr)(read16(memory, offset) - 1));
-        break;
-    case I::EXTEND:
-        PUSH_ADDR(POP());
-        break;
-    case I::DOWNCAST:
-    {
-        address = POP_ADDR();
-        PUSH(address <= 255 ? (word)address : 255);
-        break;
-    }
-    case I::JMP:
-        address = read_addr_from_program(skip);
-        WRITE_REGISTER(IP_REGISTER, address);
-        skip = 0;
-        break;
-    case I::JMP_REL:
-        offset = read_offs_from_program(skip);
-        ADD_TO_REGISTER(IP_REGISTER, offset);
-        skip = 0;
-        break;
-    case I::JF:
-        address = read_addr_from_program(skip);
-        if (!POP())
+        switch (instr)
         {
-            WRITE_REGISTER(IP_REGISTER, address);
-            skip = 0;
-        }
-        break;
-    case I::JF16:
-        address = read_addr_from_program(skip);
-        if (!POP_ADDR())
-        {
-            WRITE_REGISTER(IP_REGISTER, address);
-            skip = 0;
-        }
-        break;
-    case I::JT:
-        address = read_addr_from_program(skip);
-        if (POP())
-        {
-            WRITE_REGISTER(IP_REGISTER, address);
-            skip = 0;
-        }
-        break;
-    case I::JT16:
-        address = read_addr_from_program(skip);
-        if (POP_ADDR())
-        {
-            WRITE_REGISTER(IP_REGISTER, address);
-            skip = 0;
-        }
-        break;
-    case I::JF_REL:
-        offset = read_offs_from_program(skip);
-        if (POP() == 0)
-        {
-            ADD_TO_REGISTER(IP_REGISTER, offset);
-            skip = 0;
-        }
-        break;
-    case I::JT_REL:
-        offset = read_offs_from_program(skip);
-        if (POP() != 0)
-        {
-            ADD_TO_REGISTER(IP_REGISTER, offset);
-            skip = 0;
-        }
-        break;
-    case I::JMP2:
-        address = POP_ADDR();
-        WRITE_REGISTER(IP_REGISTER, address);
-        skip = 0;
-        break;
-    case I::JT2:
-        address = POP_ADDR();
-        if (POP())
-        {
-            WRITE_REGISTER(IP_REGISTER, address);
-            skip = 0;
-        }
-        break;
-    case I::JF2:
-        address = POP_ADDR();
-        if (!POP())
-        {
-            WRITE_REGISTER(IP_REGISTER, address);
-            skip = 0;
-        }
-        break;
-    case I::CASE:
-        arg = read_next_program_byte(skip);
-        address = read_addr_from_program(skip, 2);
-        skip = 2 + ADDRESS_SIZE;
-        sp_value = READ_REGISTER(SP_REGISTER);
-        if (memory[sp_value - 1] == arg)
-        {
-            POP();
-            WRITE_REGISTER(IP_REGISTER, address);
-            skip = 0;
-        }
-        break;
-    case I::ELSE:
-        POP();
-        address = read_addr_from_program(skip);
-        WRITE_REGISTER(IP_REGISTER, address);
-        skip = 0;
-        break;
-    case I::CASE_REL:
-        arg = read_next_program_byte(skip);
-        offset = read_offs_from_program(skip, 2);
-        skip = 2 + ADDRESS_SIZE;
-        sp_value = READ_REGISTER(SP_REGISTER);
-        if (memory[sp_value - 1] == arg)
-        {
-            POP();
-            ADD_TO_REGISTER(IP_REGISTER, offset + 1);
-            skip = 0;
-        }
-        break;
-    case I::ELSE_REL:
-        POP();
-        offset = read_offs_from_program(skip);
-        ADD_TO_REGISTER(IP_REGISTER, offset);
-        skip = 0;
-        break;
-    case I::LOAD_GLOBAL:
-        address = POP_ADDR();
-        PUSH(memory[address]);
-        break;
-    case I::STORE_GLOBAL:
-        address = POP_ADDR();
-        arg = POP();
-        memory[address] = arg;
-        break;
-    case I::STORE_GLOBAL2:
-        arg = POP();
-        address = POP_ADDR();
-        memory[address] = arg;
-        break;
-    case I::LOAD_GLOBAL16:
-        address = POP_ADDR();
-        PUSH_ADDR(read16(memory, address));
-        break;
-    case I::STORE_GLOBAL16:
-        address = POP_ADDR();
-        val = POP_ADDR();
-        write16(memory, address, val);
-        break;
-    case I::STORE_GLOBAL216:
-        val = POP_ADDR();
-        address = POP_ADDR();
-        write16(memory, address, val);
-        break;
-    case I::LOAD:
-    case I::LOAD_LOCAL:
-    case I::LOAD_ARG:
-        arg = read_next_program_byte(skip);
-        direction = (instr == I::LOAD || instr == I::LOAD_ARG) ? -1 : 1;
-        offset = instr == I::LOAD_ARG ? 2 * ADDRESS_SIZE : 0;
-        PUSH(memory[READ_REGISTER(FP_REGISTER) + (arg + offset) * direction]);
-        break;
-    case I::LOAD_LOCAL16:
-    case I::LOAD_ARG16:
-        arg = read_next_program_byte(skip);
-        direction = (instr == I::LOAD_ARG16) ? -1 : 1;
-        offset = instr == I::LOAD_ARG16 ? 2 * ADDRESS_SIZE : 0;
-        PUSH_ADDR(read16(memory, READ_REGISTER(FP_REGISTER) + (arg + offset) * direction));
-        break;
-    case I::STORE:
-    case I::STORE_LOCAL:
-    case I::STORE_ARG:
-        arg = read_next_program_byte(skip);
-        direction = (instr == I::STORE || instr == I::STORE_ARG) ? -1 : 1;
-        offset = instr == I::STORE_ARG ? 2 * ADDRESS_SIZE : 0;
-        memory[READ_REGISTER(FP_REGISTER) + (arg + offset) * direction] = POP();
-        break;
-    case I::STORE_LOCAL16:
-    case I::STORE_ARG16:
-        arg = read_next_program_byte(skip);
-        direction = (instr == I::STORE_ARG16) ? -1 : 1;
-        offset = instr == I::STORE_ARG16 ? 2 * ADDRESS_SIZE : 0;
-        write16(memory, READ_REGISTER(FP_REGISTER) + (arg + offset) * direction, POP_ADDR());
-        break;
-    case I::LOAD_NVRAM:
-        address = POP_ADDR();
-        if (!nvram.is_open())
-            OpenNvramFile();
-        nvram.seekg(address);
-        nvram.read(reinterpret_cast<char*>(&arg), 1);
-        PUSH(arg);
-        break;
-    case I::STORE_NVRAM:
-        address = POP_ADDR();
-        arg = POP();
-        if (!nvram.is_open())
-            OpenNvramFile();
-        nvram.seekg(address);
-        nvram.put(arg);
-        break;
-    case I::CALL:
-    case I::CALL2:
-    case I::CALL_REL:
-        if (instr == I::CALL_REL)
-        {
+        case I::PUSH:
+            arg = read_next_program_byte(skip);
+            PUSH(arg);
+            break;
+        case I::PUSH16:
+            address = read_addr_from_program(skip);
+            PUSH_ADDR(address);
+            break;
+        case I::PUSH16_REL:
             offset = read_offs_from_program(skip);
             address = (addr)(READ_REGISTER(IP_REGISTER) + offset);
-        }
-        else
+            PUSH_ADDR(address);
+            break;
+        case I::PUSHN:
+            arg = read_next_program_byte(skip);
+            ADD_TO_REGISTER(SP_REGISTER, arg);
+            sp_value = READ_REGISTER(SP_REGISTER);
+            //if (sp_value > max_sp) max_sp = sp_value;
+            break;
+        case I::PUSHN2:
+            ADD_TO_REGISTER(SP_REGISTER, POP());
+            sp_value = READ_REGISTER(SP_REGISTER);
+            //if (sp_value > max_sp) max_sp = sp_value;
+            break;
+        case I::PUSH_NEXT_SP:
+            sp_value = READ_REGISTER(SP_REGISTER);
+            PUSHI_ADDR(sp_value + ADDRESS_SIZE);
+            break;
+        case I::PUSH_STACK_START:
+            PUSH_ADDR(stackStartPos);
+            break;
+            break;
+        case I::POP:
+            POP();
+            break;
+        case I::POPN:
+            arg = read_next_program_byte(skip);
+            ADD_TO_REGISTER(SP_REGISTER, -arg);
+            break;
+        case I::POPN2:
+            ADD_TO_REGISTER(SP_REGISTER, -POP());
+            break;
+        case I::PUSH_REG:
+            arg = read_next_program_byte(skip);
+            PUSHI_ADDR(READ_REGISTER(arg));
+            break;
+        case I::POP_REG:
+            arg = read_next_program_byte(skip);
+            WRITE_REGISTER(arg, POP_ADDR());
+            break;
+        case I::ADD:
+            signedResult = POP() + POP();
+            carry = signedResult > 255;
+            PUSHI(signedResult);
+            break;
+        case I::ADD16:
+            signedResult = POP_ADDR() + POP_ADDR();
+            carry = signedResult > 65535;
+            PUSHI_ADDR(signedResult);
+            break;
+        case I::ADD16C:
+            address = read_addr_from_program(skip);
+            signedResult = POP_ADDR() + address;
+            carry = signedResult > 35535;
+            PUSHI_ADDR(signedResult);
+            break;
+        case I::ADDC:
+            address = read_next_program_byte(skip);
+            signedResult = POP() + address;
+            carry = signedResult > 255;
+            PUSHI(signedResult);
+            break;
+        case I::MULC:
+            address = read_next_program_byte(skip);
+            signedResult = POP() * address;
+            carry = signedResult > 255;
+            PUSHI(signedResult);
+            break;
+        case I::SUB:
+            signedResult = POP() - POP();
+            carry = signedResult < 0;
+            PUSHI(signedResult);
+            break;
+        case I::SUB2:
         {
-            address = instr == I::CALL ? read_addr_from_program(skip) : POP_ADDR();
+            auto tmp1 = POP();
+            auto tmp2 = POP();
+            signedResult = tmp2 - tmp1;
+            carry = signedResult < 0;
+            PUSHI(signedResult);
         }
-        CALL(address);
-        skip = 0;
         break;
-    case I::RET:
-        WRITE_REGISTER(SP_REGISTER, READ_REGISTER(FP_REGISTER)); // clear stack after function execution
-        WRITE_REGISTER(FP_REGISTER, POP_ADDR());
-        address = POP_ADDR();
-        WRITE_REGISTER(IP_REGISTER, (addr)(address + ADDRESS_SIZE + 1)); // skip address of call and go to next instruction
-        skip = 0;
+        case I::SUB16:
+            signedResult = POP_ADDR() - POP_ADDR();
+            carry = signedResult < 0;
+            PUSHI_ADDR(signedResult);
+            break;
+        case I::SUB216:
+        {
+            auto tmp1 = POP_ADDR();
+            auto tmp2 = POP_ADDR();
+            signedResult = tmp2 - tmp1;
+            carry = signedResult < 0;
+            PUSHI_ADDR(signedResult);
+        }
         break;
-    case I::SWAP:
-        sp_value = READ_REGISTER(SP_REGISTER);
-        tmp = memory[sp_value - 1];
-        memory[sp_value - 1] = memory[sp_value - 2];
-        memory[sp_value - 2] = tmp;
-        break;
-    case I::SWAP16:
-        sp_value = READ_REGISTER(SP_REGISTER);
-        val = read16(memory, sp_value - ADDRESS_SIZE * 2);
-        write16(memory, sp_value - ADDRESS_SIZE * 2, read16(memory, sp_value - ADDRESS_SIZE));
-        write16(memory, sp_value - ADDRESS_SIZE, val);
-        break;
-    case I::DUP:
-        sp_value = READ_REGISTER(SP_REGISTER);
-        PUSH(memory[sp_value - 1]);
-        break;
-    case I::DUP16:
-        sp_value = READ_REGISTER(SP_REGISTER);
-        PUSH_ADDR(read16(memory, sp_value - ADDRESS_SIZE));
-        break;
-    case I::ROLL3:
-    {
-        auto a = POP();
-        auto b = POP();
-        auto c = POP();
-        PUSH(a);
-        PUSH(c);
-        PUSH(b);
-    }
-        break;
-    case I::NEG:
-        PUSHI(-POP());
-        break;
-    case I::NOP:
-        break;
-    case I::DEBUGGER:
-#ifdef _WIN32
-        DebugBreak();
-#endif
-        break;
-    case I::INTERRUPT_HANDLER:
-        arg = read_next_program_byte(skip);
-        address = read_addr_from_program(skip, 2);
-        skip = 2 + ADDRESS_SIZE;
-        if (address > 0)
-            handlers[(InterruptCodes)arg] = address;
-        else
-            if (handlers.count((InterruptCodes)arg))
+        case I::CARRY:
+            PUSH(carry ? 1 : 0);
+            break;
+        case I::DIV:
+            arg = POP();
+            tmp = POP();
+            if (tmp == 0)
+                HANDLE_EXCEPTION(InterruptException(InterruptCodes::DivisionByZeroError));
+            PUSHI(arg / tmp);
+            break;
+        case I::DIV2:
+            arg = POP();
+            tmp = POP();
+            if (arg == 0)
+                HANDLE_EXCEPTION(InterruptException(InterruptCodes::DivisionByZeroError));
+            PUSHI(tmp / arg);
+            break;
+        case I::MOD:
+            arg = POP();
+            tmp = POP();
+            if (tmp == 0)
+                HANDLE_EXCEPTION(InterruptException(InterruptCodes::DivisionByZeroError));
+            PUSHI((arg % tmp));
+            break;
+        case I::MOD16:
+            address = POP_ADDR();
+            val = POP_ADDR();
+            if (val == 0)
+                HANDLE_EXCEPTION(InterruptException(InterruptCodes::DivisionByZeroError));
+            PUSHI_ADDR(address % val);
+            break;
+        case I::MUL:
+            PUSHI((POP() * POP()));
+            break;
+        case I::MUL16:
+            PUSHI_ADDR((POP_ADDR() * POP_ADDR()));
+            break;
+        case I::MUL16C:
+            address = read_addr_from_program(skip);
+            PUSHI_ADDR((POP_ADDR() * address));
+            break;
+
+        case I::EQ:
+            PUSHI(POP() == POP() ? 1 : 0);
+            break;
+        case I::NE:
+            PUSHI(POP() == POP() ? 0 : 1);
+            break;
+        case I::LESS:
+            PUSHI(POP() < POP() ? 1 : 0);
+            break;
+        case I::LESS_OR_EQ:
+            PUSHI(POP() <= POP() ? 1 : 0);
+            break;
+        case I::GREATER:
+            PUSHI(POP() > POP() ? 1 : 0);
+            break;
+        case I::GREATER_OR_EQ:
+            PUSHI(POP() >= POP() ? 1 : 0);
+            break;
+        case I::ZERO:
+            sp_value = READ_REGISTER(SP_REGISTER);
+            memory[sp_value - 1] = (word)(memory[sp_value - 1] == 0 ? 1 : 0);
+            break;
+        case I::NZERO:
+            sp_value = READ_REGISTER(SP_REGISTER);
+            memory[sp_value - 1] = (word)(memory[sp_value - 1] != 0 ? 1 : 0);
+            break;
+
+        case I::EQ16:
+            PUSHI(POP_ADDR() == POP_ADDR() ? 1 : 0);
+            break;
+        case I::LESS16:
+            PUSHI(POP_ADDR() < POP_ADDR() ? 1 : 0);
+            break;
+        case I::LESS_OR_EQ16:
+            PUSHI(POP_ADDR() <= POP_ADDR() ? 1 : 0);
+            break;
+        case I::GREATER16:
+            PUSHI(POP_ADDR() > POP_ADDR() ? 1 : 0);
+            break;
+        case I::GREATER_OR_EQ16:
+            PUSHI(POP_ADDR() >= POP_ADDR() ? 1 : 0);
+            break;
+        case I::ZERO16:
+            PUSHI(POP_ADDR() == 0 ? 1 : 0);
+            break;
+        case I::NZERO16:
+            PUSHI(POP_ADDR() != 0 ? 1 : 0);
+            break;
+
+        case I::AND:
+            PUSHI(POP() & POP());
+            break;
+        case I::OR:
+            PUSHI(POP() | POP());
+            break;
+        case I::LAND:
+            PUSHI((POP() != 0) && (POP() != 0) ? 1 : 0);
+            break;
+        case I::LOR:
+            PUSHI((POP() != 0) || (POP() != 0) ? 1 : 0);
+            break;
+        case I::XOR:
+            PUSHI(POP() ^ POP());
+            break;
+        case I::LSH:
+        {
+            auto tmp1 = POP();
+            auto tmp2 = POP();
+            signedResult = tmp2 << tmp1;
+            PUSHI(signedResult);
+            break;
+        }
+        case I::RSH:
+        {
+            auto tmp1 = POP();
+            auto tmp2 = POP();
+            signedResult = tmp2 >> tmp1;
+            PUSHI(signedResult);
+            break;
+        }
+        case I::FLIP:
+            PUSHI(~POP());
+            break;
+
+
+        case I::AND16:
+            PUSHI_ADDR(POP_ADDR() & POP_ADDR());
+            break;
+        case I::OR16:
+            PUSHI_ADDR(POP_ADDR() | POP_ADDR());
+            break;
+        case I::XOR16:
+            PUSHI_ADDR(POP_ADDR() ^ POP_ADDR());
+            break;
+        case I::LSH16:
+        {
+            auto tmp1 = POP_ADDR();
+            auto tmp2 = POP_ADDR();
+            signedResult = tmp2 << tmp1;
+            PUSHI_ADDR(signedResult);
+            break;
+        }
+        case I::RSH16:
+        {
+            auto tmp1 = POP_ADDR();
+            auto tmp2 = POP_ADDR();
+            signedResult = tmp2 >> tmp1;
+            PUSHI_ADDR(signedResult);
+            break;
+        }
+        case I::FLIP16:
+            PUSHI_ADDR(~POP_ADDR());
+            break;
+
+        case I::NOT:
+            sp_value = READ_REGISTER(SP_REGISTER);
+            memory[sp_value - 1] = (word)(memory[sp_value - 1] ? 0 : 1);
+            break;
+        case I::INC:
+            sp_value = READ_REGISTER(SP_REGISTER);
+            memory[sp_value - 1]++;
+            break;
+        case I::DEC:
+            sp_value = READ_REGISTER(SP_REGISTER);
+            memory[sp_value - 1]--;
+            break;
+        case I::INC16:
+            offset = READ_REGISTER(SP_REGISTER) - ADDRESS_SIZE;
+            write16(memory, offset, (addr)(read16(memory, offset) + 1));
+            break;
+        case I::DEC16:
+            offset = READ_REGISTER(SP_REGISTER) - ADDRESS_SIZE;
+            write16(memory, offset, (addr)(read16(memory, offset) - 1));
+            break;
+        case I::EXTEND:
+            PUSH_ADDR(POP());
+            break;
+        case I::DOWNCAST:
+        {
+            address = POP_ADDR();
+            PUSH(address <= 255 ? (word)address : 255);
+            break;
+        }
+        case I::JMP:
+            address = read_addr_from_program(skip);
+            WRITE_REGISTER(IP_REGISTER, address);
+            skip = 0;
+            break;
+        case I::JMP_REL:
+            offset = read_offs_from_program(skip);
+            ADD_TO_REGISTER(IP_REGISTER, offset);
+            skip = 0;
+            break;
+        case I::JF:
+            address = read_addr_from_program(skip);
+            if (!POP())
             {
-                handlers.erase((InterruptCodes)arg);
+                WRITE_REGISTER(IP_REGISTER, address);
+                skip = 0;
             }
-        break;
-    case I::SYSCALL:
-    case I::SYSCALL2:
-        arg = instr == I::SYSCALL ? read_next_program_byte(skip) : POP();
-        try
+            break;
+        case I::JF16:
+            address = read_addr_from_program(skip);
+            if (!POP_ADDR())
+            {
+                WRITE_REGISTER(IP_REGISTER, address);
+                skip = 0;
+            }
+            break;
+        case I::JT:
+            address = read_addr_from_program(skip);
+            if (POP())
+            {
+                WRITE_REGISTER(IP_REGISTER, address);
+                skip = 0;
+            }
+            break;
+        case I::JT16:
+            address = read_addr_from_program(skip);
+            if (POP_ADDR())
+            {
+                WRITE_REGISTER(IP_REGISTER, address);
+                skip = 0;
+            }
+            break;
+        case I::JF_REL:
+            offset = read_offs_from_program(skip);
+            if (POP() == 0)
+            {
+                ADD_TO_REGISTER(IP_REGISTER, offset);
+                skip = 0;
+            }
+            break;
+        case I::JT_REL:
+            offset = read_offs_from_program(skip);
+            if (POP() != 0)
+            {
+                ADD_TO_REGISTER(IP_REGISTER, offset);
+                skip = 0;
+            }
+            break;
+        case I::JMP2:
+            address = POP_ADDR();
+            WRITE_REGISTER(IP_REGISTER, address);
+            skip = 0;
+            break;
+        case I::JT2:
+            address = POP_ADDR();
+            if (POP())
+            {
+                WRITE_REGISTER(IP_REGISTER, address);
+                skip = 0;
+            }
+            break;
+        case I::JF2:
+            address = POP_ADDR();
+            if (!POP())
+            {
+                WRITE_REGISTER(IP_REGISTER, address);
+                skip = 0;
+            }
+            break;
+        case I::CASE:
+            arg = read_next_program_byte(skip);
+            address = read_addr_from_program(skip, 2);
+            skip = 2 + ADDRESS_SIZE;
+            sp_value = READ_REGISTER(SP_REGISTER);
+            if (memory[sp_value - 1] == arg)
+            {
+                POP();
+                WRITE_REGISTER(IP_REGISTER, address);
+                skip = 0;
+            }
+            break;
+        case I::ELSE:
+            POP();
+            address = read_addr_from_program(skip);
+            WRITE_REGISTER(IP_REGISTER, address);
+            skip = 0;
+            break;
+        case I::CASE_REL:
+            arg = read_next_program_byte(skip);
+            offset = read_offs_from_program(skip, 2);
+            skip = 2 + ADDRESS_SIZE;
+            sp_value = READ_REGISTER(SP_REGISTER);
+            if (memory[sp_value - 1] == arg)
+            {
+                POP();
+                ADD_TO_REGISTER(IP_REGISTER, offset + 1);
+                skip = 0;
+            }
+            break;
+        case I::ELSE_REL:
+            POP();
+            offset = read_offs_from_program(skip);
+            ADD_TO_REGISTER(IP_REGISTER, offset);
+            skip = 0;
+            break;
+        case I::LOAD_GLOBAL:
+            address = POP_ADDR();
+            PUSH(memory[address]);
+            break;
+        case I::STORE_GLOBAL:
+            address = POP_ADDR();
+            arg = POP();
+            memory[address] = arg;
+            break;
+        case I::STORE_GLOBAL2:
+            arg = POP();
+            address = POP_ADDR();
+            memory[address] = arg;
+            break;
+        case I::LOAD_GLOBAL16:
+            address = POP_ADDR();
+            PUSH_ADDR(read16(memory, address));
+            break;
+        case I::STORE_GLOBAL16:
+            address = POP_ADDR();
+            val = POP_ADDR();
+            write16(memory, address, val);
+            break;
+        case I::STORE_GLOBAL216:
+            val = POP_ADDR();
+            address = POP_ADDR();
+            write16(memory, address, val);
+            break;
+        case I::LOAD:
+        case I::LOAD_LOCAL:
+        case I::LOAD_ARG:
+            arg = read_next_program_byte(skip);
+            direction = (instr == I::LOAD || instr == I::LOAD_ARG) ? -1 : 1;
+            offset = instr == I::LOAD_ARG ? 2 * ADDRESS_SIZE : 0;
+            PUSH(memory[READ_REGISTER(FP_REGISTER) + (arg + offset) * direction]);
+            break;
+        case I::LOAD_LOCAL16:
+        case I::LOAD_ARG16:
+            arg = read_next_program_byte(skip);
+            direction = (instr == I::LOAD_ARG16) ? -1 : 1;
+            offset = instr == I::LOAD_ARG16 ? 2 * ADDRESS_SIZE : 0;
+            PUSH_ADDR(read16(memory, READ_REGISTER(FP_REGISTER) + (arg + offset) * direction));
+            break;
+        case I::STORE:
+        case I::STORE_LOCAL:
+        case I::STORE_ARG:
+            arg = read_next_program_byte(skip);
+            direction = (instr == I::STORE || instr == I::STORE_ARG) ? -1 : 1;
+            offset = instr == I::STORE_ARG ? 2 * ADDRESS_SIZE : 0;
+            memory[READ_REGISTER(FP_REGISTER) + (arg + offset) * direction] = POP();
+            break;
+        case I::STORE_LOCAL16:
+        case I::STORE_ARG16:
+            arg = read_next_program_byte(skip);
+            direction = (instr == I::STORE_ARG16) ? -1 : 1;
+            offset = instr == I::STORE_ARG16 ? 2 * ADDRESS_SIZE : 0;
+            write16(memory, READ_REGISTER(FP_REGISTER) + (arg + offset) * direction, POP_ADDR());
+            break;
+        case I::LOAD_NVRAM:
+            address = POP_ADDR();
+            if (!nvram.is_open())
+                OpenNvramFile();
+            nvram.seekg(address);
+            nvram.read(reinterpret_cast<char*>(&arg), 1);
+            PUSH(arg);
+            break;
+        case I::STORE_NVRAM:
+            address = POP_ADDR();
+            arg = POP();
+            if (!nvram.is_open())
+                OpenNvramFile();
+            nvram.seekg(address);
+            nvram.put(arg);
+            break;
+        case I::CALL:
+        case I::CALL2:
+        case I::CALL_REL:
+            if (instr == I::CALL_REL)
+            {
+                offset = read_offs_from_program(skip);
+                address = (addr)(READ_REGISTER(IP_REGISTER) + offset);
+            }
+            else
+            {
+                address = instr == I::CALL ? read_addr_from_program(skip) : POP_ADDR();
+            }
+            CALL(address);
+            skip = 0;
+            break;
+        case I::RET:
+            WRITE_REGISTER(SP_REGISTER, READ_REGISTER(FP_REGISTER)); // clear stack after function execution
+            WRITE_REGISTER(FP_REGISTER, POP_ADDR());
+            address = POP_ADDR();
+            WRITE_REGISTER(IP_REGISTER, (addr)(address + ADDRESS_SIZE + 1)); // skip address of call and go to next instruction
+            skip = 0;
+            break;
+        case I::SWAP:
+            sp_value = READ_REGISTER(SP_REGISTER);
+            tmp = memory[sp_value - 1];
+            memory[sp_value - 1] = memory[sp_value - 2];
+            memory[sp_value - 2] = tmp;
+            break;
+        case I::SWAP16:
+            sp_value = READ_REGISTER(SP_REGISTER);
+            val = read16(memory, sp_value - ADDRESS_SIZE * 2);
+            write16(memory, sp_value - ADDRESS_SIZE * 2, read16(memory, sp_value - ADDRESS_SIZE));
+            write16(memory, sp_value - ADDRESS_SIZE, val);
+            break;
+        case I::DUP:
+            sp_value = READ_REGISTER(SP_REGISTER);
+            PUSH(memory[sp_value - 1]);
+            break;
+        case I::DUP16:
+            sp_value = READ_REGISTER(SP_REGISTER);
+            PUSH_ADDR(read16(memory, sp_value - ADDRESS_SIZE));
+            break;
+        case I::ROLL3:
         {
-            STDLIB(arg);
+            auto a = POP();
+            auto b = POP();
+            auto c = POP();
+            PUSH(a);
+            PUSH(c);
+            PUSH(b);
         }
-        catch (const InterruptException& ex)
-        {
-            HANDLE_EXCEPTION(ex);
-		}
         break;
-    case I::HALT:
-            
-        if (nvram.is_open())
+        case I::NEG:
+            PUSHI(-POP());
+            break;
+        case I::NOP:
+            break;
+        case I::DEBUGGER:
+#ifdef _WIN32
+            DebugBreak();
+#endif
+            break;
+        case I::INTERRUPT_HANDLER:
+            arg = read_next_program_byte(skip);
+            address = read_addr_from_program(skip, 2);
+            skip = 2 + ADDRESS_SIZE;
+            if (address > 0)
+                handlers[(InterruptCodes)arg] = address;
+            else
+                if (handlers.count((InterruptCodes)arg))
+                {
+                    handlers.erase((InterruptCodes)arg);
+                }
+            break;
+        case I::SYSCALL:
+        case I::SYSCALL2:
+            arg = instr == I::SYSCALL ? read_next_program_byte(skip) : POP();
+            try
+            {
+                STDLIB(arg);
+            }
+            catch (const InterruptException& ex)
+            {
+                HANDLE_EXCEPTION(ex);
+            }
+            break;
+        case I::HALT:
+
+            if (nvram.is_open())
+            {
+                nvram.close();
+            }
+            goto end;
+        case I::MACRO_POP_EXT_X2_ADD16:
         {
-            nvram.close();
+            address = POP() * 2; // extends to addr
+            addr a2 = POP_ADDR();
+            PUSH_ADDR(address + a2);
         }
-        return instr;
-    case I::MACRO_POP_EXT_X2_ADD16:
-    {
-        address = POP() * 2; // extends to addr
-        addr a2 = POP_ADDR();
-        PUSH_ADDR(address + a2);
-    }
-    break;
-    case I::MACRO_ADD8_TO_16:
-    {
-        address = POP(); // extends to addr
-        addr a2 = POP_ADDR();
-        PUSH_ADDR(address + a2);
-    }
-    break;
-    case I::MACRO_ANDX:
-        PUSH_ADDR(POP() & POP());
         break;
-    case I::MACRO_ORX:
-        PUSH_ADDR(POP() | POP());
+        case I::MACRO_ADD8_TO_16:
+        {
+            address = POP(); // extends to addr
+            addr a2 = POP_ADDR();
+            PUSH_ADDR(address + a2);
+        }
         break;
-    case I::MACRO_LSH16_BY8:
-    {
-        auto tmp1 = POP();
-        auto tmp2 = POP_ADDR();
-        signedResult = tmp2 << tmp1;
-        PUSHI_ADDR(signedResult);
-        break;
-    }
-    case I::MACRO_INC_LOCAL:
-        arg = read_next_program_byte(skip);
-		memory[READ_REGISTER(FP_REGISTER) + arg] += 1;
-		break;
-    case I::MACRO_DEC_LOCAL:
-        arg = read_next_program_byte(skip);
-        memory[READ_REGISTER(FP_REGISTER) + arg] -= 1;
-        break;
-    case I::MACRO_INC_LOCAL16:
-        arg = read_next_program_byte(skip);
-        write16(memory, READ_REGISTER(FP_REGISTER) + arg, read16(memory, READ_REGISTER(FP_REGISTER) + arg) + 1);
-        break;
-    case I::MACRO_DEC_LOCAL16:
-        arg = read_next_program_byte(skip);
-        write16(memory, READ_REGISTER(FP_REGISTER) + arg, read16(memory, READ_REGISTER(FP_REGISTER) + arg) - 1);
-        break;
-    default:
-        throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));
+        case I::MACRO_ANDX:
+            PUSH_ADDR(POP() & POP());
+            break;
+        case I::MACRO_ORX:
+            PUSH_ADDR(POP() | POP());
+            break;
+        case I::MACRO_LSH16_BY8:
+        {
+            auto tmp1 = POP();
+            auto tmp2 = POP_ADDR();
+            signedResult = tmp2 << tmp1;
+            PUSHI_ADDR(signedResult);
+            break;
+        }
+        case I::MACRO_INC_LOCAL:
+            arg = read_next_program_byte(skip);
+            memory[READ_REGISTER(FP_REGISTER) + arg] += 1;
+            break;
+        case I::MACRO_DEC_LOCAL:
+            arg = read_next_program_byte(skip);
+            memory[READ_REGISTER(FP_REGISTER) + arg] -= 1;
+            break;
+        case I::MACRO_INC_LOCAL16:
+            arg = read_next_program_byte(skip);
+            write16(memory, READ_REGISTER(FP_REGISTER) + arg, read16(memory, READ_REGISTER(FP_REGISTER) + arg) + 1);
+            break;
+        case I::MACRO_DEC_LOCAL16:
+            arg = read_next_program_byte(skip);
+            write16(memory, READ_REGISTER(FP_REGISTER) + arg, read16(memory, READ_REGISTER(FP_REGISTER) + arg) - 1);
+            break;
+        default:
+            throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));
+        }
+
+        ADD_TO_REGISTER(IP_REGISTER, skip);
     }
 
-    ADD_TO_REGISTER(IP_REGISTER, skip);
+    end:
 
-    return instr;
+    if (profile)
+    {
+        // Sort counters by value (descending)
+        std::vector<std::pair<I, long>> sortedCounters(counters.begin(), counters.end());
+        std::sort(sortedCounters.begin(), sortedCounters.end(),
+            [](const auto& a, const auto& b) { return a.second > b.second; });
+
+        // Print sorted counters
+        for (const auto& [instr, count] : sortedCounters)
+        {
+            std::cout << magic_enum::enum_name(instr) << ": " << count << std::endl;
+        }
+        std::cout << "Max stack pointer: " << max_sp << std::endl;
+    }
 }
 
 void VM::WriteStringToMemory(const std::string& str, int addr, int maxLen)

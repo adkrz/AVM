@@ -108,11 +108,11 @@ int main(int argc, char** argv)
 
     auto t1 = high_resolution_clock::now();
     if (profile)
-        vm.ProfileProgram();
+        vm.RunProgram(true);
     else
         vm.RunProgram();
     auto t2 = high_resolution_clock::now();
     duration<double, std::milli> ms_double = t2 - t1;
-    std::cout << ms_double.count() << "ms\n";
+    std::cout << std::endl << ms_double.count() << "ms\n";
     return 0;
 }

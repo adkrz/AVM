@@ -1052,10 +1052,13 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-struct str(byte a);
-str x;
-x.a = 1+2;
+addr a = 2+2*2;
     """)
     tree = parser.do_parse()
-    tree.print(0)
+    #tree.print(0)
+    opt = True
+    while opt:
+        opt = tree.optimize(None)
+    code = tree.gen_code(None)
+    code.print()
     pass

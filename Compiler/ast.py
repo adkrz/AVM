@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional, Tuple, Sequence
+from typing import List, Optional, Tuple, Sequence, Iterable
 
 from symbols import Constant, FunctionSignature, Variable, Type
 
@@ -28,6 +28,37 @@ class BinOpType(Enum):
 class UnOpType(Enum):
     UnaryMinus = 1
     BitNegate = 2
+    Other = 3  # e.g. for operation on immediate constants, that inherit from unary
+
+
+class CodeSnippet:
+    def __init__(self, code: str = "", type_: Optional[Type] = None):
+        self.type = type_
+        self.codes: List[str] = [code] if code else []
+
+    def add_line(self, line):
+        self.codes.append(line)
+
+    def print(self):
+        for c in self.codes:
+            print(c)
+
+    @staticmethod
+    def join(snippets: Iterable[Optional["CodeSnippet"]], type_: Optional[Type] = None) -> "CodeSnippet":
+        ret = CodeSnippet(type_=type_)
+        for sn in snippets:
+            if sn:
+                for code in sn.codes:
+                    ret.codes.append(code)
+        return ret
+
+    def cast(self, expected_type: Optional[Type]):
+        if expected_type is None:
+            return
+        if self.type == Type.Byte and expected_type == Type.Addr:
+            self.add_line("EXTEND")
+        elif self.type == Type.Addr and expected_type == Type.Byte:
+            self.add_line("DOWNCAST")
 
 
 class AstNode:
@@ -41,9 +72,22 @@ class AstNode:
     def children(self) -> Sequence["AstNode"]:
         return []
 
-    def gen_code(self):
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return None
+
+    def find_max_type(self) -> Optional[Type]:
+        return None
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        raise NotImplementedError(f"Replace not implemented in {self.__class__.__name__}")
+
+    def optimize(self, parent: "AstNode") -> bool:
+        opt = False
         for child in self.children():
-            child.gen_code()
+            o = child.optimize(self)
+            if o:
+                opt = o
+        return opt
 
 
 class AbstractBlock(AstNode):
@@ -55,7 +99,18 @@ class AbstractStatement(AbstractBlock):
 
 
 class AbstractExpression(AstNode):
-    pass
+    @property
+    def type(self) -> Optional[Type]:
+        return None
+
+
+def highest_type(types: Iterable[Optional[Type]]) -> Type:
+    ht = Type.Byte
+    for t in types:
+        if t == Type.Addr:
+            ht = t
+            break
+    return ht
 
 
 class BinaryOperation(AbstractExpression):
@@ -72,6 +127,27 @@ class BinaryOperation(AbstractExpression):
     def children(self):
         yield self.operand1
         yield self.operand2
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        target_type = highest_type((type_hint, self.operand1.type, self.operand2.type))
+        c1 = self.operand1.gen_code(target_type)
+        c2 = self.operand2.gen_code(target_type)
+        c1.cast(target_type)
+        c2.cast(target_type)
+        c3 = self._gen_operation_code(target_type)
+        return CodeSnippet.join((c1, c2, c3), target_type)
+
+    def find_max_type(self) -> Optional[Type]:
+        return highest_type((self.operand1.find_max_type(), self.operand2.find_max_type()))
+
+    def _gen_operation_code(self, target_type) -> CodeSnippet:
+        raise NotImplementedError()
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.operand1:
+            self.operand1 = new
+        elif old == self.operand2:
+            self.operand2 = new
 
 
 class UnaryOperation(AbstractExpression):
@@ -92,11 +168,141 @@ class LogicalOperation(BinaryOperation):  # eq, less etc
 
 
 class SumOperation(BinaryOperation):
-    pass
+    def _gen_operation_code(self, target_type) -> CodeSnippet:
+        return CodeSnippet("ADD" if target_type == Type.Byte else "ADD16", target_type)
+
+    def optimize(self, parent: "AstNode") -> bool:
+        if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
+            new_node = self.operand1.combine(self.operand2, self.operand1.value + self.operand2.value)
+            parent.replace_child(self, new_node)
+            return True
+        elif isinstance(self.operand1, Number) and self.operand1.is_zero:
+            parent.replace_child(self, self.operand2)
+            return True
+        elif isinstance(self.operand2, Number) and self.operand2.is_zero:
+            parent.replace_child(self, self.operand1)
+            return True
+        elif isinstance(self.operand1, Number) and not isinstance(self.operand2, Number):
+            parent.replace_child(self, AddConstant(self.operand2, self.operand1))
+            return True
+        elif isinstance(self.operand2, Number) and not isinstance(self.operand1, Number):
+            parent.replace_child(self, AddConstant(self.operand1, self.operand2))
+            return True
+        else:
+            r1 = self.operand1.optimize(self)
+            r2 = self.operand2.optimize(self)
+            return r1 or r2
+
+
+class AddConstant(UnaryOperation):
+    def __init__(self, expr: AbstractExpression, value: "Number"):
+        super().__init__(UnOpType.Other, expr)
+        self.expr = expr
+        self.value = value
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        target_type = highest_type((type_hint, self.expr.type))
+        c1 = self.expr.gen_code(target_type)
+        c1.cast(target_type)
+        if self.value.is_one:
+            c2 = CodeSnippet("INC" if self.value.type == Type.Byte else "INC16", target_type)
+        else:
+            c2 = CodeSnippet(
+                f"ADDC {self.value.value}" if self.value.type == Type.Byte else f"ADD16C #{self.value.value}",
+                target_type)
+        return CodeSnippet.join((c1, c2), target_type)
+
+    @property
+    def is_increment(self):
+        return self.value.is_one
+
+    def children(self):
+        yield self.value
+        yield self.expr
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if self.value == old:
+            self.value = new
+        if self.expr == old:
+            self.expr = new
+
+    def optimize(self, parent: "AstNode") -> bool:
+        if isinstance(self.expr, Number):
+            parent.replace_child(self, self.expr.combine(self.value, self.expr.value + self.value.value))
+            return True
+        else:
+            return super().optimize(parent)
+
+
+class MulConstant(UnaryOperation):
+    def __init__(self, expr: AbstractExpression, value: "Number"):
+        super().__init__(UnOpType.Other, expr)
+        self.expr = expr
+        self.value = value
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        target_type = highest_type((type_hint, self.expr.type))
+        c1 = self.expr.gen_code(target_type)
+        c1.cast(target_type)
+        if self.value.value == 2:
+            c2 = CodeSnippet("MACRO_X2" if self.value.type == Type.Byte else "MACRO_X216", target_type)
+        else:
+            c2 = CodeSnippet(
+                f"MULC {self.value.value}" if self.value.type == Type.Byte else f"MUL16C #{self.value.value}",
+                target_type)
+        return CodeSnippet.join((c1, c2), target_type)
+
+    @property
+    def is_increment(self):
+        return self.value.is_one
+
+    def children(self):
+        yield self.value
+        yield self.expr
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if self.value == old:
+            self.value = new
+        if self.expr == old:
+            self.expr = new
+
+    def optimize(self, parent: "AstNode") -> bool:
+        if isinstance(self.expr, Number):
+            parent.replace_child(self, self.expr.combine(self.value, self.expr.value * self.value.value))
+            return True
+        else:
+            return super().optimize(parent)
 
 
 class MultiplyOperation(BinaryOperation):
-    pass
+    def _gen_operation_code(self, target_type) -> CodeSnippet:
+        return CodeSnippet("MUL" if target_type == Type.Byte else "MUL16", target_type)
+
+    def optimize(self, parent: "AstNode") -> bool:
+        if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
+            new_node = self.operand1.combine(self.operand2, self.operand1.value + self.operand2.value)
+            parent.replace_child(self, new_node)
+            return True
+        elif isinstance(self.operand1, Number) and self.operand1.is_one:
+            parent.replace_child(self, self.operand2)
+            return True
+        elif isinstance(self.operand2, Number) and self.operand2.is_one:
+            parent.replace_child(self, self.operand1)
+            return True
+        elif (isinstance(self.operand1, Number) and self.operand1.is_zero) or (
+                isinstance(self.operand2, Number) and self.operand2.is_zero):
+            parent.replace_child(self, Number(0, self.type))
+            return True
+        elif isinstance(self.operand1, Number) and not isinstance(self.operand2, Number):
+            parent.replace_child(self, MulConstant(self.operand2, self.operand1))
+            return True
+        elif isinstance(self.operand2, Number) and not isinstance(self.operand1, Number):
+            parent.replace_child(self, MulConstant(self.operand1, self.operand2))
+            return True
+        else:
+            r1 = self.operand1.optimize(self)
+            r2 = self.operand2.optimize(self)
+            return r1 or r2
 
 
 class LogicalChainOperation(BinaryOperation):  # AND, OR
@@ -106,10 +312,46 @@ class LogicalChainOperation(BinaryOperation):  # AND, OR
 class Number(AbstractExpression):
     def __init__(self, value, type_: Type):
         self.value = value
-        self.type = type_
+        self._type = type_
 
     def print(self, lvl):
         self._print_indented(lvl, self.type.name + " " + str(self.value))
+
+    @property
+    def type(self) -> Optional[Type]:
+        return self._type
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        if self.type == Type.Byte:
+            if type_hint == Type.Addr:
+                sn = CodeSnippet(f"PUSH16 #{self.value}", Type.Addr)
+            else:
+                sn = CodeSnippet(f"PUSH {self.value}", Type.Byte)
+        else:
+            if type_hint == Type.Byte:
+                val = self.value if self.value <= 255 else 255
+                sn = CodeSnippet(f"PUSH {val}", Type.Byte)
+            else:
+                sn = CodeSnippet(f"PUSH16 #{self.value}", Type.Addr)
+        return sn
+
+    def find_max_type(self) -> Optional[Type]:
+        return self._type
+
+    @property
+    def is_zero(self):
+        return self.value == 0
+
+    @property
+    def is_one(self):
+        return self.value == 1
+
+    def combine(self, another: "Number", new_value) -> "Number":
+        resulting_type = highest_type((self.type, another.type))
+        if new_value > 255:
+            resulting_type = Type.Addr
+        const_node = Number(new_value, resulting_type)
+        return const_node
 
 
 class ConstantUsage(Number):
@@ -130,6 +372,10 @@ class Assign(AbstractStatement):
         self.var = var
         self.value = value
 
+    @property
+    def type(self):
+        return self.var.definition.type
+
     def print(self, lvl):
         self.var.print(lvl + 1)
         self._print_indented(lvl, "=")
@@ -138,6 +384,42 @@ class Assign(AbstractStatement):
     def children(self):
         yield self.value
         yield self.var
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        max_type = highest_type((type_hint, self.value.find_max_type(), self.type))
+        c1 = self.value.gen_code(max_type)
+        c1.cast(self.type)
+        c2 = self.var.gen_code(self.type)
+        snippet = CodeSnippet.join((c1, c2), self.type)
+        return snippet
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.value:
+            self.value = new
+        if old == self.var:
+            self.var = new
+
+    def optimize(self, parent: "AstNode") -> bool:
+        if isinstance(self.value, AddConstant) and self.value.is_increment:
+            parent.replace_child(self, IncLocal(self.var))
+            return True
+        elif isinstance(self.var, VariableUsageLHS) and isinstance(self.value,
+                                                                   VariableUsageRHS) and self.var.definition == self.value.definition:
+            # a = a
+            parent.replace_child(self, None)
+            return True
+        else:
+            return self.value.optimize(self)
+
+
+class IncLocal(AbstractStatement):
+    def __init__(self, var: "VariableUsageLHS"):
+        self.var = var
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return CodeSnippet(
+            f"INC_LOCAL {self.var.name}" if self.var.definition.type == Type.Byte else f"INC_LOCAL16 {self.var.name}",
+            self.var.definition.type)
 
 
 class VariableUsage(AbstractStatement):
@@ -168,11 +450,13 @@ class VariableUsage(AbstractStatement):
 
 
 class VariableUsageLHS(VariableUsage):
-    pass
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return CodeSnippet(f"STORE {self.definition.name}", self.definition.type)
 
 
 class VariableUsageRHS(VariableUsageLHS, AbstractExpression):
-    pass
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return CodeSnippet(f"LOAD {self.definition.name}", self.definition.type)
 
 
 class GroupOfStatements(AbstractStatement):
@@ -278,6 +562,10 @@ class Instruction_PrintStringByPointer(AbstractStatement):
     def children(self):
         yield self.expr
 
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.expr:
+            self.expr = new
+
 
 class Instruction_PrintInteger(AbstractStatement):
     def __init__(self, expr: AbstractExpression):
@@ -290,6 +578,18 @@ class Instruction_PrintInteger(AbstractStatement):
     def children(self):
         yield self.expr
 
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        c = self.expr.gen_code(type_hint)
+        if c.type == Type.Byte:
+            c.add_line("Printint")
+        else:
+            c.add_line("Printint16")
+        return c
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.expr:
+            self.expr = new
+
 
 class Instruction_PrintChar(AbstractStatement):
     def __init__(self, expr: AbstractExpression):
@@ -301,6 +601,10 @@ class Instruction_PrintChar(AbstractStatement):
 
     def children(self):
         yield self.expr
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.expr:
+            self.expr = new
 
 
 class Instruction_PrintNewLine(AbstractStatement):
@@ -345,6 +649,12 @@ class FunctionCall(AbstractStatement):
     def children(self):
         yield from self.arguments
 
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        for i, arg in enumerate(self.arguments):
+            if arg == old:
+                self.arguments[i] = new
+                break
+
 
 class FunctionReturn(AbstractStatement):
     def __init__(self, value: Optional[AbstractExpression]):
@@ -358,6 +668,10 @@ class FunctionReturn(AbstractStatement):
     def children(self):
         if self.value:
             yield self.value
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.value:
+            self.value = new
 
 
 class ReturningCall(FunctionCall, AbstractExpression):
@@ -381,6 +695,10 @@ class ArrayInitialization_StackAlloc(ArrayInitializationStatement):
 
     def children(self):
         yield self.length
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.length:
+            self.length = new
 
 
 class ArrayInitialization_InitializerList(ArrayInitializationStatement):
@@ -408,6 +726,10 @@ class ArrayInitialization_Pointer(ArrayInitializationStatement):
     def children(self):
         yield self.pointer
 
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.pointer:
+            self.pointer = new
+
 
 class AstProgram(AstNode):
     def __init__(self):
@@ -419,3 +741,15 @@ class AstProgram(AstNode):
 
     def children(self):
         yield from self.blocks
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return CodeSnippet.join(b.gen_code(type_hint) for b in self.blocks)
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        for i, block in enumerate(self.blocks):
+            if block == old:
+                if new is not None:
+                    self.blocks[i] = new
+                else:
+                    del self.blocks[i]
+                break

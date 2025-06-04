@@ -1,7 +1,7 @@
 from symbols import *
 
 from lexer import Lexer, Symbol
-from ast import AstProgram, VariableUsageLHS, VariableUsageRHS, BinaryOperation, Number, \
+from myast import AstProgram, VariableUsageLHS, VariableUsageRHS, BinaryOperation, Number, \
     Assign, Function, AbstractBlock, AbstractStatement, BinOpType, GroupOfStatements, \
     AbstractExpression, ConstantUsage, Condition, LogicalOperation, SumOperation, UnaryOperation, UnOpType, \
     MultiplyOperation, LogicalChainOperation, Instruction_PrintStringConstant, Instruction_PrintInteger, \
@@ -1052,7 +1052,8 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-addr a = 2+2*2;
+addr a;
+a= 1 == 1;
     """)
     tree = parser.do_parse()
     #tree.print(0)

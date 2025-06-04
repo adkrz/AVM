@@ -141,7 +141,39 @@ class BinaryOperation(AbstractExpression):
         return highest_type((self.operand1.find_max_type(), self.operand2.find_max_type()))
 
     def _gen_operation_code(self, target_type) -> CodeSnippet:
-        raise NotImplementedError()
+        if self.op == BinOpType.Add:
+            return CodeSnippet("ADD" if target_type == Type.Byte else "ADD16", target_type)
+        elif self.op == BinOpType.Sub:
+            return CodeSnippet("SUB2" if target_type == Type.Byte else "SUB216", target_type)
+        elif self.op == BinOpType.Mul:
+            return CodeSnippet("MUL" if target_type == Type.Byte else "MUL16", target_type)
+        elif self.op == BinOpType.Div:
+            return CodeSnippet("DIV2" if target_type == Type.Byte else "DIV16", target_type)  # not implemented DIV16
+        elif self.op == BinOpType.Equals:
+            return CodeSnippet("EQ" if target_type == Type.Byte else "EQ16", target_type)
+        elif self.op == BinOpType.NotEqual:
+            return CodeSnippet("NE" if target_type == Type.Byte else "NE16", target_type)  # not implemented NE16
+        elif self.op == BinOpType.Le:  # inverse because of order on stack
+            return CodeSnippet("GREATER_OR_EQ" if target_type == Type.Byte else "GREATER_OR_EQ16", target_type)
+        elif self.op == BinOpType.Lt:
+            return CodeSnippet("GREATER" if target_type == Type.Byte else "GREATER16", target_type)
+        elif self.op == BinOpType.Ge:
+            return CodeSnippet("LESS_OR_EQ" if target_type == Type.Byte else "LESS_OR_EQ16", target_type)
+        elif self.op == BinOpType.Gt:
+            return CodeSnippet("LESS" if target_type == Type.Byte else "LESS16", target_type)
+        elif self.op == BinOpType.BitAnd:
+            return CodeSnippet("AND" if target_type == Type.Byte else "AND16", target_type)
+        elif self.op == BinOpType.BitOr:
+            return CodeSnippet("OR" if target_type == Type.Byte else "OR16", target_type)
+        elif self.op == BinOpType.BitXor:
+            return CodeSnippet("XOR" if target_type == Type.Byte else "XOR16", target_type)
+        elif self.op == BinOpType.Mod:
+            cs = CodeSnippet("SWAP" if target_type == Type.Byte else "SWAP16", target_type)
+            cs.add_line("MOD" if target_type == Type.Byte else "MOD16")
+        elif self.op == BinOpType.Lsh:
+            return CodeSnippet("LSH" if target_type == Type.Byte else "LSH16", target_type)
+        elif self.op == BinOpType.Rsh:
+            return CodeSnippet("RSH" if target_type == Type.Byte else "RSH16", target_type)
 
     def replace_child(self, old: "AstNode", new: "AstNode"):
         if old == self.operand1:
@@ -164,13 +196,24 @@ class UnaryOperation(AbstractExpression):
 
 
 class LogicalOperation(BinaryOperation):  # eq, less etc
-    pass
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        target_type = highest_type((self.operand1.type, self.operand2.type))
+        c1 = self.operand1.gen_code(target_type)
+        c2 = self.operand2.gen_code(target_type)
+        c1.cast(target_type)
+        c2.cast(target_type)
+        c3 = self._gen_operation_code(target_type)
+        return CodeSnippet.join((c1, c2, c3), Type.Byte)  # logical ops are always 8bit
+
+    def find_max_type(self) -> Optional[Type]:
+        return Type.Byte
+
+    @property
+    def type(self) -> Optional[Type]:
+        return Type.Byte
 
 
 class SumOperation(BinaryOperation):
-    def _gen_operation_code(self, target_type) -> CodeSnippet:
-        return CodeSnippet("ADD" if target_type == Type.Byte else "ADD16", target_type)
-
     def optimize(self, parent: "AstNode") -> bool:
         if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
             new_node = self.operand1.combine(self.operand2, self.operand1.value + self.operand2.value)
@@ -275,8 +318,6 @@ class MulConstant(UnaryOperation):
 
 
 class MultiplyOperation(BinaryOperation):
-    def _gen_operation_code(self, target_type) -> CodeSnippet:
-        return CodeSnippet("MUL" if target_type == Type.Byte else "MUL16", target_type)
 
     def optimize(self, parent: "AstNode") -> bool:
         if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
@@ -447,6 +488,12 @@ class VariableUsage(AbstractStatement):
             yield self.array_jump
         if self.struct_child:
             yield self.struct_child
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.array_jump:
+            self.array_jump = new
+        if old == self.struct_child:
+            self.struct_child = new
 
 
 class VariableUsageLHS(VariableUsage):

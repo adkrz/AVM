@@ -212,6 +212,63 @@ class LogicalOperation(BinaryOperation):  # eq, less etc
     def type(self) -> Optional[Type]:
         return Type.Byte
 
+    def optimize(self, parent: "AstNode") -> bool:
+        def _replace_with_bool(bool_val):
+            parent.replace_child(self, Number(1 if bool_val else 0, Type.Byte))
+            return True
+
+        if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
+            if self.op == BinOpType.Equals:
+                return _replace_with_bool(self.operand1.value == self.operand2.value)
+            elif self.op == BinOpType.NotEqual:
+                return _replace_with_bool(self.operand1.value != self.operand2.value)
+            elif self.op == BinOpType.Gt:
+                return _replace_with_bool(self.operand1.value > self.operand2.value)
+            elif self.op == BinOpType.Ge:
+                return _replace_with_bool(self.operand1.value >= self.operand2.value)
+            elif self.op == BinOpType.Lt:
+                return _replace_with_bool(self.operand1.value < self.operand2.value)
+            elif self.op == BinOpType.Le:
+                return _replace_with_bool(self.operand1.value <= self.operand2.value)
+        if self.op == BinOpType.Equals and isinstance(self.operand1, Number) and self.operand1.is_zero:
+            parent.replace_child(self, CompareToZero(self.operand2, True))
+            return True
+        elif self.op == BinOpType.Equals and isinstance(self.operand2, Number) and self.operand2.is_zero:
+            parent.replace_child(self, CompareToZero(self.operand1, True))
+            return True
+        if self.op == BinOpType.NotEqual and isinstance(self.operand1, Number) and self.operand1.is_zero:
+            parent.replace_child(self, CompareToZero(self.operand2, False))
+            return True
+        elif self.op == BinOpType.NotEqual and isinstance(self.operand2, Number) and self.operand2.is_zero:
+            parent.replace_child(self, CompareToZero(self.operand1, False))
+            return True
+        else:
+            return super().optimize(parent)
+
+
+class CompareToZero(UnaryOperation):
+    def __init__(self, expr: AbstractExpression, eq: bool):
+        super().__init__(UnOpType.Other, expr)
+        self.expr = expr
+        self.eq = eq
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        c1 = self.expr.gen_code(type_hint)
+        if self.eq:
+            code = "ZERO" if c1.type == Type.Byte else "ZERO16"
+        else:
+            code = "NZERO" if c1.type == Type.Byte else "NZERO16"
+        return CodeSnippet.join((c1, CodeSnippet(code, Type.Byte)), Type.Byte)  # logical ops are always 8bit
+
+    def children(self):
+        yield self.expr
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.expr:
+            self.expr = new
+
+    def find_max_type(self) -> Optional[Type]:
+        return Type.Byte
 
 class SumOperation(BinaryOperation):
     def optimize(self, parent: "AstNode") -> bool:
@@ -232,9 +289,7 @@ class SumOperation(BinaryOperation):
             parent.replace_child(self, AddConstant(self.operand1, self.operand2))
             return True
         else:
-            r1 = self.operand1.optimize(self)
-            r2 = self.operand2.optimize(self)
-            return r1 or r2
+            return super().optimize(parent)
 
 
 class AddConstant(UnaryOperation):
@@ -341,9 +396,7 @@ class MultiplyOperation(BinaryOperation):
             parent.replace_child(self, MulConstant(self.operand1, self.operand2))
             return True
         else:
-            r1 = self.operand1.optimize(self)
-            r2 = self.operand2.optimize(self)
-            return r1 or r2
+            return super().optimize(parent)
 
 
 class LogicalChainOperation(BinaryOperation):  # AND, OR

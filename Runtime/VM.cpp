@@ -284,6 +284,15 @@ void VM::RunProgram(bool profile)
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
             PUSHI(tmp / arg);
             break;
+        case I::DIV216:
+        {
+            auto tmp1 = POP_ADDR();
+            auto tmp2 = POP_ADDR();
+            if (tmp1 == 0)
+                HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
+            PUSHI(tmp2 / tmp1);
+            break;
+        }
         case I::MOD:
             arg = POP();
             tmp = POP();
@@ -338,6 +347,9 @@ void VM::RunProgram(bool profile)
 
         case I::EQ16:
             PUSHI(POP_ADDR() == POP_ADDR() ? 1 : 0);
+            break;
+        case I::NE16:
+            PUSHI(POP_ADDR() != POP_ADDR() ? 1 : 0);
             break;
         case I::LESS16:
             PUSHI(POP_ADDR() < POP_ADDR() ? 1 : 0);

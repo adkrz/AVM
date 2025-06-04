@@ -102,6 +102,11 @@ enum I
     /// </summary>
     DIV2,
     /// <summary>
+    /// Raises <see cref="InterruptCodes.DivisionByZeroError"/>
+    /// pop: 2x addr16bit, push: addr16bit, inverse order
+    /// </summary>
+    DIV216,
+    /// <summary>
     /// pop: 2x val8bit, push: val8bit
     /// </summary>
     MOD,
@@ -467,6 +472,11 @@ enum I
     /// pop: 2x address16bit, push: val8bit
     /// </summary>
     EQ16,
+    /// <summary>
+    /// 16bit version of <see cref="I.NE"/>. Note: result is 1 byte.
+    /// pop: 2x address16bit, push: val8bit
+    /// </summary>
+    NE16,
     /// <summary>
     /// 16bit version of<see cref="I.DUP"/>
     /// push: address16bit

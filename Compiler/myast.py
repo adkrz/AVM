@@ -494,7 +494,7 @@ class Assign(AbstractStatement):
             self.var = new
 
     def optimize(self, parent: "AstNode") -> bool:
-        if isinstance(self.value, AddConstant) and self.value.is_increment:
+        if isinstance(self.value, AddConstant) and self.value.is_increment and isinstance(self.value.expr, VariableUsage) and self.var.definition == self.value.expr.definition:
             parent.replace_child(self, IncLocal(self.var))
             return True
         elif isinstance(self.var, VariableUsageLHS) and isinstance(self.value,

@@ -148,11 +148,11 @@ class BinaryOperation(AbstractExpression):
         elif self.op == BinOpType.Mul:
             return CodeSnippet("MUL" if target_type == Type.Byte else "MUL16", target_type)
         elif self.op == BinOpType.Div:
-            return CodeSnippet("DIV2" if target_type == Type.Byte else "DIV16", target_type)  # not implemented DIV16
+            return CodeSnippet("DIV2" if target_type == Type.Byte else "DIV16", target_type)
         elif self.op == BinOpType.Equals:
             return CodeSnippet("EQ" if target_type == Type.Byte else "EQ16", target_type)
         elif self.op == BinOpType.NotEqual:
-            return CodeSnippet("NE" if target_type == Type.Byte else "NE16", target_type)  # not implemented NE16
+            return CodeSnippet("NE" if target_type == Type.Byte else "NE16", target_type)
         elif self.op == BinOpType.Le:  # inverse because of order on stack
             return CodeSnippet("GREATER_OR_EQ" if target_type == Type.Byte else "GREATER_OR_EQ16", target_type)
         elif self.op == BinOpType.Lt:

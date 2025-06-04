@@ -502,8 +502,13 @@ class Assign(AbstractStatement):
             self.var = new
 
     def optimize(self, parent: "AstNode") -> bool:
-        if isinstance(self.value, AddConstant) and self.value.is_increment and isinstance(self.value.operand,
-                                                                                          VariableUsage) and self.var.definition == self.value.operand.definition:
+        if (isinstance(self.value, AddConstant)
+                and self.value.is_increment
+                and isinstance(self.value.operand, VariableUsage)
+                and self.var.definition == self.value.operand.definition
+                and not self.var.definition.is_array
+                and not self.var.definition.struct_def
+        ):
             parent.replace_child(self, IncLocal(self.var))
             return True
         elif isinstance(self.var, VariableUsageLHS) and isinstance(self.value,

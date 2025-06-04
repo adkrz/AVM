@@ -779,6 +779,17 @@ void VM::RunProgram(bool profile)
             arg = read_next_program_byte(skip);
             write16(memory, READ_REGISTER(FP_REGISTER) + arg, read16(memory, READ_REGISTER(FP_REGISTER) + arg) - 1);
             break;
+        case I::MACRO_X2:
+        {
+            PUSH(POP() << 1);
+            break;
+        }
+        case I::MACRO_X216:
+        {
+            PUSH_ADDR(POP_ADDR() << 1);
+            break;
+        }
+
         default:
             throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));
         }

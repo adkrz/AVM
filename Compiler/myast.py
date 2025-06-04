@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional, Tuple, Sequence, Iterable
+from typing import List, Optional, Sequence, Iterable
 
 from symbols import Constant, FunctionSignature, Variable, Type
 
@@ -202,10 +202,10 @@ class UnaryOperation(AbstractExpression):
         c1 = self.operand.gen_code(type_hint)
         if self.op == UnOpType.BitNegate:
             c2 = CodeSnippet("FLIP" if c1.type == Type.Byte else "FLIP16", c1.type)
-            return CodeSnippet.join((c1,c2), c1.type)
+            return CodeSnippet.join((c1, c2), c1.type)
         elif self.op == UnOpType.UnaryMinus:
             c2 = CodeSnippet("NEG" if c1.type == Type.Byte else "NEG16", c1.type)
-            return CodeSnippet.join((c1,c2), c1.type)
+            return CodeSnippet.join((c1, c2), c1.type)
         return c1
 
     def find_max_type(self) -> Optional[Type]:
@@ -278,6 +278,7 @@ class CompareToZero(UnaryOperation):
 
     def find_max_type(self) -> Optional[Type]:
         return Type.Byte
+
 
 class SumOperation(BinaryOperation):
     def optimize(self, parent: "AstNode") -> bool:
@@ -501,7 +502,8 @@ class Assign(AbstractStatement):
             self.var = new
 
     def optimize(self, parent: "AstNode") -> bool:
-        if isinstance(self.value, AddConstant) and self.value.is_increment and isinstance(self.value.expr, VariableUsage) and self.var.definition == self.value.expr.definition:
+        if isinstance(self.value, AddConstant) and self.value.is_increment and isinstance(self.value.operand,
+                                                                                          VariableUsage) and self.var.definition == self.value.operand.definition:
             parent.replace_child(self, IncLocal(self.var))
             return True
         elif isinstance(self.var, VariableUsageLHS) and isinstance(self.value,

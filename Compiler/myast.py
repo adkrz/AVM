@@ -183,7 +183,7 @@ class BinaryOperation(AbstractExpression):
 
 
 class UnaryOperation(AbstractExpression):
-    def __init__(self, op: UnOpType, operand: AstNode):
+    def __init__(self, op: UnOpType, operand: AbstractExpression):
         self.op = op
         self.operand = operand
 
@@ -193,6 +193,23 @@ class UnaryOperation(AbstractExpression):
 
     def children(self):
         yield self.operand
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.operand:
+            self.operand = new
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        c1 = self.operand.gen_code(type_hint)
+        if self.op == UnOpType.BitNegate:
+            c2 = CodeSnippet("FLIP" if c1.type == Type.Byte else "FLIP16", c1.type)
+            return CodeSnippet.join((c1,c2), c1.type)
+        elif self.op == UnOpType.UnaryMinus:
+            c2 = CodeSnippet("NEG" if c1.type == Type.Byte else "NEG16", c1.type)
+            return CodeSnippet.join((c1,c2), c1.type)
+        return c1
+
+    def find_max_type(self) -> Optional[Type]:
+        return self.operand.type
 
 
 class LogicalOperation(BinaryOperation):  # eq, less etc
@@ -249,23 +266,15 @@ class LogicalOperation(BinaryOperation):  # eq, less etc
 class CompareToZero(UnaryOperation):
     def __init__(self, expr: AbstractExpression, eq: bool):
         super().__init__(UnOpType.Other, expr)
-        self.expr = expr
         self.eq = eq
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        c1 = self.expr.gen_code(type_hint)
+        c1 = self.operand.gen_code(type_hint)
         if self.eq:
             code = "ZERO" if c1.type == Type.Byte else "ZERO16"
         else:
             code = "NZERO" if c1.type == Type.Byte else "NZERO16"
         return CodeSnippet.join((c1, CodeSnippet(code, Type.Byte)), Type.Byte)  # logical ops are always 8bit
-
-    def children(self):
-        yield self.expr
-
-    def replace_child(self, old: "AstNode", new: "AstNode"):
-        if old == self.expr:
-            self.expr = new
 
     def find_max_type(self) -> Optional[Type]:
         return Type.Byte
@@ -295,12 +304,11 @@ class SumOperation(BinaryOperation):
 class AddConstant(UnaryOperation):
     def __init__(self, expr: AbstractExpression, value: "Number"):
         super().__init__(UnOpType.Other, expr)
-        self.expr = expr
         self.value = value
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        target_type = highest_type((type_hint, self.expr.type))
-        c1 = self.expr.gen_code(target_type)
+        target_type = highest_type((type_hint, self.operand.type))
+        c1 = self.operand.gen_code(target_type)
         c1.cast(target_type)
         if self.value.is_one:
             c2 = CodeSnippet("INC" if self.value.type == Type.Byte else "INC16", target_type)
@@ -316,17 +324,17 @@ class AddConstant(UnaryOperation):
 
     def children(self):
         yield self.value
-        yield self.expr
+        yield self.operand
 
     def replace_child(self, old: "AstNode", new: "AstNode"):
         if self.value == old:
             self.value = new
-        if self.expr == old:
-            self.expr = new
+        if self.operand == old:
+            self.operand = new
 
     def optimize(self, parent: "AstNode") -> bool:
-        if isinstance(self.expr, Number):
-            parent.replace_child(self, self.expr.combine(self.value, self.expr.value + self.value.value))
+        if isinstance(self.operand, Number):
+            parent.replace_child(self, self.operand.combine(self.value, self.operand.value + self.value.value))
             return True
         else:
             return super().optimize(parent)
@@ -335,12 +343,11 @@ class AddConstant(UnaryOperation):
 class MulConstant(UnaryOperation):
     def __init__(self, expr: AbstractExpression, value: "Number"):
         super().__init__(UnOpType.Other, expr)
-        self.expr = expr
         self.value = value
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        target_type = highest_type((type_hint, self.expr.type))
-        c1 = self.expr.gen_code(target_type)
+        target_type = highest_type((type_hint, self.operand.type))
+        c1 = self.operand.gen_code(target_type)
         c1.cast(target_type)
         if self.value.value == 2:
             c2 = CodeSnippet("MACRO_X2" if self.value.type == Type.Byte else "MACRO_X216", target_type)
@@ -356,17 +363,17 @@ class MulConstant(UnaryOperation):
 
     def children(self):
         yield self.value
-        yield self.expr
+        yield self.operand
 
     def replace_child(self, old: "AstNode", new: "AstNode"):
         if self.value == old:
             self.value = new
-        if self.expr == old:
-            self.expr = new
+        if self.operand == old:
+            self.operand = new
 
     def optimize(self, parent: "AstNode") -> bool:
-        if isinstance(self.expr, Number):
-            parent.replace_child(self, self.expr.combine(self.value, self.expr.value * self.value.value))
+        if isinstance(self.operand, Number):
+            parent.replace_child(self, self.operand.combine(self.value, self.operand.value * self.value.value))
             return True
         else:
             return super().optimize(parent)

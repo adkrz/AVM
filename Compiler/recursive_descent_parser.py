@@ -329,7 +329,7 @@ class Parser:
 
             if v == Symbol.Mult:
                 op_ = BinOpType.Mul
-                node = MultiplyOperation(op_)  # specialization important for constant folding
+                node = MultiplyOperation()  # specialization important for constant folding
             elif v == Symbol.Divide:
                 op_ = BinOpType.Div
             elif v == Symbol.Modulo:
@@ -380,7 +380,7 @@ class Parser:
 
             if v == Symbol.Plus:
                 op_ = BinOpType.Add
-                node = SumOperation(op_)
+                node = SumOperation()
             elif v == Symbol.Minus:
                 op_ = BinOpType.Sub
             elif v == Symbol.Pipe:
@@ -878,7 +878,8 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-addr a[] = 4;
+addr a[10];
+a[2] = a[0];
     """)
     tree = parser.do_parse()
     # tree.print(0)

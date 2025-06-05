@@ -115,6 +115,10 @@ class AbstractExpression(AstNode):
     def type(self) -> Optional[Type]:
         return None
 
+class Dummy(AbstractExpression):
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return CodeSnippet()
+
 
 def highest_type(types: Iterable[Optional[Type]]) -> Type:
     ht = Type.Byte
@@ -297,6 +301,9 @@ class CompareToZero(UnaryOperation):
 
 
 class SumOperation(BinaryOperation):
+    def __init__(self):
+        super().__init__(BinOpType.Add)
+        
     def optimize(self) -> bool:
         if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
             new_node = self.operand1.combine(self.operand2, self.operand1.value + self.operand2.value)
@@ -399,6 +406,8 @@ class MulConstant(UnaryOperation):
 
 
 class MultiplyOperation(BinaryOperation):
+    def __init__(self):
+        super().__init__(BinOpType.Mul)
 
     def optimize(self) -> bool:
         if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
@@ -532,8 +541,11 @@ class Assign(AbstractStatement):
         ):
             self.parent.replace_child(self, IncLocal(self.var))
             return True
-        elif isinstance(self.var, VariableUsageLHS) and isinstance(self.value,
-                                                                   VariableUsageRHS) and self.var.definition == self.value.definition:
+        elif (isinstance(self.var, VariableUsageLHS)
+              and isinstance(self.value, VariableUsageRHS)
+              and self.var.definition == self.value.definition
+              and self.var.array_jump == self.value.array_jump
+              and self.var.struct_child == self.value.struct_child):
             # a = a
             self.parent.replace_child(self, None)
             return True
@@ -558,10 +570,15 @@ class VariableUsage(AbstractStatement):
         self.definition = definition
         self.array_jump: Optional[AbstractExpression] = None
         self.struct_child: Optional[VariableUsage] = None
+        self._processed_array_jump = None
 
     @property
     def name(self):
         return self.definition.name
+
+    @property
+    def is_load(self):
+        raise NotImplementedError()
 
     def print(self, lvl):
         self._print_indented(lvl, f"Variable {self.definition.name} : {self.definition.type.name}")
@@ -577,26 +594,60 @@ class VariableUsage(AbstractStatement):
             yield self.array_jump
         if self.struct_child:
             yield self.struct_child
+        if self._processed_array_jump:
+            yield self._processed_array_jump
 
     def replace_child(self, old: "AstNode", new: "AstNode"):
         if old == self.array_jump:
             self.array_jump = new
         if old == self.struct_child:
             self.struct_child = new
+        if old == self._processed_array_jump:
+            self._processed_array_jump = new
         self.set_parents(False)
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        if not self.array_jump:
+            return gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, self.is_load)
+        # else: calculate address
+        c1 = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, True)
+        if self.array_jump:
+            element_size = self.definition.stack_size_single_element
+
+            # Create internally sum+multiply objects and exploit optimization functions to them:
+            self._processed_array_jump = SumOperation()
+            self._processed_array_jump.parent = self
+            self._processed_array_jump.operand1 = Dummy()
+            self._processed_array_jump.operand2 = MulConstant(self.array_jump, Number(element_size, Type.Addr))
+            self._processed_array_jump.set_parents()
+            opt = True
+            while opt:
+                opt = self._processed_array_jump.optimize()
+
+            if isinstance(self._processed_array_jump, Number) and self._processed_array_jump.is_zero:
+                self._processed_array_jump = None
+
+            if self._processed_array_jump:
+                c2 = self._processed_array_jump.gen_code(Type.Addr)
+                c1 = CodeSnippet.join((c1, c2), Type.Addr)
+        if self.is_load:
+            c1.add_line("LOAD_GLOBAL" if self.definition.type == Type.Byte else "LOAD_GLOBAL16")
+        else:
+            c1.add_line("STORE_GLOBAL" if self.definition.type == Type.Byte else "STORE_GLOBAL16")
+        c1.type = self.definition.type
+        return c1
 
 
 class VariableUsageLHS(VariableUsage):
-    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        st = self.symbol_table
-        instr = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, False)
-        return instr
+    @property
+    def is_load(self):
+        return False
 
 
 class VariableUsageRHS(VariableUsageLHS, AbstractExpression):
-    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        instr = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, True)
-        return instr
+    @property
+    def is_load(self):
+        return True
 
 
 class GroupOfStatements(AbstractStatement):

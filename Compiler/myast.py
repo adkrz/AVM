@@ -883,6 +883,12 @@ class ArrayInitialization_InitializerList(ArrayInitializationStatement):
     def children(self):
         yield from self.elements
 
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        stack_pos = CodeSnippet("PUSH_REG 1", type_=self.definition.type)
+        store = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, False)
+        numbers = [n.gen_code(type_hint) for n in self.elements]
+        return CodeSnippet.join([stack_pos, store] + numbers, self.definition.type)
+
 
 class ArrayInitialization_Pointer(ArrayInitializationStatement):
     def __init__(self, definition: Variable, pointer: AbstractExpression):
@@ -901,6 +907,11 @@ class ArrayInitialization_Pointer(ArrayInitializationStatement):
             self.pointer = new
             self.set_parents(False)
 
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        c1 = self.pointer.gen_code(Type.Addr)
+        c1.cast(Type.Addr)
+        c2 = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, False)
+        return CodeSnippet.join((c1, c2), Type.Addr)
 
 class AstProgram(AstNode):
     def __init__(self):

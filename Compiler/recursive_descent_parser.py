@@ -89,7 +89,7 @@ class Parser:
                             self._expect(Symbol.Comma)
                         self._expect(Symbol.Number)
                         size += 1
-                        node.elements.append(self._lex.current_number)
+                        node.elements.append(Number(self._lex.current_number, new_var_type))
                         if self._accept(Symbol.RCurly):
                             break
                         vdef.array_fixed_len = size
@@ -878,7 +878,7 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-addr a = 3+1;
+addr a[] = 4;
     """)
     tree = parser.do_parse()
     # tree.print(0)

@@ -9,6 +9,7 @@ from myast import AstProgram, VariableUsageLHS, VariableUsageRHS, BinaryOperatio
     Instruction_Debugger, WhileLoop, DoWhileLoop, Instruction_Break, Instruction_Continue, FunctionCall, FunctionReturn, \
     ReturningCall, ArrayInitializationStatement, ArrayInitialization_InitializerList, ArrayInitialization_Pointer, \
     ArrayInitialization_StackAlloc, VariableUsage
+from symbol_table import SymbolTable
 
 
 class ExprContext:
@@ -44,15 +45,8 @@ class Parser:
         self._while_counter = 1
         self._condition_counter = 1
         self._codes = {}  # per context
-        self._local_variables: Dict[
-            str, Dict[str, "Variable"]] = {}  # per context, then name+details, in order of occurrence
-        self._constants: Dict[
-            str, Dict[str, "Constant"]] = {}  # per context, then name+details, in order of occurrence
         self._current_context = ""  # empty = global, otherwise in function
-        self._string_constants = []
-
-        self._function_signatures: Dict[str, FunctionSignature] = {}
-        self._struct_definitions: Dict[str, "StructDefinition"] = {}
+        self.symbol_table = SymbolTable()
 
     def _create_ec(self) -> ExprContext:
         return ExprContext(self)
@@ -73,29 +67,7 @@ class Parser:
         else:
             self._codes[self._current_context] = c + self._codes[self._current_context]
 
-    def _register_variable(self, name: str, type_: Type, is_array: bool = False, from_global: bool = False,
-                           struct_def: Optional[StructDefinition] = None) -> Variable:
-        if self._current_context in self._function_signatures:
-            if name in self._function_signatures[self._current_context].args:
-                return self._function_signatures[self._current_context].args[name]
-        vdef = Variable(name, type_, is_array=is_array, from_global=from_global, struct_def=struct_def)
-        if self._current_context not in self._local_variables:
-            self._local_variables[self._current_context] = {name: vdef}
-        else:
-            if name not in self._local_variables[self._current_context]:
-                self._local_variables[self._current_context][name] = vdef
-        return vdef
-
-    def _register_constant(self, name: str, type_: Type, value: int) -> Constant:
-        cdef = Constant(name, type_, value)
-        if self._current_context not in self._constants:
-            self._constants[self._current_context] = {name: cdef}
-        else:
-            if name not in self._constants[self._current_context]:
-                self._constants[self._current_context][name] = cdef
-        return cdef
-
-    def _gen_load_store_instruction(self, name: str, load: bool, context: ExprContext) -> "Variable":
+    def _gen_load_store_instruction(self, scope, name: str, load: bool, context: ExprContext) -> "Variable":
 
         def gen(offset, is_arg, is_16bit):
             instr = "LOAD" if load else "STORE"
@@ -104,7 +76,7 @@ class Parser:
             code = f"{instr}_{origin}{bbits} {offset} ; {name}"
             return code
 
-        var = self._get_variable(name)
+        var = self.symbol_table.get_variable(scope, name)
         offs = self._offsetof(name)
 
         if var.is_arg:
@@ -123,31 +95,6 @@ class Parser:
             context.append_code(gen(offs, False, var.is_16bit))
 
         return var
-
-    def _get_variable(self, name: str) -> Variable:
-        # Check function arguments
-        if (self._current_context in self._function_signatures and name
-                in self._function_signatures[self._current_context].args):
-            return self._function_signatures[self._current_context].args[name]
-
-        if self._current_context not in self._local_variables:
-            self._error(f"Current context is empty: {self._current_context}, unknown variable {name}")
-
-        # Check local variables, this includes global declarations
-        if name not in self._local_variables[self._current_context]:
-            self._error(f"Unknown variable {name}")
-        return self._local_variables[self._current_context][name]
-
-    def _get_constant(self, name: str) -> Optional[Constant]:
-        # Local context
-        if self._current_context in self._constants:
-            if name in self._constants[self._current_context]:
-                return self._constants[self._current_context][name]
-        # global context
-        if self._current_context != "" and "" in self._constants:
-            if name in self._constants[""]:
-                return self._constants[""][name]
-        return None
 
     def _offsetof(self, name: str) -> int:
         offs = 0
@@ -195,7 +142,8 @@ class Parser:
     def _gen_array_initialization(self, context: ExprContext, new_var_name: str, new_var_type: Optional[Type] = None,
                                   struct_def=None) -> (Variable, ArrayInitializationStatement):
         vtype = Type.Struct if struct_def else new_var_type
-        vdef = self._register_variable(new_var_name, vtype, is_array=True, struct_def=struct_def)
+        vdef = self.symbol_table.register_variable(self._current_context, new_var_name, vtype, is_array=True,
+                                                   struct_def=struct_def)
 
         node = None
         if self._accept(Symbol.RBracket):
@@ -224,20 +172,12 @@ class Parser:
         node = ArrayInitialization_StackAlloc(vdef, size_expr)
         return vdef, node
 
-    def _gen_index_of_str(self, string_constant: str):
-        if string_constant not in self._string_constants:
-            self._string_constants.append(string_constant)
-            index = len(self._string_constants)
-        else:
-            index = self._string_constants.index(self._lex.current_string) + 1
-        return index
-
     def _gen_address_of_str(self, string_constant: str, context: ExprContext):
-        index = self._gen_index_of_str(string_constant)
+        index = self.symbol_table.get_index_of_string(string_constant)
         context.append_code(f"PUSH16 @string_{index}")
 
-    def _gen_address_of_variable(self, var_name, context: ExprContext):
-        var_def = self._get_variable(var_name)
+    def _gen_address_of_variable(self, scope, var_name, context: ExprContext):
+        var_def = self.symbol_table.get_variable(scope, var_name)
         if var_def.is_array:
             self._gen_load_store_instruction(var_name, True, context)
         elif var_def.from_global:
@@ -266,13 +206,13 @@ class Parser:
                 context.append_code(f"PUSH {Type.Addr.size}")
             else:
                 self._expect(Symbol.Identifier)
-                if self._lex.current_identifier in self._struct_definitions:
-                    context.append_code(f"PUSH {self._struct_definitions[self._lex.current_identifier].stack_size}")
+                if struct_def := self.symbol_table.get_struct_definition(self._lex.current_identifier):
+                    context.append_code(f"PUSH {struct_def.stack_size}")
                 else:
                     self._error(f"Unknown data type {self._lex.current_identifier}")
         elif function_name == "length":
             self._expect(Symbol.Identifier)
-            var = self._get_variable(self._lex.current_identifier)
+            var = self.symbol_table.get_variable(self._current_context, self._lex.current_identifier)
             if not var.is_array:
                 self._error(f"Variable {self._lex.current_identifier} is not an array")
             size = var.array_fixed_len if var.array_fixed_len > 0 else var.array_fixed_size
@@ -346,26 +286,26 @@ class Parser:
             self._expect(Symbol.Number)
             return Number(self._lex.current_number, Type.Addr)
         elif self._accept(Symbol.Identifier):
-            var = self._lex.current_identifier
+            var_name = self._lex.current_identifier
 
             if self._accept(Symbol.LParen):
                 # Intrinsics that return value
-                return self._parse_intrinsic(var, context, expected_return=True)
+                return self._parse_intrinsic(var_name, context, expected_return=True)
 
-            constant = self._get_constant(var)
+            constant = self.symbol_table.get_constant(self._current_context, var_name)
             if constant is not None:
                 return ConstantUsage(constant)
 
-            var_def = self._get_variable(var)
+            var_def = self.symbol_table.get_variable(self._current_context, var_name)
             node = VariableUsageRHS(var_def)
 
             if var_def.struct_def:
-                last_var_in_chain, node = self._generate_struct_address(var_def, var, context)
+                last_var_in_chain, node = self._generate_struct_address(var_def, var_name, context)
                 return node
 
             if self._accept(Symbol.LBracket):
                 if not var_def.is_array:
-                    self._error(f"Variable {var} is not an array!")
+                    self._error(f"Variable {var_name} is not an array!")
 
                 if self._accept(Symbol.RBracket):
                     # arr[] is the same as arr[0]
@@ -613,7 +553,7 @@ class Parser:
                 self._expect(Symbol.Semicolon)
                 return node
             else:
-                var_def = self._register_variable(var_name, var_type)
+                var_def = self.symbol_table.register_variable(self._current_context, var_name, var_type)
                 stmt = None
                 if self._accept(Symbol.Becomes):  # initial value, like byte A = 1;
                     decl = VariableUsageLHS(var_def)
@@ -622,10 +562,9 @@ class Parser:
                 self._expect(Symbol.Semicolon)
                 return stmt
 
-        elif self._lex.current == Symbol.Identifier and self._lex.current_identifier in self._struct_definitions:
+        elif self._lex.current == Symbol.Identifier and (
+        struct_def := self.symbol_table.get_struct_definition(self._lex.current_identifier)):
             # struct init
-            struct_name = self._lex.current_identifier
-            struct_def = self._struct_definitions[struct_name]
             self._lex.next_symbol()
             self._expect(Symbol.Identifier)
             var_name = self._lex.current_identifier
@@ -636,7 +575,7 @@ class Parser:
                 self._error("Cannot assign directly to structure")
 
             else:
-                self._register_variable(var_name, Type.Struct, struct_def=struct_def)
+                self.symbol_table.register_variable(self._current_context, var_name, Type.Struct, struct_def=struct_def)
             self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.Identifier):
@@ -647,7 +586,7 @@ class Parser:
                 self._expect(Symbol.Semicolon)
                 return
 
-            var = self._get_variable(var_name)
+            var = self.symbol_table.get_variable(self._current_context, var_name)
             if var.struct_def:
                 # LHS structure element assignment
                 last_var_in_chain, struct_node = self._generate_struct_address(var, var_name, self._create_ec())
@@ -665,11 +604,11 @@ class Parser:
                 node2 = self._parse_expression()
                 self._expect(Symbol.Semicolon)
 
-                node = Assign(VariableUsageLHS(self._get_variable(var_name)), node2)
+                node = Assign(VariableUsageLHS(self.symbol_table.get_variable(self._current_context, var_name)), node2)
                 return node
             elif self._accept(Symbol.LBracket):
                 # Array element LHS assignment
-                node = VariableUsageLHS(self._get_variable(var_name))
+                node = VariableUsageLHS(self.symbol_table.get_variable(self._current_context, var_name))
                 element_size = var.type.size
                 if self._accept(Symbol.RBracket):
                     # arr[] = the same as arr[0], no skip to calculate
@@ -690,11 +629,12 @@ class Parser:
             if not inside_function:
                 self._error("Global is allowed only inside functions!")
             self._expect(Symbol.Identifier)
-            if self._lex.current_identifier not in self._local_variables[""]:
+            gvar = self.symbol_table.get_global_variable(self._lex.current_identifier)
+            if gvar is None:
                 self._error(f"Unknown global variable {self._lex.current_identifier}")
-            gvar = self._local_variables[""][self._lex.current_identifier]
-            self._register_variable(self._lex.current_identifier, gvar.type, is_array=gvar.is_array, from_global=True,
-                                    struct_def=gvar.struct_def)
+            self.symbol_table.register_variable(self._current_context, self._lex.current_identifier, gvar.type,
+                                                is_array=gvar.is_array, from_global=True,
+                                                struct_def=gvar.struct_def)
             self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.Begin):
@@ -785,7 +725,7 @@ class Parser:
 
         elif self._accept(Symbol.Print):
             if self._accept(Symbol.String):
-                idx = self._gen_index_of_str(self._lex.current_string)
+                idx = self.symbol_table.get_index_of_string(self._lex.current_string)
                 instr = Instruction_PrintStringConstant(idx, self._lex.current_string)
             else:
                 expr = self._parse_expression()
@@ -823,9 +763,9 @@ class Parser:
     def _parse_function_call(self, context: ExprContext, inside_expression=False) -> FunctionCall:
         self._expect(Symbol.Identifier)
         func = self._lex.current_identifier
-        if func not in self._function_signatures:
+        signature = self.symbol_table.get_function_signature(func)
+        if signature is None:
             self._error(f"Unknown function {func}")
-        signature = self._function_signatures[func]
 
         self._expect(Symbol.LParen)
 
@@ -853,7 +793,8 @@ class Parser:
                 # Structs are also passed by ref
                 self._expect(Symbol.Identifier)
                 var_name = self._lex.current_identifier
-                self._generate_struct_address(self._get_variable(var_name), var_name, context)
+                self._generate_struct_address(self.symbol_table.get_variable(self._current_context, var_name), var_name,
+                                              context)
                 refs_mapping[arg] = self._lex.current_identifier
 
             else:
@@ -888,7 +829,7 @@ class Parser:
                     const_value = 0
                     self._error("Const value must be number or char")
 
-                cdef = self._register_constant(const_name, const_type, const_value)
+                cdef = self.symbol_table.register_constant(self._current_context, const_name, const_type, const_value)
                 self._expect(Symbol.Semicolon)
 
                 return None
@@ -900,7 +841,7 @@ class Parser:
             self._current_context = self._lex.current_identifier
 
             signature = FunctionSignature()
-            self._function_signatures[self._current_context] = signature
+            self.symbol_table.register_function(self._current_context, signature)
 
             self._expect(Symbol.LParen)
 
@@ -922,8 +863,7 @@ class Parser:
                         arg = Variable(var_name, var_type)
                     arg.is_arg = True
                     signature.args[var_name] = arg
-                elif self._lex.current_identifier in self._struct_definitions:
-                    struct_def = self._struct_definitions[self._lex.current_identifier]
+                elif struct_def := self.symbol_table.get_struct_definition(self._lex.current_identifier):
                     self._lex.next_symbol()
                     self._expect(Symbol.Identifier)
                     var_name = self._lex.current_identifier
@@ -962,6 +902,7 @@ class Parser:
                 # definition
                 body = self._parse_block(True)
                 node = Function(self._current_context, signature, body)
+                node.scope = self._current_context
                 self._current_context = old_ctx
                 return node
             return None
@@ -969,7 +910,7 @@ class Parser:
             self._expect(Symbol.Identifier)
             struct_name = self._lex.current_identifier
             definition = StructDefinition(struct_name)
-            self._struct_definitions[struct_name] = definition
+            self.symbol_table.register_struct(struct_name, definition)
             self._expect(Symbol.LParen)
             while not self._accept(Symbol.RParen):
                 if definition.members:
@@ -989,7 +930,8 @@ class Parser:
                     else:
                         arg = Variable(var_name, var_type)
                     definition.members[var_name] = arg
-                elif self._lex.current == Symbol.Identifier and self._lex.current_identifier in self._struct_definitions:
+                elif self._lex.current == Symbol.Identifier and (
+                nested_struct := self.symbol_table.get_struct_definition(self._lex.current_identifier)):
                     # nested struct
                     struct_name = self._lex.current_identifier
                     self._lex.next_symbol()
@@ -1000,10 +942,10 @@ class Parser:
                         size = self._lex.current_number
                         self._expect(Symbol.RBracket)
                         arg = Variable(var_name, Type.Struct, is_array=True,
-                                       struct_def=self._struct_definitions[struct_name])
+                                       struct_def=nested_struct)
                         arg.array_fixed_size = size
                     else:
-                        arg = Variable(var_name, Type.Struct, struct_def=self._struct_definitions[struct_name])
+                        arg = Variable(var_name, Type.Struct, struct_def=nested_struct)
                     definition.members[var_name] = arg
 
                 else:
@@ -1013,7 +955,7 @@ class Parser:
             stmt = self._parse_statement(inside_function=inside_function)
             return stmt
 
-    def _generate_preamble(self):
+    def _generate_prolog(self):
         txt = ""
         if self._current_context not in self._local_variables:
             return
@@ -1056,7 +998,7 @@ if __name__ == '__main__':
 addr a = 3+1;
     """)
     tree = parser.do_parse()
-    #tree.print(0)
+    # tree.print(0)
     opt = True
     while opt:
         opt = tree.optimize()

@@ -52,77 +52,10 @@ class Parser:
         return ExprContext(self)
 
     def _append_code(self, c: str, newline=True):
-        if newline:
-            c += "\n"
-        if self._current_context not in self._codes:
-            self._codes[self._current_context] = c
-        else:
-            self._codes[self._current_context] += c
+        pass
 
     def _prepend_code(self, c: str, newline=True):
-        if newline:
-            c += "\n"
-        if self._current_context not in self._codes:
-            self._codes[self._current_context] = c
-        else:
-            self._codes[self._current_context] = c + self._codes[self._current_context]
-
-    def _gen_load_store_instruction(self, scope, name: str, load: bool, context: ExprContext) -> "Variable":
-
-        def gen(offset, is_arg, is_16bit):
-            instr = "LOAD" if load else "STORE"
-            bbits = "16" if is_16bit else ""
-            origin = "ARG" if is_arg else "LOCAL"
-            code = f"{instr}_{origin}{bbits} {offset} ; {name}"
-            return code
-
-        var = self.symbol_table.get_variable(scope, name)
-        offs = self._offsetof(name)
-
-        if var.is_arg:
-            context.append_code(gen(offs, True, var.is_16bit))
-        elif var.from_global:
-            bits = "16" if var.is_16bit else ""
-            context.append_code("PUSH_STACK_START")
-            if offs != 0:
-                context.append_code(f"PUSH16 #{offs}")
-                context.append_code("ADD16")
-            if load:
-                context.append_code(f"LOAD_GLOBAL{bits}")
-            else:
-                context.append_code(f"STORE_GLOBAL{bits}")
-        else:
-            context.append_code(gen(offs, False, var.is_16bit))
-
-        return var
-
-    def _offsetof(self, name: str) -> int:
-        offs = 0
-        # Check function arguments
-        if self._current_context in self._function_signatures and name in self._function_signatures[
-            self._current_context].args:
-            for k, v in reversed(self._function_signatures[self._current_context].args.items()):
-                offs += v.stack_size
-                if k == name:
-                    return offs
-
-        # Check global variables:
-        if self._current_context and "" in self._local_variables and name in self._local_variables[""]:
-            for k, v in self._local_variables[""].items():
-                if k == name:
-                    # v = self._local_variables[""][name]
-                    return offs
-                offs += v.stack_size
-
-        # Check local variables
-        if name not in self._local_variables[self._current_context]:
-            self._error(f"Unknown variable {name}")
-        for k, v in self._local_variables[self._current_context].items():
-            if v.from_global:
-                continue
-            if k == name:
-                return offs
-            offs += v.stack_size
+        pass
 
     def _accept(self, t: Symbol) -> bool:
         if t == self._lex.current:
@@ -171,31 +104,6 @@ class Parser:
         self._expect(Symbol.RBracket)
         node = ArrayInitialization_StackAlloc(vdef, size_expr)
         return vdef, node
-
-    def _gen_address_of_str(self, string_constant: str, context: ExprContext):
-        index = self.symbol_table.get_index_of_string(string_constant)
-        context.append_code(f"PUSH16 @string_{index}")
-
-    def _gen_address_of_variable(self, scope, var_name, context: ExprContext):
-        var_def = self.symbol_table.get_variable(scope, var_name)
-        if var_def.is_array:
-            self._gen_load_store_instruction(var_name, True, context)
-        elif var_def.from_global:
-            context.append_code("PUSH_STACK_START")
-            offset = self._offsetof(var_name)
-            if offset > 0:
-                context.append_code(f"PUSH16 #{offset}")
-                context.append_code("ADD16")
-        elif var_def.is_arg:
-            context.append_code("PUSH_REG 2")
-            context.append_code(f"PUSH16 #{self._offsetof(var_name)}")
-            context.append_code("SUB16")
-            context.append_code("PUSH16 #2")  # saved registers
-            context.append_code("SUB16")
-        else:
-            context.append_code("PUSH_REG 2")
-            context.append_code(f"PUSH16 #{self._offsetof(var_name)}")
-            context.append_code("ADD16")
 
     def _parse_intrinsic(self, function_name, context: ExprContext, expected_return):
         # self._expect(Symbol.LParen)
@@ -608,13 +516,13 @@ class Parser:
                 return node
             elif self._accept(Symbol.LBracket):
                 # Array element LHS assignment
-                node = VariableUsageLHS(self.symbol_table.get_variable(self._current_context, var_name))
+                var_def = self.symbol_table.get_variable(self._current_context, var_name)
+                node = VariableUsageLHS(var_def)
                 element_size = var.type.size
                 if self._accept(Symbol.RBracket):
                     # arr[] = the same as arr[0], no skip to calculate
                     pass
                 else:
-                    var_def = self._gen_load_store_instruction(var_name, True, self._create_ec())
                     if not var_def.is_array:
                         self._error(f"Variable {var_name} is not an array")
                     jmp = self._parse_expression()
@@ -954,32 +862,6 @@ class Parser:
         else:
             stmt = self._parse_statement(inside_function=inside_function)
             return stmt
-
-    def _generate_prolog(self):
-        txt = ""
-        if self._current_context not in self._local_variables:
-            return
-        total_stack_size = 0
-        for k, var in self._local_variables[self._current_context].items():
-            if not var.from_global:
-                name = k
-                if var.is_array:
-                    name += "[]"
-                if var.struct_def and not var.is_array:
-                    total_stack_size += var.stack_size
-                    txt += f"; struct {var.struct_def.name} {name}\n"
-                else:
-                    if var.is_array and var.array_fixed_size == 0:
-                        # pointer
-                        total_stack_size += 2
-                    else:
-                        # normal variable or array of known size from initializer list
-                        total_stack_size += var.stack_size
-                    txt += f"; {var.type.name} {name}\n"
-        # todo: initial value instead of just push
-        if total_stack_size > 0:
-            txt += f"PUSHN {total_stack_size}\n"
-            self._prepend_code(txt, False)
 
     def do_parse(self) -> AstProgram:
         node = AstProgram()

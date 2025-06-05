@@ -94,3 +94,9 @@ class SymbolTable:
         if name in self._function_signatures:
             return self._function_signatures[name]
         return None
+
+    def get_all_variables(self, scope) -> Dict[str, "Variable"]:
+        """ Use empty string to get global vars """
+        if scope not in self._local_variables:
+            return {}
+        return self._local_variables[scope]

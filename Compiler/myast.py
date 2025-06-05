@@ -1,8 +1,11 @@
 from enum import Enum
-from typing import List, Optional, Sequence, Iterable
+from typing import List, Optional, Sequence, Iterable, TYPE_CHECKING
 
+from codegen_helpers import CodeSnippet
 from symbols import Constant, FunctionSignature, Variable, Type
 
+if TYPE_CHECKING:
+    from symbol_table import SymbolTable
 
 class BinOpType(Enum):
     Add = 1
@@ -31,40 +34,11 @@ class UnOpType(Enum):
     Other = 3  # e.g. for operation on immediate constants, that inherit from unary
 
 
-class CodeSnippet:
-    def __init__(self, code: str = "", type_: Optional[Type] = None):
-        self.type = type_
-        self.codes: List[str] = [code] if code else []
-
-    def add_line(self, line):
-        self.codes.append(line)
-
-    def print(self):
-        for c in self.codes:
-            print(c)
-
-    @staticmethod
-    def join(snippets: Iterable[Optional["CodeSnippet"]], type_: Optional[Type] = None) -> "CodeSnippet":
-        ret = CodeSnippet(type_=type_)
-        for sn in snippets:
-            if sn:
-                for code in sn.codes:
-                    ret.codes.append(code)
-        return ret
-
-    def cast(self, expected_type: Optional[Type]):
-        if expected_type is None:
-            return
-        if self.type == Type.Byte and expected_type == Type.Addr:
-            self.add_line("EXTEND")
-        elif self.type == Type.Addr and expected_type == Type.Byte:
-            self.add_line("DOWNCAST")
-
-
 class AstNode:
     def __init__(self):
         self._scope: Optional[str] = None  # if none, goes to parent
         self.parent: Optional["AstNode"] = None
+        self._symbol_table: Optional["SymbolTable"] = None
 
     def set_parents(self, recursive=True):
         """ Recursively set parent relations starting from this node.
@@ -86,6 +60,18 @@ class AstNode:
     @scope.setter
     def scope(self, s: Optional[str]):
         self._scope = s
+
+    @property
+    def symbol_table(self) -> Optional["SymbolTable"]:
+        if self._symbol_table is not None:
+            return self._symbol_table
+        if self.parent is not None:
+            return self.parent._symbol_table
+        return None
+
+    @symbol_table.setter
+    def symbol_table(self, s: Optional["SymbolTable"]):
+        self._symbol_table = s
 
     def print(self, lvl):
         pass

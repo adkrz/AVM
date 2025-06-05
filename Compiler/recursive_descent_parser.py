@@ -1052,14 +1052,14 @@ class Parser:
 
 if __name__ == '__main__':
     parser = Parser("""
-addr a;
-a= 1 == 1;
+addr a[0];
     """)
     tree = parser.do_parse()
+    tree.set_parents()
     #tree.print(0)
     opt = True
     while opt:
-        opt = tree.optimize(None)
+        opt = tree.optimize()
     code = tree.gen_code(None)
     code.print()
     pass

@@ -62,6 +62,30 @@ class CodeSnippet:
 
 
 class AstNode:
+    def __init__(self):
+        self._scope: Optional[str] = None  # if none, goes to parent
+        self.parent: Optional["AstNode"] = None
+
+    def set_parents(self):
+        """ Recursively set parent relations starting from this node.
+        This saves the hassle with manually setting parents on object construction / moving
+         """
+        for child in self.children():
+            child.parent = self
+            child.set_parents()
+
+    @property
+    def scope(self) -> str:
+        if self._scope is not None:
+            return self.scope
+        if self.parent is not None:
+            return self.parent.scope
+        return ""
+
+    @scope.setter
+    def scope(self, s: Optional[str]):
+        self._scope = s
+
     def print(self, lvl):
         pass
 
@@ -81,10 +105,10 @@ class AstNode:
     def replace_child(self, old: "AstNode", new: "AstNode"):
         raise NotImplementedError(f"Replace not implemented in {self.__class__.__name__}")
 
-    def optimize(self, parent: "AstNode") -> bool:
+    def optimize(self) -> bool:
         opt = False
         for child in self.children():
-            o = child.optimize(self)
+            o = child.optimize()
             if o:
                 opt = o
         return opt
@@ -115,6 +139,7 @@ def highest_type(types: Iterable[Optional[Type]]) -> Type:
 
 class BinaryOperation(AbstractExpression):
     def __init__(self, op: BinOpType):
+        super().__init__()
         self.op = op
         self.operand1: AbstractExpression = None
         self.operand2: AbstractExpression = None
@@ -180,10 +205,12 @@ class BinaryOperation(AbstractExpression):
             self.operand1 = new
         elif old == self.operand2:
             self.operand2 = new
+        self.set_parents(False)
 
 
 class UnaryOperation(AbstractExpression):
     def __init__(self, op: UnOpType, operand: AbstractExpression):
+        super().__init__()
         self.op = op
         self.operand = operand
 
@@ -229,9 +256,9 @@ class LogicalOperation(BinaryOperation):  # eq, less etc
     def type(self) -> Optional[Type]:
         return Type.Byte
 
-    def optimize(self, parent: "AstNode") -> bool:
+    def optimize(self) -> bool:
         def _replace_with_bool(bool_val):
-            parent.replace_child(self, Number(1 if bool_val else 0, Type.Byte))
+            self.parent.replace_child(self, Number(1 if bool_val else 0, Type.Byte))
             return True
 
         if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
@@ -248,19 +275,19 @@ class LogicalOperation(BinaryOperation):  # eq, less etc
             elif self.op == BinOpType.Le:
                 return _replace_with_bool(self.operand1.value <= self.operand2.value)
         if self.op == BinOpType.Equals and isinstance(self.operand1, Number) and self.operand1.is_zero:
-            parent.replace_child(self, CompareToZero(self.operand2, True))
+            self.parent.replace_child(self, CompareToZero(self.operand2, True))
             return True
         elif self.op == BinOpType.Equals and isinstance(self.operand2, Number) and self.operand2.is_zero:
-            parent.replace_child(self, CompareToZero(self.operand1, True))
+            self.parent.replace_child(self, CompareToZero(self.operand1, True))
             return True
         if self.op == BinOpType.NotEqual and isinstance(self.operand1, Number) and self.operand1.is_zero:
-            parent.replace_child(self, CompareToZero(self.operand2, False))
+            self.parent.replace_child(self, CompareToZero(self.operand2, False))
             return True
         elif self.op == BinOpType.NotEqual and isinstance(self.operand2, Number) and self.operand2.is_zero:
-            parent.replace_child(self, CompareToZero(self.operand1, False))
+            self.parent.replace_child(self, CompareToZero(self.operand1, False))
             return True
         else:
-            return super().optimize(parent)
+            return super().optimize()
 
 
 class CompareToZero(UnaryOperation):
@@ -281,25 +308,25 @@ class CompareToZero(UnaryOperation):
 
 
 class SumOperation(BinaryOperation):
-    def optimize(self, parent: "AstNode") -> bool:
+    def optimize(self) -> bool:
         if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
             new_node = self.operand1.combine(self.operand2, self.operand1.value + self.operand2.value)
-            parent.replace_child(self, new_node)
+            self.parent.replace_child(self, new_node)
             return True
         elif isinstance(self.operand1, Number) and self.operand1.is_zero:
-            parent.replace_child(self, self.operand2)
+            self.parent.replace_child(self, self.operand2)
             return True
         elif isinstance(self.operand2, Number) and self.operand2.is_zero:
-            parent.replace_child(self, self.operand1)
+            self.parent.replace_child(self, self.operand1)
             return True
         elif isinstance(self.operand1, Number) and not isinstance(self.operand2, Number):
-            parent.replace_child(self, AddConstant(self.operand2, self.operand1))
+            self.parent.replace_child(self, AddConstant(self.operand2, self.operand1))
             return True
         elif isinstance(self.operand2, Number) and not isinstance(self.operand1, Number):
-            parent.replace_child(self, AddConstant(self.operand1, self.operand2))
+            self.parent.replace_child(self, AddConstant(self.operand1, self.operand2))
             return True
         else:
-            return super().optimize(parent)
+            return super().optimize()
 
 
 class AddConstant(UnaryOperation):
@@ -333,12 +360,12 @@ class AddConstant(UnaryOperation):
         if self.operand == old:
             self.operand = new
 
-    def optimize(self, parent: "AstNode") -> bool:
+    def optimize(self) -> bool:
         if isinstance(self.operand, Number):
-            parent.replace_child(self, self.operand.combine(self.value, self.operand.value + self.value.value))
+            self.parent.replace_child(self, self.operand.combine(self.value, self.operand.value + self.value.value))
             return True
         else:
-            return super().optimize(parent)
+            return super().optimize()
 
 
 class MulConstant(UnaryOperation):
@@ -372,39 +399,39 @@ class MulConstant(UnaryOperation):
         if self.operand == old:
             self.operand = new
 
-    def optimize(self, parent: "AstNode") -> bool:
+    def optimize(self) -> bool:
         if isinstance(self.operand, Number):
-            parent.replace_child(self, self.operand.combine(self.value, self.operand.value * self.value.value))
+            self.parent.replace_child(self, self.operand.combine(self.value, self.operand.value * self.value.value))
             return True
         else:
-            return super().optimize(parent)
+            return super().optimize()
 
 
 class MultiplyOperation(BinaryOperation):
 
-    def optimize(self, parent: "AstNode") -> bool:
+    def optimize(self) -> bool:
         if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
             new_node = self.operand1.combine(self.operand2, self.operand1.value + self.operand2.value)
-            parent.replace_child(self, new_node)
+            self.parent.replace_child(self, new_node)
             return True
         elif isinstance(self.operand1, Number) and self.operand1.is_one:
-            parent.replace_child(self, self.operand2)
+            self.parent.replace_child(self, self.operand2)
             return True
         elif isinstance(self.operand2, Number) and self.operand2.is_one:
-            parent.replace_child(self, self.operand1)
+            self.parent.replace_child(self, self.operand1)
             return True
         elif (isinstance(self.operand1, Number) and self.operand1.is_zero) or (
                 isinstance(self.operand2, Number) and self.operand2.is_zero):
-            parent.replace_child(self, Number(0, self.type))
+            self.parent.replace_child(self, Number(0, self.type))
             return True
         elif isinstance(self.operand1, Number) and not isinstance(self.operand2, Number):
-            parent.replace_child(self, MulConstant(self.operand2, self.operand1))
+            self.parent.replace_child(self, MulConstant(self.operand2, self.operand1))
             return True
         elif isinstance(self.operand2, Number) and not isinstance(self.operand1, Number):
-            parent.replace_child(self, MulConstant(self.operand1, self.operand2))
+            self.parent.replace_child(self, MulConstant(self.operand1, self.operand2))
             return True
         else:
-            return super().optimize(parent)
+            return super().optimize()
 
 
 class LogicalChainOperation(BinaryOperation):  # AND, OR
@@ -413,6 +440,7 @@ class LogicalChainOperation(BinaryOperation):  # AND, OR
 
 class Number(AbstractExpression):
     def __init__(self, value, type_: Type):
+        super().__init__()
         self.value = value
         self._type = type_
 
@@ -471,6 +499,7 @@ class ConstantUsage(Number):
 
 class Assign(AbstractStatement):
     def __init__(self, var: "VariableUsageLHS", value: AbstractExpression):
+        super().__init__()
         self.var = var
         self.value = value
 
@@ -501,7 +530,7 @@ class Assign(AbstractStatement):
         if old == self.var:
             self.var = new
 
-    def optimize(self, parent: "AstNode") -> bool:
+    def optimize(self) -> bool:
         if (isinstance(self.value, AddConstant)
                 and self.value.is_increment
                 and isinstance(self.value.operand, VariableUsage)
@@ -509,19 +538,20 @@ class Assign(AbstractStatement):
                 and not self.var.definition.is_array
                 and not self.var.definition.struct_def
         ):
-            parent.replace_child(self, IncLocal(self.var))
+            self.parent.replace_child(self, IncLocal(self.var))
             return True
         elif isinstance(self.var, VariableUsageLHS) and isinstance(self.value,
                                                                    VariableUsageRHS) and self.var.definition == self.value.definition:
             # a = a
-            parent.replace_child(self, None)
+            self.parent.replace_child(self, None)
             return True
         else:
-            return self.value.optimize(self)
+            return self.value.optimize()
 
 
 class IncLocal(AbstractStatement):
     def __init__(self, var: "VariableUsageLHS"):
+        super().__init__()
         self.var = var
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
@@ -575,6 +605,7 @@ class VariableUsageRHS(VariableUsageLHS, AbstractExpression):
 
 class GroupOfStatements(AbstractStatement):
     def __init__(self, statements: List[AbstractStatement]):
+        super().__init__()
         self.statements = statements
 
     def print(self, lvl):
@@ -587,6 +618,7 @@ class GroupOfStatements(AbstractStatement):
 
 class Function(AbstractBlock):
     def __init__(self, name, signature: FunctionSignature, body: AbstractBlock):
+        super().__init__()
         self.name = name
         self.body = body
         self.signature = signature
@@ -601,6 +633,7 @@ class Function(AbstractBlock):
 
 class Condition(AbstractStatement):
     def __init__(self, number: int):
+        super().__init__()
         self.number = number
         self.condition: AbstractExpression = None
         self.if_body: AbstractStatement = None
@@ -624,6 +657,7 @@ class Condition(AbstractStatement):
 
 class WhileLoop(AbstractStatement):
     def __init__(self, number: int):
+        super().__init__()
         self.number = number
         self.condition: AbstractExpression = None
         self.body: AbstractStatement = None
@@ -641,6 +675,7 @@ class WhileLoop(AbstractStatement):
 
 class DoWhileLoop(AbstractStatement):
     def __init__(self, number: int):
+        super().__init__()
         self.number = number
         self.condition: AbstractExpression = None
         self.body: AbstractStatement = None
@@ -658,6 +693,7 @@ class DoWhileLoop(AbstractStatement):
 
 class Instruction_PrintStringConstant(AbstractStatement):
     def __init__(self, string_number: int, content: str):
+        super().__init__()
         self.string_number = string_number
         self.content = content
 
@@ -667,6 +703,7 @@ class Instruction_PrintStringConstant(AbstractStatement):
 
 class Instruction_PrintStringByPointer(AbstractStatement):
     def __init__(self, expr: AbstractExpression):
+        super().__init__()
         self.expr = expr
 
     def print(self, lvl):
@@ -683,6 +720,7 @@ class Instruction_PrintStringByPointer(AbstractStatement):
 
 class Instruction_PrintInteger(AbstractStatement):
     def __init__(self, expr: AbstractExpression):
+        super().__init__()
         self.expr = expr
 
     def print(self, lvl):
@@ -707,6 +745,7 @@ class Instruction_PrintInteger(AbstractStatement):
 
 class Instruction_PrintChar(AbstractStatement):
     def __init__(self, expr: AbstractExpression):
+        super().__init__()
         self.expr = expr
 
     def print(self, lvl):
@@ -748,6 +787,7 @@ class Instruction_Break(AbstractStatement):
 
 class FunctionCall(AbstractStatement):
     def __init__(self, name: str, signature: FunctionSignature):
+        super().__init__()
         self.name = name
         self.signature = signature
         self.arguments: List[AbstractExpression] = []
@@ -772,6 +812,7 @@ class FunctionCall(AbstractStatement):
 
 class FunctionReturn(AbstractStatement):
     def __init__(self, value: Optional[AbstractExpression]):
+        super().__init__()
         self.value = value
 
     def print(self, lvl):
@@ -795,6 +836,7 @@ class ReturningCall(FunctionCall, AbstractExpression):
 
 class ArrayInitializationStatement(AbstractStatement):
     def __init__(self, definition: Variable):
+        super().__init__()
         self.definition = definition
 
 
@@ -813,6 +855,18 @@ class ArrayInitialization_StackAlloc(ArrayInitializationStatement):
     def replace_child(self, old: "AstNode", new: "AstNode"):
         if old == self.length:
             self.length = new
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        c1 = self.length.gen_code(type_hint)
+        c1.cast(Type.Byte)  # limitation of PUSHN2
+        return CodeSnippet.join((c1, CodeSnippet("PUSHN2")))
+
+    def optimize(self) -> bool:
+        if isinstance(self.length, Number) and self.length.is_zero:
+            self.parent.replace_child(self, None)
+            return True
+        else:
+            super().optimize()
 
 
 class ArrayInitialization_InitializerList(ArrayInitializationStatement):
@@ -847,6 +901,7 @@ class ArrayInitialization_Pointer(ArrayInitializationStatement):
 
 class AstProgram(AstNode):
     def __init__(self):
+        super().__init__()
         self.blocks: List[AbstractBlock] = []
 
     def print(self, lvl):

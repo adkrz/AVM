@@ -607,35 +607,31 @@ void VM::RunProgram(bool profile)
             address = POP_ADDR();
             write16(memory, address, val);
             break;
-        case I::LOAD:
+        case I::LOAD: // merged cases optimize better
         case I::LOAD_LOCAL:
         case I::LOAD_ARG:
-            arg = read_next_program_byte(skip);
-            direction = (instr == I::LOAD || instr == I::LOAD_ARG) ? -1 : 1;
-            offset = instr == I::LOAD_ARG ? 2 * ADDRESS_SIZE : 0;
-            PUSH(memory[READ_REGISTER(FP_REGISTER) + (arg + offset) * direction]);
-            break;
         case I::LOAD_LOCAL16:
         case I::LOAD_ARG16:
             arg = read_next_program_byte(skip);
-            direction = (instr == I::LOAD_ARG16) ? -1 : 1;
-            offset = instr == I::LOAD_ARG16 ? 2 * ADDRESS_SIZE : 0;
-            PUSH_ADDR(read16(memory, READ_REGISTER(FP_REGISTER) + (arg + offset) * direction));
+            direction = (instr == I::LOAD || instr == I::LOAD_ARG || instr == I::LOAD_ARG16) ? -1 : 1;
+            offset = (instr == I::LOAD_ARG || instr == I::LOAD_ARG16) ? 2 * ADDRESS_SIZE : 0;
+            if (instr == I::LOAD_LOCAL16 || instr == I::LOAD_ARG16)
+                PUSH_ADDR(read16(memory, READ_REGISTER(FP_REGISTER) + (arg + offset) * direction));
+            else
+                PUSH(memory[READ_REGISTER(FP_REGISTER) + (arg + offset) * direction]);
             break;
         case I::STORE:
         case I::STORE_LOCAL:
         case I::STORE_ARG:
-            arg = read_next_program_byte(skip);
-            direction = (instr == I::STORE || instr == I::STORE_ARG) ? -1 : 1;
-            offset = instr == I::STORE_ARG ? 2 * ADDRESS_SIZE : 0;
-            memory[READ_REGISTER(FP_REGISTER) + (arg + offset) * direction] = POP();
-            break;
         case I::STORE_LOCAL16:
         case I::STORE_ARG16:
             arg = read_next_program_byte(skip);
-            direction = (instr == I::STORE_ARG16) ? -1 : 1;
-            offset = instr == I::STORE_ARG16 ? 2 * ADDRESS_SIZE : 0;
-            write16(memory, READ_REGISTER(FP_REGISTER) + (arg + offset) * direction, POP_ADDR());
+            direction = (instr == I::STORE || instr == I::STORE_ARG || instr == I::STORE_ARG16) ? -1 : 1;
+            offset = (instr == I::STORE_ARG || instr == I::STORE_ARG16) ? 2 * ADDRESS_SIZE : 0;
+            if (instr == I::STORE_LOCAL16 || instr == I::STORE_ARG16)
+                write16(memory, READ_REGISTER(FP_REGISTER) + (arg + offset) * direction, POP_ADDR());
+            else
+                memory[READ_REGISTER(FP_REGISTER) + (arg + offset) * direction] = POP();
             break;
         case I::LOAD_NVRAM:
             address = POP_ADDR();

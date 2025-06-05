@@ -34,7 +34,7 @@ class CodeSnippet:
             self.add_line("DOWNCAST")
 
 
-def _generate_prolog(symbol_table: SymbolTable, function_name: str) -> CodeSnippet:
+def generate_prolog(symbol_table: SymbolTable, function_name: str) -> CodeSnippet:
     ret = CodeSnippet()
     vars = symbol_table.get_all_variables(function_name)
     if not vars:

@@ -872,6 +872,7 @@ class Parser:
                 node.blocks.append(block)
         self._current_context = ""
         node.set_parents()
+        node.symbol_table = self.symbol_table
         return node
 
 

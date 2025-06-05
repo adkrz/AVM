@@ -1,11 +1,12 @@
 from enum import Enum
 from typing import List, Optional, Sequence, Iterable, TYPE_CHECKING
 
-from codegen_helpers import CodeSnippet
+from codegen_helpers import CodeSnippet, generate_prolog, gen_load_store_instruction
 from symbols import Constant, FunctionSignature, Variable, Type
 
 if TYPE_CHECKING:
     from symbol_table import SymbolTable
+
 
 class BinOpType(Enum):
     Add = 1
@@ -66,7 +67,7 @@ class AstNode:
         if self._symbol_table is not None:
             return self._symbol_table
         if self.parent is not None:
-            return self.parent._symbol_table
+            return self.parent.symbol_table
         return None
 
     @symbol_table.setter
@@ -587,12 +588,15 @@ class VariableUsage(AbstractStatement):
 
 class VariableUsageLHS(VariableUsage):
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        return CodeSnippet(f"STORE {self.definition.name}", self.definition.type)
+        st = self.symbol_table
+        instr = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, False)
+        return instr
 
 
 class VariableUsageRHS(VariableUsageLHS, AbstractExpression):
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        return CodeSnippet(f"LOAD {self.definition.name}", self.definition.type)
+        instr = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, True)
+        return instr
 
 
 class GroupOfStatements(AbstractStatement):
@@ -911,7 +915,10 @@ class AstProgram(AstNode):
         yield from self.blocks
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        return CodeSnippet.join(b.gen_code(type_hint) for b in self.blocks)
+        blocks = [b.gen_code(type_hint) for b in self.blocks]
+        program_prolog = generate_prolog(self.symbol_table, "")
+        blocks.insert(0, program_prolog)
+        return CodeSnippet.join(blocks)
 
     def replace_child(self, old: "AstNode", new: "AstNode"):
         for i, block in enumerate(self.blocks):

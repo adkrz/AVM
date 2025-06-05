@@ -1047,15 +1047,15 @@ class Parser:
             if block:
                 node.blocks.append(block)
         self._current_context = ""
+        node.set_parents()
         return node
 
 
 if __name__ == '__main__':
     parser = Parser("""
-addr a[0];
+addr a = 3+1;
     """)
     tree = parser.do_parse()
-    tree.set_parents()
     #tree.print(0)
     opt = True
     while opt:

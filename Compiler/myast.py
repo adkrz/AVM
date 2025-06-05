@@ -66,13 +66,14 @@ class AstNode:
         self._scope: Optional[str] = None  # if none, goes to parent
         self.parent: Optional["AstNode"] = None
 
-    def set_parents(self):
+    def set_parents(self, recursive=True):
         """ Recursively set parent relations starting from this node.
         This saves the hassle with manually setting parents on object construction / moving
          """
         for child in self.children():
             child.parent = self
-            child.set_parents()
+            if recursive:
+                child.set_parents()
 
     @property
     def scope(self) -> str:
@@ -224,6 +225,7 @@ class UnaryOperation(AbstractExpression):
     def replace_child(self, old: "AstNode", new: "AstNode"):
         if old == self.operand:
             self.operand = new
+            self.set_parents(False)
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         c1 = self.operand.gen_code(type_hint)
@@ -359,6 +361,7 @@ class AddConstant(UnaryOperation):
             self.value = new
         if self.operand == old:
             self.operand = new
+        self.set_parents(False)
 
     def optimize(self) -> bool:
         if isinstance(self.operand, Number):
@@ -398,6 +401,7 @@ class MulConstant(UnaryOperation):
             self.value = new
         if self.operand == old:
             self.operand = new
+        self.set_parents(False)
 
     def optimize(self) -> bool:
         if isinstance(self.operand, Number):
@@ -529,6 +533,7 @@ class Assign(AbstractStatement):
             self.value = new
         if old == self.var:
             self.var = new
+        self.set_parents(False)
 
     def optimize(self) -> bool:
         if (isinstance(self.value, AddConstant)
@@ -591,6 +596,7 @@ class VariableUsage(AbstractStatement):
             self.array_jump = new
         if old == self.struct_child:
             self.struct_child = new
+        self.set_parents(False)
 
 
 class VariableUsageLHS(VariableUsage):
@@ -716,6 +722,7 @@ class Instruction_PrintStringByPointer(AbstractStatement):
     def replace_child(self, old: "AstNode", new: "AstNode"):
         if old == self.expr:
             self.expr = new
+            self.set_parents(False)
 
 
 class Instruction_PrintInteger(AbstractStatement):
@@ -741,6 +748,7 @@ class Instruction_PrintInteger(AbstractStatement):
     def replace_child(self, old: "AstNode", new: "AstNode"):
         if old == self.expr:
             self.expr = new
+            self.set_parents(False)
 
 
 class Instruction_PrintChar(AbstractStatement):
@@ -758,6 +766,7 @@ class Instruction_PrintChar(AbstractStatement):
     def replace_child(self, old: "AstNode", new: "AstNode"):
         if old == self.expr:
             self.expr = new
+            self.set_parents(False)
 
 
 class Instruction_PrintNewLine(AbstractStatement):
@@ -807,6 +816,7 @@ class FunctionCall(AbstractStatement):
         for i, arg in enumerate(self.arguments):
             if arg == old:
                 self.arguments[i] = new
+                self.set_parents(False)
                 break
 
 
@@ -827,6 +837,7 @@ class FunctionReturn(AbstractStatement):
     def replace_child(self, old: "AstNode", new: "AstNode"):
         if old == self.value:
             self.value = new
+            self.set_parents(False)
 
 
 class ReturningCall(FunctionCall, AbstractExpression):
@@ -855,6 +866,7 @@ class ArrayInitialization_StackAlloc(ArrayInitializationStatement):
     def replace_child(self, old: "AstNode", new: "AstNode"):
         if old == self.length:
             self.length = new
+            self.set_parents(False)
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         c1 = self.length.gen_code(type_hint)
@@ -897,6 +909,7 @@ class ArrayInitialization_Pointer(ArrayInitializationStatement):
     def replace_child(self, old: "AstNode", new: "AstNode"):
         if old == self.pointer:
             self.pointer = new
+            self.set_parents(False)
 
 
 class AstProgram(AstNode):
@@ -919,6 +932,7 @@ class AstProgram(AstNode):
             if block == old:
                 if new is not None:
                     self.blocks[i] = new
+                    self.set_parents(False)
                 else:
                     del self.blocks[i]
                 break

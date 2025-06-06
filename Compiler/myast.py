@@ -116,6 +116,7 @@ class AbstractExpression(AstNode):
     def type(self) -> Optional[Type]:
         return None
 
+
 class Dummy(AbstractExpression):
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         return CodeSnippet()
@@ -311,7 +312,7 @@ class CompareToZero(UnaryOperation):
 class SumOperation(BinaryOperation):
     def __init__(self):
         super().__init__(BinOpType.Add)
-        
+
     def optimize(self) -> bool:
         if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
             new_node = self.operand1.combine(self.operand2, self.operand1.value + self.operand2.value)
@@ -602,7 +603,7 @@ class IncLocal(AbstractStatement):
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         return CodeSnippet(
-            f"INC_LOCAL {self.var.name}" if self.var.definition.type == Type.Byte else f"INC_LOCAL16 {self.var.name}",
+            f"MACRO_INC_LOCAL ;{self.var.name}" if self.var.definition.type == Type.Byte else f"MACRO_INC_LOCAL16 ;{self.var.name}",
             self.var.definition.type)
 
 
@@ -713,6 +714,17 @@ class GroupOfStatements(AbstractStatement):
     def children(self):
         yield from self.statements
 
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        for i, s in enumerate(self.statements):
+            if s == old:
+                self.statements[i] = new
+                self.set_parents(False)
+                break
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        codes = [s.gen_code(type_hint) for s in self.statements]
+        return CodeSnippet.join(codes)
+
 
 class Function(AbstractBlock):
     def __init__(self, name, signature: FunctionSignature, body: AbstractBlock):
@@ -813,6 +825,33 @@ class WhileLoop(AbstractStatement):
         yield self.condition
         yield self.body
 
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.condition:
+            self.condition = new
+        elif old == self.body:
+            self.body = new
+        self.set_parents(False)
+
+    def optimize(self) -> bool:
+        if isinstance(self.condition, Number):
+            if self.condition.is_zero:
+                self.parent.replace_child(self, None)
+                return True
+            else:
+                self.parent.replace_child(self, self.body)
+                return True
+        return super().optimize()
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        snippet1 = CodeSnippet(f":while{self.number}_begin")
+        snippet2 = self.condition.gen_code(self.condition.type)
+        snippet3 = CodeSnippet(
+            f"JF @while{self.number}_endwhile" if self.condition.type == Type.Byte else f"JF16 @while{self.number}_endwhile")
+        snippet4 = self.body.gen_code(type_hint)
+        snippet4.add_line(f"JMP @while{self.number}_begin")
+        snippet4.add_line(f":while{self.number}_endwhile")
+        return CodeSnippet.join((snippet1, snippet2, snippet3, snippet4))
+
 
 class DoWhileLoop(AbstractStatement):
     def __init__(self, number: int):
@@ -830,6 +869,28 @@ class DoWhileLoop(AbstractStatement):
     def children(self):
         yield self.condition
         yield self.body
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.condition:
+            self.condition = new
+        elif old == self.body:
+            self.body = new
+        self.set_parents(False)
+
+    def optimize(self) -> bool:
+        if isinstance(self.condition, Number):
+            if self.condition.is_zero:
+                self.parent.replace_child(self, self.body)
+                return True
+        return super().optimize()
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        snippet1 = CodeSnippet(f":while{self.number}_begin")
+        snippet2 = self.body.gen_code(type_hint)
+        snippet3 = self.condition.gen_code(self.condition.type)
+        snippet4 = CodeSnippet(
+            f"JT @while{self.number}_begin" if self.condition.type == Type.Byte else f"JT16 @while{self.number}_begin")
+        return CodeSnippet.join((snippet1, snippet2, snippet3, snippet4))
 
 
 class Instruction_PrintStringConstant(AbstractStatement):
@@ -1084,6 +1145,7 @@ class ArrayInitialization_Pointer(ArrayInitializationStatement):
         c1.cast(Type.Addr)
         c2 = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, False)
         return CodeSnippet.join((c1, c2), Type.Addr)
+
 
 class AstProgram(AstNode):
     def __init__(self):

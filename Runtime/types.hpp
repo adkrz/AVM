@@ -270,23 +270,27 @@ enum I
     // Pointers
 
     /// <summary>
-    /// Load from address indicated by the value at the top of the stack
+    /// Load from address indicated by the value at the top of the stack.
+    /// Each call to this function updates the pointer register.
     /// pop: address16bit push: value8bit
     /// </summary>
     LOAD_GLOBAL,
     /// <summary>
     /// Store the 8bit value from stack at address
+    /// Each call to this function updates the pointer register.
     /// pop: address16bit, value8bit (address on top of stack)
     /// </summary>
     STORE_GLOBAL,
     /// <summary>
     /// Load 16bit value from address indicated by the value at the top of the stack
+    /// Each call to this function updates the pointer register.
     /// pop: address16bit push: address16bit
     /// </summary>
     LOAD_GLOBAL16,
     /// <summary>
     /// Store the 16bit value from stack at address
     /// pop: address16bit, address16bit (address on top of stack)
+    /// Each call to this function updates the pointer register.
     /// </summary>
     STORE_GLOBAL16,
 
@@ -564,11 +568,13 @@ enum I
 
     /// <summary>
     /// Store the 8bit value from stack at address, reverse order of <see cref="STORE_GLOBAL"/>
+    /// Each call to this function updates the pointer register.
     /// pop: value8bit, address16bit (value on top of stack)
     /// </summary>
     STORE_GLOBAL2,
     /// <summary>
     /// Store the 16bit value from stack at address, reverse order of <see cref="STORE_GLOBAL16"/>
+    /// Each call to this function updates the pointer register.
     /// pop: address16bit, address16bit (value on top of stack)
     /// </summary>
     STORE_GLOBAL216,
@@ -658,6 +664,28 @@ enum I
     /// Combines PUSH16 #2, MUL16
     /// </summary>
     MACRO_X216,
+
+    /// <summary>
+	/// Get value of pointer register (updated after calls to LOAD_GLOBAL, STORE_GLOBAL etc)
+	/// push: address16bit
+    /// </summary>
+    GET_PTR,
+    /// <summary>
+	/// Reads the 8-bit value at address from pointer register and pushes it to the stack.
+    /// </summary>
+    LOAD_GLOBAL_PTR,
+    /// <summary>
+	/// Reads the 16-bit value at address from pointer register and pushes it to the stack.
+    /// </summary>
+    LOAD_GLOBAL_PTR16,
+	/// <summary>
+	/// Reads the 8-bit value from the stack and stores it at address from pointer register.
+	/// </summary>
+	STORE_GLOBAL_PTR,
+    /// <summary>
+    /// Reads the 16-bit value from the stack and stores it at address from pointer register.
+    /// </summary>
+	STORE_GLOBAL_PTR16,
 };
 
 enum InterruptCodes

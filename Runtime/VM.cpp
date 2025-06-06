@@ -17,7 +17,7 @@
 #undef NZERO // avoid conflict with <sys/ioctl.h>
 #endif
 
-VM::VM() : memory(nullptr), registers{ 0, 0, 0 }, mt(rd())
+VM::VM() : memory(nullptr), registers{ 0, 0, 0, 0 }, mt(rd())
 {
 #ifdef _WIN32
     hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -70,6 +70,7 @@ void VM::LoadProgram(word* program, int program_length, int memory_size, const c
     stackStartPos = (addr)(program_length + PROGRAM_BEGIN);
     WRITE_REGISTER(SP_REGISTER, stackStartPos);
     WRITE_REGISTER(FP_REGISTER, stackStartPos);
+    WRITE_REGISTER(POINTER_REGISTER, 0);
     //max_sp = READ_REGISTER(SP_REGISTER);
     handlers.clear();
     nvram_file = nvr_file;
@@ -581,30 +582,36 @@ void VM::RunProgram(bool profile)
             break;
         case I::LOAD_GLOBAL:
             address = POP_ADDR();
+			WRITE_REGISTER(POINTER_REGISTER, address);
             PUSH(memory[address]);
             break;
         case I::STORE_GLOBAL:
             address = POP_ADDR();
+            WRITE_REGISTER(POINTER_REGISTER, address);
             arg = POP();
             memory[address] = arg;
             break;
         case I::STORE_GLOBAL2:
             arg = POP();
             address = POP_ADDR();
+            WRITE_REGISTER(POINTER_REGISTER, address);
             memory[address] = arg;
             break;
         case I::LOAD_GLOBAL16:
             address = POP_ADDR();
+            WRITE_REGISTER(POINTER_REGISTER, address);
             PUSH_ADDR(read16(memory, address));
             break;
         case I::STORE_GLOBAL16:
             address = POP_ADDR();
+            WRITE_REGISTER(POINTER_REGISTER, address);
             val = POP_ADDR();
             write16(memory, address, val);
             break;
         case I::STORE_GLOBAL216:
             val = POP_ADDR();
             address = POP_ADDR();
+            WRITE_REGISTER(POINTER_REGISTER, address);
             write16(memory, address, val);
             break;
         case I::LOAD: // merged cases optimize better
@@ -797,7 +804,26 @@ void VM::RunProgram(bool profile)
             PUSH_ADDR(POP_ADDR() << 1);
             break;
         }
-
+        case I::GET_PTR:
+			PUSH_ADDR(READ_REGISTER(POINTER_REGISTER));
+        case I::LOAD_GLOBAL_PTR:
+            address = READ_REGISTER(POINTER_REGISTER);
+            PUSH(memory[address]);
+            break;
+        case I::STORE_GLOBAL_PTR:
+            address = READ_REGISTER(POINTER_REGISTER);
+            arg = POP();
+            memory[address] = arg;
+            break;
+        case I::LOAD_GLOBAL_PTR16:
+            address = READ_REGISTER(POINTER_REGISTER);
+            PUSH_ADDR(read16(memory, address));
+            break;
+        case I::STORE_GLOBAL_PTR16:
+            address = READ_REGISTER(POINTER_REGISTER);
+            val = POP_ADDR();
+            write16(memory, address, val);
+            break;
         default:
             throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));
         }

@@ -26,11 +26,12 @@ private:
     static const int IP_REGISTER = 0;
     static const int SP_REGISTER = 1;
     static const int FP_REGISTER = 2;
+    static const int POINTER_REGISTER = 3;
     
     static const word WORD_SIZE = 1;  // size in array, not in bytes
     
     addr stackStartPos = 0;
-    addr registers[3];
+    addr registers[4];
     bool carry = false;
 
 

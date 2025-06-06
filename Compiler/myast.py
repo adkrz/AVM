@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Optional, Sequence, Iterable, TYPE_CHECKING
 
-from codegen_helpers import CodeSnippet, generate_prolog, gen_load_store_instruction
+from codegen_helpers import CodeSnippet, generate_prolog, gen_load_store_instruction, _gen_address_of_str
 from symbols import Constant, FunctionSignature, Variable, Type
 
 if TYPE_CHECKING:
@@ -792,6 +792,11 @@ class Instruction_PrintStringConstant(AbstractStatement):
     def print(self, lvl):
         self._print_indented(lvl, f"print string {self.string_number} \"{self.content}\"")
 
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        c1 = _gen_address_of_str(self.symbol_table, self.content)
+        c1.add_line("SYSCALL Std.PrintString")
+        return c1
+
 
 class Instruction_PrintStringByPointer(AbstractStatement):
     def __init__(self, expr: AbstractExpression):
@@ -810,6 +815,12 @@ class Instruction_PrintStringByPointer(AbstractStatement):
             self.expr = new
             self.set_parents(False)
 
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        c1 = self.expr.gen_code(Type.Addr)
+        c1.cast(Type.Addr)
+        c1.add_line("SYSCALL Std.PrintString")
+        return c1
+
 
 class Instruction_PrintInteger(AbstractStatement):
     def __init__(self, expr: AbstractExpression):
@@ -826,9 +837,11 @@ class Instruction_PrintInteger(AbstractStatement):
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         c = self.expr.gen_code(type_hint)
         if c.type == Type.Byte:
-            c.add_line("Printint")
+            c.add_line("SYSCALL Std.PrintInt")
+            c.add_line("POP")
         else:
-            c.add_line("Printint16")
+            c.add_line("SYSCALL Std.PrintInt16")
+            c.add_line("POPN 2")
         return c
 
     def replace_child(self, old: "AstNode", new: "AstNode"):
@@ -854,20 +867,34 @@ class Instruction_PrintChar(AbstractStatement):
             self.expr = new
             self.set_parents(False)
 
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        c = self.expr.gen_code(Type.Byte)
+        c.add_line("SYSCALL Std.PrintCharPop")
+        return c
+
 
 class Instruction_PrintNewLine(AbstractStatement):
     def print(self, lvl):
         self._print_indented(lvl, "newline")
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return CodeSnippet("SYSCALL Std.PrintNewLine")
 
 
 class Instruction_Halt(AbstractStatement):
     def print(self, lvl):
         self._print_indented(lvl, "halt")
 
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return CodeSnippet("HALT")
+
 
 class Instruction_Debugger(AbstractStatement):
     def print(self, lvl):
         self._print_indented(lvl, "debugger")
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return CodeSnippet("debugger")
 
 
 class Instruction_Continue(AbstractStatement):
@@ -1025,7 +1052,14 @@ class AstProgram(AstNode):
         blocks = [b.gen_code(type_hint) for b in self.blocks]
         program_prolog = generate_prolog(self.symbol_table, "")
         blocks.insert(0, program_prolog)
-        return CodeSnippet.join(blocks)
+        blocks.append(CodeSnippet("HALT"))
+        ret = CodeSnippet.join(blocks)
+
+        for i, stc in enumerate(self.symbol_table.get_all_strings()):
+            ret.add_line(f":string_{i + 1}")
+            ret.add_line(f"\"{stc}\"")
+
+        return ret
 
     def replace_child(self, old: "AstNode", new: "AstNode"):
         for i, block in enumerate(self.blocks):

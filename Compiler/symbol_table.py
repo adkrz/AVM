@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from symbols import StructDefinition, FunctionSignature, Constant, Variable, Type
 
@@ -100,3 +100,6 @@ class SymbolTable:
         if scope not in self._local_variables:
             return {}
         return self._local_variables[scope]
+
+    def get_all_strings(self) -> List[str]:
+        return self._string_constants

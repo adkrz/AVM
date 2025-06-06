@@ -627,9 +627,9 @@ class Parser:
             if not self._accept(Symbol.Semicolon):
                 expr = self._parse_expression()
                 self._expect(Symbol.Semicolon)
-                return FunctionReturn(expr)
+                return FunctionReturn(self.symbol_table.get_function_signature(self._current_context).return_value.type, expr)
             else:
-                return FunctionReturn(None)
+                return FunctionReturn(None, None)
 
         elif self._accept(Symbol.Print):
             if self._accept(Symbol.String):
@@ -677,16 +677,12 @@ class Parser:
 
         self._expect(Symbol.LParen)
 
-        context.append_code(";" + func + str(signature))
-
-        refs_mapping = {}
-
         return_value = signature.return_value
-
-        node = FunctionCall(func, signature) if return_value is None else ReturningCall(func, signature)
 
         if inside_expression and return_value is None:
             self._error(f"Function {func} does not return anything to be used in expression")
+
+        node = FunctionCall(func, signature) if not inside_expression else ReturningCall(func, signature)
 
         first_arg = True
         for arg in signature.true_args:
@@ -703,12 +699,9 @@ class Parser:
                 var_name = self._lex.current_identifier
                 self._generate_struct_address(self.symbol_table.get_variable(self._current_context, var_name), var_name,
                                               context)
-                refs_mapping[arg] = self._lex.current_identifier
-
             else:
                 self._expect(Symbol.Identifier)
-                self._gen_load_store_instruction(self._lex.current_identifier, True, context)
-                refs_mapping[arg] = self._lex.current_identifier
+                node.arguments.append(VariableUsageRHS(self.symbol_table.get_variable(self._current_context, self._lex.current_identifier)))
 
         self._expect(Symbol.RParen)
 

@@ -53,7 +53,7 @@ class AstNode:
     @property
     def scope(self) -> str:
         if self._scope is not None:
-            return self.scope
+            return self._scope
         if self.parent is not None:
             return self.parent.scope
         return ""
@@ -740,6 +740,18 @@ class Function(AbstractBlock):
     def children(self):
         yield self.body
 
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.body:
+            self.body = new
+        self.set_parents(False)
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        snippet1 = CodeSnippet(f":function_{self.name}\n;{self.signature}")
+        snippet2 = generate_prolog(self.symbol_table, self.name)
+        snippet3 = self.body.gen_code(None)
+        snippet3.add_line("RET")
+        return CodeSnippet.join((snippet1, snippet2, snippet3))
+
 
 class Condition(AbstractStatement):
     def __init__(self, number: int):
@@ -1042,10 +1054,50 @@ class FunctionCall(AbstractStatement):
                 self.set_parents(False)
                 break
 
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        snippets = []
+
+        return_value = self.signature.return_value
+
+        if self.signature.return_value:
+            s = CodeSnippet("PUSH 0 ; rv" if not return_value.is_16bit else "PUSHN 2 ; rv")
+            snippets.append(s)
+
+        refs_mapping = {}
+
+        for arg, arg_def in zip(self.arguments, self.signature.true_args):
+            s = arg.gen_code(arg_def.type)
+            s.cast(arg_def.type)
+            if arg_def.by_ref or arg_def.is_array:
+                if not isinstance(arg, VariableUsageRHS):
+                    raise RuntimeError("Reference target must be simple variable")
+                refs_mapping[arg_def] = arg.name
+            snippets.append(s)
+
+        snippets.append(CodeSnippet(f"CALL @function_{self.name}"))
+
+        for name, arg in reversed(self.signature.args.items()):
+            if not arg.by_ref and not arg.struct_def:
+                snippets.append(CodeSnippet(f"POPN {arg.stack_size} ; {name}"))
+            elif arg.struct_def:
+                snippets.append(CodeSnippet(f"POPN 2; {name}"))
+            else:
+                if arg != return_value:
+                    snippets.append(gen_load_store_instruction(self.symbol_table, self.scope, refs_mapping[arg], False))
+
+        if return_value is not None:
+            # do not change POPN1 to POP, optimizer will take care
+            snippets.append(self._gen_stack_cleanup_for_return_variable(return_value.is_16bit))
+        return CodeSnippet.join(snippets)
+
+    def _gen_stack_cleanup_for_return_variable(self, is_16bit) -> CodeSnippet:
+        return CodeSnippet("POP ; rv" if not is_16bit else "POPN 2 ; rv")
+
 
 class FunctionReturn(AbstractStatement):
-    def __init__(self, value: Optional[AbstractExpression]):
+    def __init__(self, return_type: Type, value: Optional[AbstractExpression]):
         super().__init__()
+        self.return_type = return_type
         self.value = value
 
     def print(self, lvl):
@@ -1062,10 +1114,22 @@ class FunctionReturn(AbstractStatement):
             self.value = new
             self.set_parents(False)
 
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        if self.value is None:
+            return CodeSnippet("RET")
+        snippet1 = self.value.gen_code(self.return_type)
+        snippet1.cast(self.return_type)
+        snippet2 = gen_load_store_instruction(self.symbol_table, self.scope, FunctionSignature.RETURN_VALUE_NAME, False)
+        snippet2.add_line("RET")
+        return CodeSnippet.join((snippet1, snippet2), self.return_type)
+
 
 class ReturningCall(FunctionCall, AbstractExpression):
     def _type(self):
         return "CALL_WITH_RET"
+
+    def _gen_stack_cleanup_for_return_variable(self, is_16bit) -> CodeSnippet:
+        return CodeSnippet()  # keep RV on stack to use in expression
 
 
 class ArrayInitializationStatement(AbstractStatement):
@@ -1160,10 +1224,17 @@ class AstProgram(AstNode):
         yield from self.blocks
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        blocks = [b.gen_code(type_hint) for b in self.blocks]
+        # Move functions to the end:
+        blocks_functions = [b for b in self.blocks if isinstance(b, Function)]
+        blocks_main = [b for b in self.blocks if not isinstance(b, Function)]
+
+        blocks = [b.gen_code(type_hint) for b in blocks_main]
         program_prolog = generate_prolog(self.symbol_table, "")
         blocks.insert(0, program_prolog)
         blocks.append(CodeSnippet("HALT"))
+
+        blocks += [b.gen_code(type_hint) for b in blocks_functions]
+
         ret = CodeSnippet.join(blocks)
 
         for i, stc in enumerate(self.symbol_table.get_all_strings()):

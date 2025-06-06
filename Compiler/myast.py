@@ -308,6 +308,10 @@ class CompareToZero(UnaryOperation):
     def find_max_type(self) -> Optional[Type]:
         return Type.Byte
 
+    @property
+    def type(self) -> Optional[Type]:
+        return Type.Byte
+
 
 class SumOperation(BinaryOperation):
     def __init__(self):

@@ -93,7 +93,7 @@ def gen_load_store_instruction(symbol_table: SymbolTable, scope, name: str, load
     return ret
 
 
-def offsetof(symbol_table: SymbolTable, scope, name: str) -> int:
+def offsetof(symbol_table: SymbolTable, scope, name: str, search_in_globals=False) -> int:
     offs = 0
     # Check function arguments
     fsig = symbol_table.get_function_signature(scope)
@@ -104,7 +104,7 @@ def offsetof(symbol_table: SymbolTable, scope, name: str) -> int:
                 return offs
 
     # Check global variables, if being in local scope:
-    if scope and symbol_table.get_global_variable(name):
+    if search_in_globals and scope and symbol_table.get_global_variable(name):
         for k, v in symbol_table.get_all_variables("").items():
             if k == name:
                 # v = self._local_variables[""][name]
@@ -136,7 +136,7 @@ def _gen_address_of_variable(symbol_table: SymbolTable, scope, var_name) -> Code
         return gen_load_store_instruction(symbol_table, scope, var_name, True)
     elif var_def.from_global:
         ret.add_line("PUSH_STACK_START")
-        offset = offsetof(symbol_table, scope, var_name)
+        offset = offsetof(symbol_table, scope, var_name, True)
         if offset > 0:
             ret.add_line(f"PUSH16 #{offset}")
             ret.add_line("ADD16")

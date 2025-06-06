@@ -609,13 +609,13 @@ class Parser:
             self._expect(Symbol.Semicolon)
             if not inside_loop:
                 self._error("Break outside loop")
-            return Instruction_Break()
+            return Instruction_Break(inside_loop)
 
         elif self._accept(Symbol.Continue):
             self._expect(Symbol.Semicolon)
             if not inside_loop:
                 self._error("Continue outside loop")
-            return Instruction_Continue()
+            return Instruction_Continue(inside_loop)
 
         elif self._accept(Symbol.Call):
             return self._parse_function_call(self._create_ec())

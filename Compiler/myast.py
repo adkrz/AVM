@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Optional, Sequence, Iterable, TYPE_CHECKING
 
-from codegen_helpers import CodeSnippet, generate_prolog, gen_load_store_instruction, _gen_address_of_str
+from codegen_helpers import CodeSnippet, generate_prolog, gen_load_store_instruction, _gen_address_of_str, offsetof
 from symbols import Constant, FunctionSignature, Variable, Type
 
 if TYPE_CHECKING:
@@ -606,8 +606,9 @@ class IncLocal(AbstractStatement):
         self.var = var
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        offs = offsetof(self.symbol_table, self.scope, self.var.name, False)
         return CodeSnippet(
-            f"MACRO_INC_LOCAL ;{self.var.name}" if self.var.definition.type == Type.Byte else f"MACRO_INC_LOCAL16 ;{self.var.name}",
+            f"MACRO_INC_LOCAL {offs} ;{self.var.name}" if self.var.definition.type == Type.Byte else f"MACRO_INC_LOCAL16 {offs} ;{self.var.name}",
             self.var.definition.type)
 
 
@@ -1175,9 +1176,17 @@ class ArrayInitialization_StackAlloc(ArrayInitializationStatement):
             self.set_parents(False)
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        c1 = self.length.gen_code(type_hint)
-        c1.cast(Type.Byte)  # limitation of PUSHN2
-        return CodeSnippet.join((c1, CodeSnippet("PUSHN2")))
+        c1 = CodeSnippet("PUSH_REG 1")
+        c2 = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, False)
+        c3 = self.length.gen_code(type_hint)
+        c3.cast(Type.Byte)  # limitation of PUSHN2
+        if self.definition.type == Type.Addr:
+            if isinstance(self.length, Number):
+                tmp = Number(self.length.value * 2, Type.Byte)
+                c3 = tmp.gen_code(Type.Byte)
+            else:
+                c3.add_line("MULC 2")
+        return CodeSnippet.join((c1, c2, c3, CodeSnippet("PUSHN2")))
 
     def optimize(self) -> bool:
         if isinstance(self.length, Number) and self.length.is_zero:

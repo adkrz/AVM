@@ -99,6 +99,7 @@ class AstNode:
             o = child.optimize()
             if o:
                 opt = o
+        self.set_parents()
         return opt
 
 
@@ -342,10 +343,10 @@ class AddConstant(UnaryOperation):
         c1 = self.operand.gen_code(target_type)
         c1.cast(target_type)
         if self.value.is_one:
-            c2 = CodeSnippet("INC" if self.value.type == Type.Byte else "INC16", target_type)
+            c2 = CodeSnippet("INC" if target_type == Type.Byte else "INC16", target_type)
         else:
             c2 = CodeSnippet(
-                f"ADDC {self.value.value}" if self.value.type == Type.Byte else f"ADD16C #{self.value.value}",
+                f"ADDC {self.value.value}" if target_type == Type.Byte else f"ADD16C #{self.value.value}",
                 target_type)
         return CodeSnippet.join((c1, c2), target_type)
 
@@ -653,17 +654,22 @@ class VariableUsage(AbstractStatement):
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         if not self.array_jump:
-            return gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, self.is_load)
+            code = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, self.is_load)
+            code.type = self.definition.type
+            return code
         # else: calculate address
         c1 = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, True)
         if self.array_jump:
-            element_size = self.definition.stack_size_single_element
+            element_size = 1 if self.definition.type == Type.Byte else 2
 
             # Create internally sum+multiply objects and exploit optimization functions to them:
             self._processed_array_jump = SumOperation()
             self._processed_array_jump.parent = self
             self._processed_array_jump.operand1 = Dummy()
-            self._processed_array_jump.operand2 = MulConstant(self.array_jump, Number(element_size, Type.Addr))
+            if element_size > 1:
+                self._processed_array_jump.operand2 = MulConstant(self.array_jump, Number(element_size, Type.Addr))
+            else:
+                self._processed_array_jump.operand2 = self.array_jump
             self._processed_array_jump.set_parents()
             opt = True
             while opt:
@@ -836,7 +842,7 @@ class Instruction_PrintInteger(AbstractStatement):
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         c = self.expr.gen_code(type_hint)
-        if c.type == Type.Byte:
+        if c.type == Type.Byte or c.type is None:
             c.add_line("SYSCALL Std.PrintInt")
             c.add_line("POP")
         else:

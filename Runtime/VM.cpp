@@ -825,6 +825,7 @@ void VM::RunProgram(bool profile)
             write16(memory, address, val);
             break;
         default:
+			std::cerr << "Instruction not implemented: " << std::to_string(instr) << std::endl;
             throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));
         }
 

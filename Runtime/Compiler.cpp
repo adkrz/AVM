@@ -185,7 +185,9 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
                 continue;
             }
 
-            throw std::runtime_error("Invalid code {" + std::string(token) + "} at line {" + std::to_string(lineNo) + "}");
+            auto err = "Invalid code {" + std::string(token) + "} at line {" + std::to_string(lineNo) + "}";
+			std::cerr << err << std::endl;
+            throw std::runtime_error(err);
         }
 
     }

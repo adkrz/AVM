@@ -906,6 +906,7 @@ class DoWhileLoop(AbstractStatement):
         snippet3 = self.condition.gen_code(self.condition.type)
         snippet4 = CodeSnippet(
             f"JT @while{self.number}_begin" if self.condition.type == Type.Byte else f"JT16 @while{self.number}_begin")
+        snippet4.add_line(f":while{self.number}_endwhile")
         return CodeSnippet.join((snippet1, snippet2, snippet3, snippet4))
 
 
@@ -1024,13 +1025,27 @@ class Instruction_Debugger(AbstractStatement):
 
 
 class Instruction_Continue(AbstractStatement):
+    def __init__(self, loop_no):
+        super().__init__()
+        self.loop_no = loop_no
+
     def print(self, lvl):
         self._print_indented(lvl, "continue")
 
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return CodeSnippet(f"JMP @while{self.loop_no}_begin")
+
 
 class Instruction_Break(AbstractStatement):
+    def __init__(self, loop_no):
+        super().__init__()
+        self.loop_no = loop_no
+
     def print(self, lvl):
         self._print_indented(lvl, "break")
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return CodeSnippet(f"JMP @while{self.loop_no}_endwhile")
 
 
 class FunctionCall(AbstractStatement):

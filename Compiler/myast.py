@@ -752,6 +752,49 @@ class Condition(AbstractStatement):
         if self.else_body:
             yield self.else_body
 
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.condition:
+            self.condition = new
+        elif old == self.if_body:
+            self.if_body = new
+        elif old == self.else_body:
+            self.else_body = new
+        self.set_parents(False)
+
+    def optimize(self) -> bool:
+        if isinstance(self.condition, Number):
+            if self.condition.is_zero:
+                if self.else_body:
+                    self.parent.replace_child(self, self.else_body)
+                    return True
+                else:
+                    self.parent.replace_child(self, None)
+                    return True
+            else:
+                self.parent.replace_child(self, self.if_body)
+                return True
+        return super().optimize()
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        snippet1 = self.condition.gen_code(self.condition.type)
+        if self.else_body:
+            snippet2 = CodeSnippet(
+                f"JF @if{self.number}_else" if self.condition.type == Type.Byte else f"JF16 @if{self.number}_else")
+        else:
+            snippet2 = CodeSnippet(
+                f"JF @if{self.number}_endif" if self.condition.type == Type.Byte else f"JF16 @if{self.number}_endif")
+        snippet3 = self.if_body.gen_code(type_hint)
+        snippet3.add_line(f"JMP @if{self.number}_endif")
+        snippets = [snippet1, snippet2, snippet3]
+
+        if self.else_body:
+            snippet3.add_line(f":if{self.number}_else")
+            snippet4 = self.else_body.gen_code(type_hint)
+            snippets.append(snippet4)
+        ret = CodeSnippet.join(snippets, type_hint)
+        ret.add_line(f":if{self.number}_endif")
+        return ret
+
 
 class WhileLoop(AbstractStatement):
     def __init__(self, number: int):

@@ -383,10 +383,10 @@ class MulConstant(UnaryOperation):
         c1 = self.operand.gen_code(target_type)
         c1.cast(target_type)
         if self.value.value == 2:
-            c2 = CodeSnippet("MACRO_X2" if self.value.type == Type.Byte else "MACRO_X216", target_type)
+            c2 = CodeSnippet("MACRO_X2" if target_type == Type.Byte else "MACRO_X216", target_type)
         else:
             c2 = CodeSnippet(
-                f"MULC {self.value.value}" if self.value.type == Type.Byte else f"MUL16C #{self.value.value}",
+                f"MULC {self.value.value}" if target_type == Type.Byte else f"MUL16C #{self.value.value}",
                 target_type)
         return CodeSnippet.join((c1, c2), target_type)
 

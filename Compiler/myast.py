@@ -448,7 +448,25 @@ class MultiplyOperation(BinaryOperation):
 
 
 class LogicalChainOperation(BinaryOperation):  # AND, OR
-    pass
+    def __init__(self, op, condition_counter):
+        super().__init__(op)
+        self.condition_counter = condition_counter
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        comp = "JT" if self.op == BinOpType.LogicalOr else "JF"
+        comp2 = "OR" if self.op == BinOpType.LogicalOr else "AND"
+        c1 = self.operand1.gen_code(type_hint)
+        code1 = f"DUP\n{comp}" if c1.type == Type.Byte else f"DUP16\n{comp}16"
+        code1 += f" @cond{self.condition_counter}_expr_end"
+        c2 = CodeSnippet(code1)
+        c3 = self.operand2.gen_code(type_hint)
+        c3.add_line(comp2)
+        c3.add_line(f":cond{self.condition_counter}_expr_end")
+        return CodeSnippet.join((c1, c2, c3))
+
+    @property
+    def type(self) -> Optional[Type]:
+        return highest_type((self.operand1.type, self.operand2.type))
 
 
 class Number(AbstractExpression):

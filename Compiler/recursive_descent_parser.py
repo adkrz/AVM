@@ -297,7 +297,7 @@ class Parser:
 
                 expr = self._parse_logical(context)
                 old_node = node
-                node = LogicalChainOperation(BinOpType.LogicalOr)
+                node = LogicalChainOperation(BinOpType.LogicalOr, self._condition_counter)
                 node.operand1 = old_node
                 node.operand2 = expr
 
@@ -306,7 +306,7 @@ class Parser:
 
                 expr = self._parse_logical(context)
                 old_node = node
-                node = LogicalChainOperation(BinOpType.LogicalAnd)
+                node = LogicalChainOperation(BinOpType.LogicalAnd, self._condition_counter)
                 node.operand1 = old_node
                 node.operand2 = expr
 

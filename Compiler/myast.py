@@ -199,6 +199,13 @@ class BinaryOperation(AbstractExpression):
             self.operand2 = new
         self.set_parents(False)
 
+    def last_used_variable(self) -> Optional["VariableUsageRHS"]:
+        if isinstance(self.operand2, VariableUsageRHS):
+            return self.operand2
+        elif isinstance(self.operand1, VariableUsageRHS):
+            return self.operand1
+        return None
+
 
 class UnaryOperation(AbstractExpression):
     def __init__(self, op: UnOpType, operand: AbstractExpression):
@@ -497,6 +504,19 @@ class ConstantUsage(Number):
         self._print_indented(lvl, self.type.name + " " + str(self.value) + f" (const {self.cdef.name})")
 
 
+class StoreAtPointer(AbstractExpression):
+    def __init__(self, type_: Type):
+        super().__init__()
+        self.type_ = type_
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return CodeSnippet("STORE_GLOBAL_PTR" if self.type_ == Type.Byte else "STORE_GLOBAL_PTR16")
+
+    @property
+    def type(self) -> Optional[Type]:
+        return self.type_
+
+
 class Assign(AbstractStatement):
     def __init__(self, var: "VariableUsageLHS", value: AbstractExpression):
         super().__init__()
@@ -505,7 +525,7 @@ class Assign(AbstractStatement):
 
     @property
     def type(self):
-        return self.var.definition.type
+        return self.var.type
 
     def print(self, lvl):
         self.var.print(lvl + 1)
@@ -529,12 +549,13 @@ class Assign(AbstractStatement):
             self.value = new
         if old == self.var:
             self.var = new
-        self.set_parents(False)
+        self.set_parents(True)  # should be recursive there
 
     def optimize(self) -> bool:
         if (isinstance(self.value, AddConstant)
                 and self.value.is_increment
                 and isinstance(self.value.operand, VariableUsage)
+                and isinstance(self.var, VariableUsageLHS)
                 and self.var.definition == self.value.operand.definition
                 and not self.var.definition.is_array
                 and not self.var.definition.struct_def
@@ -549,6 +570,26 @@ class Assign(AbstractStatement):
             # a = a
             self.parent.replace_child(self, None)
             return True
+        elif (isinstance(self.var, VariableUsageLHS)
+              and self.var.definition.is_array
+              and isinstance(self.value, BinaryOperation)
+              and (var := self.value.last_used_variable())):
+            if var.definition == self.var.definition:
+                # compare array access code, except last line (load/store global)
+                left_code = self.var.gen_code(None)
+                right_code = var.gen_code(None)
+                if len(left_code.codes) == len(right_code.codes):
+                    code_equal = True
+                    for left, right in zip(left_code.codes[:-1], right_code.codes[:-1]):
+                        if left != right:
+                            code_equal = False
+                            break
+                    if code_equal:
+                        self.var = StoreAtPointer(self.var.definition.type)
+                        self.var.parent = self
+                        return True
+            return False
+
         else:
             return self.value.optimize()
 
@@ -575,6 +616,10 @@ class VariableUsage(AbstractStatement):
     @property
     def name(self):
         return self.definition.name
+
+    @property
+    def type(self):
+        return self.definition.type
 
     @property
     def is_load(self):
@@ -919,7 +964,7 @@ class ArrayInitialization_StackAlloc(ArrayInitializationStatement):
             self.parent.replace_child(self, None)
             return True
         else:
-            super().optimize()
+            return super().optimize()
 
 
 class ArrayInitialization_InitializerList(ArrayInitializationStatement):

@@ -201,10 +201,10 @@ class BinaryOperation(AbstractExpression):
             self.operand2 = new
         self.set_parents(False)
 
-    def last_used_variable(self) -> Optional["VariableUsageRHS"]:
-        if isinstance(self.operand2, VariableUsageRHS):
+    def last_used_array(self) -> Optional["VariableUsageRHS"]:
+        if isinstance(self.operand2, VariableUsageRHS) and self.operand2.definition.is_array:
             return self.operand2
-        elif isinstance(self.operand1, VariableUsageRHS):
+        elif isinstance(self.operand1, VariableUsageRHS) and self.operand1.definition.is_array:
             return self.operand1
         return None
 
@@ -649,6 +649,8 @@ class Assign(AbstractStatement):
                 and self.var.definition == self.value.operand.definition
                 and not self.var.definition.is_array
                 and not self.var.definition.struct_def
+                and not self.var.definition.is_arg
+                and not self.var.definition.from_global
         ):
             self.parent.replace_child(self, IncLocal(self.var))
             return True
@@ -673,7 +675,7 @@ class Assign(AbstractStatement):
         elif (isinstance(self.var, VariableUsageLHS)
               and self.var.definition.is_array
               and isinstance(self.value, BinaryOperation)
-              and (var := self.value.last_used_variable())):
+              and (var := self.value.last_used_array())):
             if var.definition == self.var.definition:
                 # compare array access code, except last line (load/store global)
                 left_code = self.var.gen_code(None)

@@ -8,7 +8,7 @@ from myast import AstProgram, VariableUsageLHS, VariableUsageRHS, BinaryOperatio
     Instruction_PrintNewLine, Instruction_PrintStringByPointer, Instruction_PrintChar, Instruction_Halt, \
     Instruction_Debugger, WhileLoop, DoWhileLoop, Instruction_Break, Instruction_Continue, FunctionCall, FunctionReturn, \
     ReturningCall, ArrayInitializationStatement, ArrayInitialization_InitializerList, ArrayInitialization_Pointer, \
-    ArrayInitialization_StackAlloc, VariableUsage
+    ArrayInitialization_StackAlloc, VariableUsage, SubtractOperation
 from symbol_table import SymbolTable
 
 
@@ -383,6 +383,7 @@ class Parser:
                 node = SumOperation()
             elif v == Symbol.Minus:
                 op_ = BinOpType.Sub
+                node = SubtractOperation()
             elif v == Symbol.Pipe:
                 op_ = BinOpType.BitOr
             elif v == Symbol.Hat:

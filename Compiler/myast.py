@@ -338,6 +338,31 @@ class SumOperation(BinaryOperation):
             return super().optimize()
 
 
+class SubtractOperation(BinaryOperation):
+    def __init__(self):
+        super().__init__(BinOpType.Sub)
+
+    def optimize(self) -> bool:
+        if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
+            new_node = self.operand1.combine(self.operand2, self.operand1.value - self.operand2.value)
+            self.parent.replace_child(self, new_node)
+            return True
+        elif isinstance(self.operand1, Number) and self.operand1.is_zero:
+            self.parent.replace_child(self, self.operand2)
+            return True
+        elif isinstance(self.operand2, Number) and self.operand2.is_zero:
+            self.parent.replace_child(self, self.operand1)
+            return True
+        elif isinstance(self.operand1, Number) and not isinstance(self.operand2, Number):
+            self.parent.replace_child(self, SubtractConstant(self.operand2, self.operand1))
+            return True
+        elif isinstance(self.operand2, Number) and not isinstance(self.operand1, Number):
+            self.parent.replace_child(self, SubtractConstant(self.operand1, self.operand2))
+            return True
+        else:
+            return super().optimize()
+
+
 class AddConstant(UnaryOperation):
     def __init__(self, expr: AbstractExpression, value: "Number"):
         super().__init__(UnOpType.Other, expr)
@@ -373,6 +398,46 @@ class AddConstant(UnaryOperation):
     def optimize(self) -> bool:
         if isinstance(self.operand, Number):
             self.parent.replace_child(self, self.operand.combine(self.value, self.operand.value + self.value.value))
+            return True
+        else:
+            return super().optimize()
+
+
+class SubtractConstant(UnaryOperation):
+    def __init__(self, expr: AbstractExpression, value: "Number"):
+        super().__init__(UnOpType.Other, expr)
+        self.value = value
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        target_type = highest_type((type_hint, self.operand.type))
+        c1 = self.operand.gen_code(target_type)
+        c1.cast(target_type)
+        if self.value.is_one:
+            c2 = CodeSnippet("DEC" if target_type == Type.Byte else "DEC16", target_type)
+        else:
+            c2 = CodeSnippet(
+                f"SUBC {self.value.value}" if target_type == Type.Byte else f"SUB16C #{self.value.value}",
+                target_type)
+        return CodeSnippet.join((c1, c2), target_type)
+
+    @property
+    def is_decrement(self):
+        return self.value.is_one
+
+    def children(self):
+        yield self.value
+        yield self.operand
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if self.value == old:
+            self.value = new
+        if self.operand == old:
+            self.operand = new
+        self.set_parents(False)
+
+    def optimize(self) -> bool:
+        if isinstance(self.operand, Number):
+            self.parent.replace_child(self, self.operand.combine(self.value, self.operand.value - self.value.value))
             return True
         else:
             return super().optimize()
@@ -586,6 +651,16 @@ class Assign(AbstractStatement):
         ):
             self.parent.replace_child(self, IncLocal(self.var))
             return True
+        elif (isinstance(self.value, SubtractConstant)
+                and self.value.is_decrement
+                and isinstance(self.value.operand, VariableUsage)
+                and isinstance(self.var, VariableUsageLHS)
+                and self.var.definition == self.value.operand.definition
+                and not self.var.definition.is_array
+                and not self.var.definition.struct_def
+        ):
+            self.parent.replace_child(self, DecLocal(self.var))
+            return True
         elif (isinstance(self.var, VariableUsageLHS)
               and isinstance(self.value, VariableUsageRHS)
               and self.var.definition == self.value.definition
@@ -625,9 +700,18 @@ class IncLocal(AbstractStatement):
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         offs = offsetof(self.symbol_table, self.scope, self.var.name, False)
+        instr = self._instr(self.var.definition.type)
         return CodeSnippet(
-            f"MACRO_INC_LOCAL {offs} ;{self.var.name}" if self.var.definition.type == Type.Byte else f"MACRO_INC_LOCAL16 {offs} ;{self.var.name}",
+            f"{instr} {offs} ;{self.var.name}" if self.var.definition.type == Type.Byte else f"{instr} {offs} ;{self.var.name}",
             self.var.definition.type)
+
+    def _instr(self, type):
+        return "MACRO_IC_LOCAL" if type == Type.Byte else f"MACRO_DEC_LOCAL16"
+
+
+class DecLocal(IncLocal):
+    def _instr(self, type):
+        return "MACRO_DEC_LOCAL" if type == Type.Byte else f"MACRO_DEC_LOCAL16"
 
 
 class VariableUsage(AbstractStatement):

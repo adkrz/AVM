@@ -71,7 +71,7 @@ def gen_load_store_instruction(symbol_table: SymbolTable, scope, name: str, load
         return code
 
     var = symbol_table.get_variable(scope, name)
-    offs = offsetof(symbol_table, scope, name)
+    offs = offsetof(symbol_table, scope, name, search_in_globals=var.from_global)
 
     ret = CodeSnippet()
 

@@ -135,7 +135,7 @@ class Parser:
                 ret = Instruction_AddressOfString(self._lex.current_string)
             else:
                 self._expect(Symbol.Identifier)
-                ret = Instruction_AddressOfVariable(self._lex.current_string)
+                ret = Instruction_AddressOfVariable(self._lex.current_identifier)
         elif function_name == "readkey":
             context.append_code("SYSCALL Std.ReadKey")
         elif function_name == "getrandomnumber":

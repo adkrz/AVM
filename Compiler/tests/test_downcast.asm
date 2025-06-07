@@ -11,7 +11,7 @@ SYSCALL Std.PrintInt
 POP
 SYSCALL Std.PrintNewLine
 LOAD_LOCAL16 0 ; a
-POP
+DOWNCAST
 SYSCALL Std.PrintCharPop
 SYSCALL Std.PrintNewLine
 PUSH16 #316
@@ -25,13 +25,10 @@ EXTEND
 AND16
 STORE_LOCAL16 0 ; a
 LOAD_LOCAL16 0 ; a
-JF16 @if1_else
+JF16 @if1_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
-JMP @if1_endif
-:if1_else
 :if1_endif
 HALT
-
 :string_1
 "OK"

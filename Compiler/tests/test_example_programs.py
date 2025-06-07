@@ -103,6 +103,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_address_registers(self):
         self.compare_programs("address_registers.prg", "address_registers.asm", optimize=True)
 
+    def test_logical_chain_typed(self):
+        self.compare_programs("test_logical_chain_typed.prg", "test_logical_chain_typed.asm", optimize=True)
+
 
 if __name__ == '__main__':
     unittest.main()

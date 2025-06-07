@@ -209,6 +209,10 @@ class BinaryOperation(AbstractExpression):
             return self.operand1
         return None
 
+    @property
+    def type(self) -> Optional[Type]:
+        return highest_type((self.operand1.type, self.operand2.type))
+
 
 class UnaryOperation(AbstractExpression):
     def __init__(self, op: UnOpType, operand: AbstractExpression):
@@ -528,7 +532,7 @@ class LogicalChainOperation(BinaryOperation):  # AND, OR
         c2 = CodeSnippet(code_dup)
         c2.add_line(code_jmp)
         c3 = self.operand2.gen_code(type_hint)
-        c3.add_line(comp2)
+        c3.add_line(comp2 + suffix)
         if self.parent and not isinstance(self.parent, LogicalChainOperation):
             c3.add_line(f":cond{self.condition_counter}_expr_end")
         return CodeSnippet.join((c1, c2, c3), self.type)
@@ -1106,6 +1110,7 @@ class Instruction_PrintChar(AbstractStatement):
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         c = self.expr.gen_code(Type.Byte)
+        c.cast(Type.Byte)
         c.add_line("SYSCALL Std.PrintCharPop")
         return c
 

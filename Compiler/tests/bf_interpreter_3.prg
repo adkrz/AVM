@@ -1,6 +1,6 @@
 // Brainfuck interperter, improved from v2 - uses precomputed bracket caches
 // Brainfuck interperter
-// Using direct pointer move and dereference[] instead of using array[N], use pred/succ instead of +/-1
+// Using direct pointer move and dereference[] instead of using array[N]
 
 // Hello World:
 //byte program[] = addressof("++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.");
@@ -13,14 +13,14 @@ byte memory_pointer[] = memory;
 
 while memory_pointer <= 40000 do begin
     memory_pointer[] = 0;
-    memory_pointer = succ(memory_pointer);
+    memory_pointer = memory_pointer + 1;
 end
 memory_pointer = memory;
 
 addr strlen = 0;
 while instruction_pointer[] != '\0' do begin
-    strlen = succ(strlen);
-    instruction_pointer = succ(instruction_pointer);
+    strlen = strlen + 1;
+    instruction_pointer = instruction_pointer + 1;
 end
 instruction_pointer = program;
 
@@ -35,13 +35,13 @@ while instruction_pointer[] != '\0' do begin
         byte count_brackets = 1;
         addr ip1 = instruction_pointer;
         while 1 do begin
-            instruction_pointer = succ(instruction_pointer);
-            if instruction_pointer[] == '[' then count_brackets = succ(count_brackets);
+            instruction_pointer = instruction_pointer + 1;
+            if instruction_pointer[] == '[' then count_brackets = count_brackets + 1;
             else if instruction_pointer[] == ']' then begin
-                count_brackets = pred(count_brackets);
+                count_brackets = count_brackets -1;
                 if count_brackets == 0 then begin
                     cache_pointer = jump_cache + (ip1 - program);
-                    cache_pointer[] = succ(instruction_pointer);
+                    cache_pointer[] = instruction_pointer + 1;
                     cache_pointer = jump_cache + (instruction_pointer - program);
                     cache_pointer[] = ip1;
                     break;
@@ -50,7 +50,7 @@ while instruction_pointer[] != '\0' do begin
         end
         instruction_pointer = ip1;
     end
-    instruction_pointer = succ(instruction_pointer);
+    instruction_pointer = instruction_pointer + 1;
 end
 
 instruction_pointer = program;
@@ -71,13 +71,13 @@ while 1 do begin
         continue;
     end
 
-    else if instruction == '>' then memory_pointer = succ(memory_pointer);
-    else if instruction == '<' then memory_pointer = pred(memory_pointer);
-    else if instruction == '+' then memory_pointer[] = succ(memory_pointer[]);
-    else if instruction == '-' then memory_pointer[] = pred(memory_pointer[]);
+    else if instruction == '>' then memory_pointer = memory_pointer + 1;
+    else if instruction == '<' then memory_pointer = memory_pointer - 1;
+    else if instruction == '+' then memory_pointer[] = memory_pointer[] + 1;
+    else if instruction == '-' then memory_pointer[] = memory_pointer[] - 1;
     else if instruction == '.' then printch memory_pointer[];
     else if instruction == '\0' then break;
 
-    instruction_pointer = succ(instruction_pointer);
+    instruction_pointer = instruction_pointer + 1;
 end
 print "Program finished\n";

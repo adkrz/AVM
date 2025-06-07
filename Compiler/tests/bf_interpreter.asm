@@ -5,7 +5,7 @@
 ; Addr memory_pointer
 ; Byte count_brackets
 PUSHN 9
-PUSH16 @string_1
+PUSH16 @string_2
 STORE_LOCAL16 0 ; program
 PUSH16 #10000
 STORE_LOCAL16 2 ; memory
@@ -246,7 +246,7 @@ ADD
 STORE_LOCAL 5 ; instruction_pointer
 JMP @while2_begin
 :while2_endwhile
-PUSH16 @string_2
+PUSH16 @string_1
 SYSCALL Std.PrintString
 HALT
 

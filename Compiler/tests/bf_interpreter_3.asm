@@ -9,7 +9,7 @@
 ; Byte count_brackets
 ; Addr ip1
 PUSHN 18
-PUSH16 @string_1
+PUSH16 @string_2
 STORE_LOCAL16 0 ; program
 PUSH16 #10000
 STORE_LOCAL16 2 ; memory
@@ -262,7 +262,7 @@ INC16
 STORE_LOCAL16 5 ; instruction_pointer
 JMP @while5_begin
 :while5_endwhile
-PUSH16 @string_2
+PUSH16 @string_1
 SYSCALL Std.PrintString
 HALT
 

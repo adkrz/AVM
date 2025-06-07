@@ -225,13 +225,25 @@ void VM::RunProgram(bool profile)
         case I::ADD16C:
             address = read_addr_from_program(skip);
             signedResult = POP_ADDR() + address;
-            carry = signedResult > 35535;
+            carry = signedResult > 65535;
+            PUSHI_ADDR(signedResult);
+            break;
+        case I::SUB16C:
+            address = read_addr_from_program(skip);
+            signedResult = POP_ADDR() - address;
+            carry = signedResult < 0;
             PUSHI_ADDR(signedResult);
             break;
         case I::ADDC:
             address = read_next_program_byte(skip);
             signedResult = POP() + address;
             carry = signedResult > 255;
+            PUSHI(signedResult);
+            break;
+        case I::SUBC:
+            address = read_next_program_byte(skip);
+            signedResult = POP() - address;
+            carry = signedResult < 0;
             PUSHI(signedResult);
             break;
         case I::MULC:

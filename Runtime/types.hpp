@@ -73,6 +73,11 @@ enum I
     /// </summary>
     ADDC,
     /// <summary>
+    /// Subtracts constant value from program to the value on the stack.
+    /// read val8bit, pop val8bit, push: val8bit
+    /// </summary>
+    SUBC,
+    /// <summary>
     /// Subtraction: value on top - next value
     /// pop: 2x val8bit, push: val8bit
     /// </summary>
@@ -374,6 +379,12 @@ enum I
     /// read address16bit, pop address16bit, push: address16bit
     /// </summary>
     ADD16C,
+    /// <summary>
+    /// Subctracts constant value from program to the address on the stack.
+    /// Useful for computing fixed offsets
+    /// read address16bit, pop address16bit, push: address16bit
+    /// </summary>
+    SUB16C,
     /// <summary>
     /// 16bit version of <see cref="I.MOD"/>
     /// pop 2x address16bit, push: address16bit

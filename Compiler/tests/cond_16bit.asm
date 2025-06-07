@@ -8,7 +8,6 @@ LESS16
 JF @if1_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
-JMP @if1_endif
 :if1_endif
 HALT
 

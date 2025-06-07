@@ -920,7 +920,8 @@ class Condition(AbstractStatement):
             snippet2 = CodeSnippet(
                 f"JF @if{self.number}_endif" if self.condition.type == Type.Byte else f"JF16 @if{self.number}_endif")
         snippet3 = self.if_body.gen_code(type_hint)
-        snippet3.add_line(f"JMP @if{self.number}_endif")
+        if self.else_body:
+            snippet3.add_line(f"JMP @if{self.number}_endif")
         snippets = [snippet1, snippet2, snippet3]
 
         if self.else_body:

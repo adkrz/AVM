@@ -17,7 +17,6 @@ AND
 JF @if1_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
-JMP @if1_endif
 :if1_endif
 SYSCALL Std.PrintNewLine
 LOAD_LOCAL 0 ; a
@@ -30,9 +29,7 @@ LESS
 JF @if3_endif
 PUSH16 @string_2
 SYSCALL Std.PrintString
-JMP @if3_endif
 :if3_endif
-JMP @if2_endif
 :if2_endif
 HALT
 

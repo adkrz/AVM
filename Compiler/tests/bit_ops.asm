@@ -7,7 +7,6 @@ EQ
 JF @if1_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
-JMP @if1_endif
 :if1_endif
 PUSH 12
 PUSH 1
@@ -17,7 +16,6 @@ EQ
 JF @if2_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
-JMP @if2_endif
 :if2_endif
 PUSH 12
 PUSH 1
@@ -29,7 +27,6 @@ EQ
 JF @if3_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
-JMP @if3_endif
 :if3_endif
 PUSH 12
 PUSH 1
@@ -41,7 +38,6 @@ EQ
 JF @if4_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
-JMP @if4_endif
 :if4_endif
 PUSH 12
 PUSH 1
@@ -53,7 +49,6 @@ EQ
 JF @if5_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
-JMP @if5_endif
 :if5_endif
 SYSCALL Std.PrintNewLine
 PUSH 3

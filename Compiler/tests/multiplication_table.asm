@@ -57,14 +57,12 @@ PUSH 1
 ADD
 STORE_LOCAL 0 ; c1
 JMP @while3_begin
-JMP @if1_endif
 :if1_endif
 LOAD_LOCAL 0 ; c1
 PUSH 8
 EQ
 JF @if2_endif
 JMP @while3_endwhile
-JMP @if2_endif
 :if2_endif
 PUSH 1
 STORE_LOCAL 1 ; c2

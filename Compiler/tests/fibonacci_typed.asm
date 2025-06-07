@@ -24,7 +24,6 @@ JF @if1_endif
 PUSH 0
 STORE_ARG 1 ; ret
 RET
-JMP @if1_endif
 :if1_endif
 LOAD_ARG 2 ; X
 PUSH 1
@@ -33,7 +32,6 @@ JF @if2_endif
 PUSH 1
 STORE_ARG 1 ; ret
 RET
-JMP @if2_endif
 :if2_endif
 PUSH 0
 STORE_LOCAL 0 ; A

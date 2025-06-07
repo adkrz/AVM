@@ -31,7 +31,6 @@ JF @if2_endif
 PUSH 1
 STORE_ARG 2 ; @ret
 RET
-JMP @if2_endif
 :if2_endif
 :if1_endif
 ;fibonacci(Byte @ret&, Byte X)

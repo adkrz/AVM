@@ -636,6 +636,11 @@ enum I
     /// </summary>
     MACRO_POP_EXT_X2_ADD16,
     /// <summary>
+    /// Macro istruction common in 16-bit arrays:
+    /// Combines: EXTEND, PUSH16#2, MUL16, ADD16, LOAD_GLOBAL16
+    /// </summary>
+    MACRO_POP_EXT_X2_ADD16_LG16,
+    /// <summary>
     /// Combines EXTEND, ADD16
     /// </summary>
     MACRO_ADD8_TO_16,

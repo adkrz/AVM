@@ -769,6 +769,15 @@ void VM::RunProgram(bool profile)
             PUSH_ADDR(address + a2);
         }
         break;
+        case I::MACRO_POP_EXT_X2_ADD16_LG16:
+        {
+            address = POP() * 2; // extends to addr
+            addr a2 = POP_ADDR();
+            address += a2;
+            WRITE_REGISTER(POINTER_REGISTER, address);
+            PUSH_ADDR(read16(memory, address));
+        }
+        break;
         case I::MACRO_ADD8_TO_16:
         {
             address = POP(); // extends to addr

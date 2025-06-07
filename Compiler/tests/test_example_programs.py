@@ -100,6 +100,9 @@ class TestArrays(unittest.TestCase, Helpers):
     def test_snake(self):
         self.compare_programs("snake.prg", "snake.asm", optimize=True)
 
+    def test_address_registers(self):
+        self.compare_programs("address_registers.prg", "address_registers.asm", optimize=True)
+
 
 if __name__ == '__main__':
     unittest.main()

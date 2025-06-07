@@ -59,7 +59,7 @@ class TestArrays(unittest.TestCase, Helpers):
         self.compare_programs("forward_declare_func.prg", "forward_declare_func.asm")
 
     def test_array_bug(self):
-        self.compare_programs("array_bug.prg", "array_bug.asm")
+        self.compare_programs("array_bug.prg", "array_bug.asm", optimize=True)
 
     def test_do_while(self):
         self.compare_programs("dowhile.prg", "dowhile.asm")

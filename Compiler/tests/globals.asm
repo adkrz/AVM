@@ -14,28 +14,25 @@ PUSH 0
 LESS
 AND
 :cond1_expr_end
-JF @if1_else
+JF @if1_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
 JMP @if1_endif
-:if1_else
 :if1_endif
 SYSCALL Std.PrintNewLine
 LOAD_LOCAL 0 ; a
 PUSH 4
 EQ
-JF @if2_else
+JF @if2_endif
 LOAD_LOCAL 0 ; a
 PUSH 0
 LESS
-JF @if3_else
+JF @if3_endif
 PUSH16 @string_2
 SYSCALL Std.PrintString
 JMP @if3_endif
-:if3_else
 :if3_endif
 JMP @if2_endif
-:if2_else
 :if2_endif
 HALT
 

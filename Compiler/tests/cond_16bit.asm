@@ -5,11 +5,10 @@ STORE_LOCAL16 0 ; a
 LOAD_LOCAL16 0 ; a
 PUSH16 #5
 LESS16
-JF @if1_else
+JF @if1_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
 JMP @if1_endif
-:if1_else
 :if1_endif
 HALT
 

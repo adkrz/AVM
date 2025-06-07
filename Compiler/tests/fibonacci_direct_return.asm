@@ -1,7 +1,7 @@
 ; Byte result
 PUSHN 1
 ;fibonacci(Byte @ret&, Byte X)
-PUSHN 1 ; rv
+PUSH 0 ; rv
 PUSH 6
 CALL @function_fibonacci
 ; stack cleanup
@@ -27,16 +27,15 @@ JMP @if1_endif
 LOAD_ARG 1 ; X
 PUSH 1
 EQ
-JF @if2_else
+JF @if2_endif
 PUSH 1
 STORE_ARG 2 ; @ret
 RET
 JMP @if2_endif
-:if2_else
 :if2_endif
 :if1_endif
 ;fibonacci(Byte @ret&, Byte X)
-PUSHN 1 ; rv
+PUSH 0 ; rv
 LOAD_ARG 1 ; X
 PUSH 2
 SUB2
@@ -44,7 +43,7 @@ CALL @function_fibonacci
 ; stack cleanup
 POPN 1
 ;fibonacci(Byte @ret&, Byte X)
-PUSHN 1 ; rv
+PUSH 0 ; rv
 LOAD_ARG 1 ; X
 PUSH 1
 SUB2

@@ -6,11 +6,14 @@ with open("input.prg", "rt") as program:
     code = program.read()
 
 parser = Parser(code)
-parser.do_parse()
-parser.optimize()
+tree = parser.do_parse()
+opt = True
+#while opt:
+#    opt = tree.optimize()
+code = tree.gen_code(None)
 
 with open("output.asm", "wt") as asm:
-    asm.writelines("\n".join(parser.get_code()))
+    asm.writelines("\n".join(code.codes))
 
 runtime = r"..\x64\Release\Runtime.exe"
-os.system(f"{runtime} output.asm -r")
+os.system(f"{runtime} output.asm -r -c")

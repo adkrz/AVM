@@ -2,7 +2,7 @@
 addr jump_cache[10];
 addr cache_pointer[] = jump_cache;
 // here was 8bit instead of 16
-addr X = succ(cache_pointer[]);
+addr X = cache_pointer[] + 1;
 
 // Bug2: after EXTEND, not switching to 16bit
 addr loc[];

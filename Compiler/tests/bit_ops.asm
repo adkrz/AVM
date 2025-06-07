@@ -4,22 +4,20 @@ PUSH 2
 LSH
 PUSH 12
 EQ
-JF @if1_else
+JF @if1_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
 JMP @if1_endif
-:if1_else
 :if1_endif
 PUSH 12
 PUSH 1
 RSH
 PUSH 6
 EQ
-JF @if2_else
+JF @if2_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
 JMP @if2_endif
-:if2_else
 :if2_endif
 PUSH 12
 PUSH 1
@@ -28,11 +26,10 @@ PUSH 5
 OR
 PUSH 7
 EQ
-JF @if3_else
+JF @if3_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
 JMP @if3_endif
-:if3_else
 :if3_endif
 PUSH 12
 PUSH 1
@@ -41,11 +38,10 @@ PUSH 5
 AND
 PUSH 4
 EQ
-JF @if4_else
+JF @if4_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
 JMP @if4_endif
-:if4_else
 :if4_endif
 PUSH 12
 PUSH 1
@@ -54,18 +50,18 @@ PUSH 5
 XOR
 PUSH 3
 EQ
-JF @if5_else
+JF @if5_endif
 PUSH16 @string_1
 SYSCALL Std.PrintString
 JMP @if5_endif
-:if5_else
 :if5_endif
 SYSCALL Std.PrintNewLine
 PUSH 3
 STORE_LOCAL 0
 PUSH16 #1
 LOAD_LOCAL 0
-MACRO_LSH16_BY8
+EXTEND
+LSH16
 SYSCALL Std.PrintInt16
 POPN 2
 SYSCALL Std.PrintNewLine
@@ -78,7 +74,8 @@ PUSH16 #1
 LOAD_LOCAL16 1
 INC16
 LOAD_GLOBAL
-MACRO_LSH16_BY8
+EXTEND
+LSH16
 STORE_LOCAL16 3
 LOAD_LOCAL16 3
 SYSCALL Std.PrintInt16
@@ -93,7 +90,8 @@ PUSH16 #1
 LOAD_LOCAL16 1
 ADD16C #2
 LOAD_GLOBAL
-MACRO_LSH16_BY8
+EXTEND
+LSH16
 SYSCALL Std.PrintInt16
 POPN 2
 SYSCALL Std.PrintNewLine

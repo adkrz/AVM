@@ -518,12 +518,14 @@ class LogicalChainOperation(BinaryOperation):  # AND, OR
         self.condition_counter = condition_counter
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        comp = "JT" if self.op == BinOpType.LogicalOr else "JF"
+        jmp = "JT" if self.op == BinOpType.LogicalOr else "JF"
         comp2 = "OR" if self.op == BinOpType.LogicalOr else "AND"
         c1 = self.operand1.gen_code(type_hint)
-        code1 = f"DUP\n{comp}" if c1.type == Type.Byte else f"DUP16\n{comp}16"
-        code1 += f" @cond{self.condition_counter}_expr_end"
-        c2 = CodeSnippet(code1)
+        suffix = "" if c1.type == Type.Byte else "16"
+        code_dup = f"DUP{suffix}"
+        code_jmp = f"{jmp}{suffix} @cond{self.condition_counter}_expr_end"
+        c2 = CodeSnippet(code_dup)
+        c2.add_line(code_jmp)
         c3 = self.operand2.gen_code(type_hint)
         c3.add_line(comp2)
         if self.parent and not isinstance(self.parent, LogicalChainOperation):

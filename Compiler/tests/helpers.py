@@ -61,9 +61,11 @@ class Helpers:
 
         program = self.read_file_to_string(input_file)
         parser = Parser(program)
-        parser.do_parse()
+        tree = parser.do_parse()
         if optimize:
-            parser.optimize()
-        output = list(self.split_lines(parser.get_code()))
+            opt = True
+            while opt:
+                opt = tree.optimize()
+        output = tree.gen_code(None).codes
         expected_output = self.read_file_to_lines(output_file)
         self.assert_string_list_equal(expected_output, output)

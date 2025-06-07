@@ -4,7 +4,8 @@ PUSH16 #1
 DUP16
 JT16 @cond1_expr_end
 PUSH16 #1
-MACRO_ORX
+OR
 :cond1_expr_end
+EXTEND
 STORE_LOCAL16 0 ; expr
 HALT

@@ -217,7 +217,7 @@ class Parser:
 
                 if self._accept(Symbol.RBracket):
                     # arr[] is the same as arr[0]
-                    pass
+                    node.array_jump = Number(0, Type.Addr)
                 else:
                     expr = self._parse_expression()
                     self._expect(Symbol.RBracket)
@@ -518,14 +518,15 @@ class Parser:
             elif self._accept(Symbol.LBracket):
                 # Array element LHS assignment
                 var_def = self.symbol_table.get_variable(self._current_context, var_name)
+                if not var_def.is_array:
+                    self._error(f"Variable {var_name} is not an array")
                 node = VariableUsageLHS(var_def)
                 element_size = var.type.size
                 if self._accept(Symbol.RBracket):
                     # arr[] = the same as arr[0], no skip to calculate
-                    pass
+                    node.array_jump = Number(0, Type.Addr)
+                    self._expect(Symbol.Becomes)
                 else:
-                    if not var_def.is_array:
-                        self._error(f"Variable {var_name} is not an array")
                     jmp = self._parse_expression()
                     node.array_jump = jmp
                     self._expect(Symbol.RBracket)

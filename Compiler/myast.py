@@ -3,6 +3,7 @@ from typing import List, Optional, Sequence, Iterable, TYPE_CHECKING
 
 from codegen_helpers import CodeSnippet, generate_prolog, gen_load_store_instruction, _gen_address_of_str, offsetof, \
     _gen_address_of_variable
+from optimizer import peephole_optimize
 from symbols import Constant, FunctionSignature, Variable, Type
 
 if TYPE_CHECKING:
@@ -1399,17 +1400,24 @@ class AstProgram(AstNode):
     def children(self):
         yield from self.blocks
 
-    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+    def gen_code(self, optimize_assembly=True) -> Optional[CodeSnippet]:
         # Move functions to the end:
         blocks_functions = [b for b in self.blocks if isinstance(b, Function)]
         blocks_main = [b for b in self.blocks if not isinstance(b, Function)]
 
-        blocks = [b.gen_code(type_hint) for b in blocks_main]
+        blocks = [b.gen_code(None) for b in blocks_main]
         program_prolog = generate_prolog(self.symbol_table, "")
         blocks.insert(0, program_prolog)
         blocks.append(CodeSnippet("HALT"))
+        main_block = CodeSnippet.join(blocks)
 
-        blocks += [b.gen_code(type_hint) for b in blocks_functions]
+        blocks = [main_block]
+
+        blocks += [b.gen_code(None) for b in blocks_functions]
+
+        if optimize_assembly:
+            for code in blocks:
+                peephole_optimize(code)
 
         ret = CodeSnippet.join(blocks)
 

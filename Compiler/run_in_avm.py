@@ -8,9 +8,9 @@ with open("input.prg", "rt") as program:
 parser = Parser(code)
 tree = parser.do_parse()
 opt = True
-#while opt:
-#    opt = tree.optimize()
-code = tree.gen_code(None)
+while opt:
+    opt = tree.optimize()
+code = tree.gen_code(True)
 
 with open("output.asm", "wt") as asm:
     asm.writelines("\n".join(code.codes))

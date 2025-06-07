@@ -66,6 +66,6 @@ class Helpers:
             opt = True
             while opt:
                 opt = tree.optimize()
-        output = tree.gen_code(None).codes
+        output = tree.gen_code(optimize).codes
         expected_output = self.read_file_to_lines(output_file)
         self.assert_string_list_equal(expected_output, output)

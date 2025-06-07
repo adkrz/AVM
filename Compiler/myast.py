@@ -526,8 +526,9 @@ class LogicalChainOperation(BinaryOperation):  # AND, OR
         c2 = CodeSnippet(code1)
         c3 = self.operand2.gen_code(type_hint)
         c3.add_line(comp2)
-        c3.add_line(f":cond{self.condition_counter}_expr_end")
-        return CodeSnippet.join((c1, c2, c3))
+        if self.parent and not isinstance(self.parent, LogicalChainOperation):
+            c3.add_line(f":cond{self.condition_counter}_expr_end")
+        return CodeSnippet.join((c1, c2, c3), self.type)
 
     @property
     def type(self) -> Optional[Type]:

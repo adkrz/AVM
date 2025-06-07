@@ -99,7 +99,15 @@ int main(int argc, char** argv)
         else
         {
             auto stream = std::ifstream(inputFile);
-            program = Compiler().ReadAndCompile(stream);
+            try
+            {
+                program = Compiler().ReadAndCompile(stream);
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "Compilation error: " << e.what() << "\n";
+                return 1;
+            }
         }
     }
 

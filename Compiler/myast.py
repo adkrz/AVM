@@ -1198,14 +1198,22 @@ class FunctionCall(AbstractStatement):
 
         snippets.append(CodeSnippet(f"CALL @function_{self.name}"))
 
+        pop_count = 0
         for name, arg in reversed(self.signature.args.items()):
             if not arg.by_ref and not arg.struct_def:
-                snippets.append(CodeSnippet(f"POPN {arg.stack_size} ; {name}"))
+                pop_count += arg.stack_size
             elif arg.struct_def:
-                snippets.append(CodeSnippet(f"POPN 2; {name}"))
+                pop_count += 2
             else:
                 if arg != return_value:
                     snippets.append(gen_load_store_instruction(self.symbol_table, self.scope, refs_mapping[arg], False))
+                else:
+                    if pop_count > 0:
+                        snippets.append(CodeSnippet(f"POPN {pop_count}"))
+                        pop_count = 0
+        if pop_count > 0:
+            snippets.append(CodeSnippet(f"POPN {pop_count}"))
+            pop_count = 0
 
         if return_value is not None:
             # do not change POPN1 to POP, optimizer will take care

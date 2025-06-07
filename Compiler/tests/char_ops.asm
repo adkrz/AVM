@@ -28,10 +28,8 @@ STORE_LOCAL 3 ; char
 LOAD_LOCAL 3 ; char
 PUSH 0
 EQ
-JF @if1_else
+JF @if1_endif
 JMP @while1_endwhile
-JMP @if1_endif
-:if1_else
 :if1_endif
 LOAD_LOCAL 3 ; char
 SYSCALL Std.PrintCharPop

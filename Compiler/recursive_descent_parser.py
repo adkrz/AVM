@@ -8,7 +8,8 @@ from myast import AstProgram, VariableUsageLHS, VariableUsageRHS, BinaryOperatio
     Instruction_PrintNewLine, Instruction_PrintStringByPointer, Instruction_PrintChar, Instruction_Halt, \
     Instruction_Debugger, WhileLoop, DoWhileLoop, Instruction_Break, Instruction_Continue, FunctionCall, FunctionReturn, \
     ReturningCall, ArrayInitializationStatement, ArrayInitialization_InitializerList, ArrayInitialization_Pointer, \
-    ArrayInitialization_StackAlloc, VariableUsage, SubtractOperation
+    ArrayInitialization_StackAlloc, VariableUsage, SubtractOperation, Instruction_AddressOfString, \
+    Instruction_AddressOfVariable
 from symbol_table import SymbolTable
 
 
@@ -105,17 +106,18 @@ class Parser:
         node = ArrayInitialization_StackAlloc(vdef, size_expr)
         return vdef, node
 
-    def _parse_intrinsic(self, function_name, context: ExprContext, expected_return):
+    def _parse_intrinsic(self, function_name, context: ExprContext, expected_return) -> AbstractExpression:
         # self._expect(Symbol.LParen)
+        ret = None
         if function_name == "sizeof":
             if self._accept(Symbol.Byte):
-                context.append_code(f"PUSH {Type.Byte.size}")
+                ret = Number(Type.Byte.size, Type.Byte)
             elif self._accept(Symbol.Addr):
-                context.append_code(f"PUSH {Type.Addr.size}")
+                ret = Number(Type.Addr.size, Type.Byte)
             else:
                 self._expect(Symbol.Identifier)
                 if struct_def := self.symbol_table.get_struct_definition(self._lex.current_identifier):
-                    context.append_code(f"PUSH {struct_def.stack_size}")
+                    ret = Number(struct_def.stack_size, Type.Byte)
                 else:
                     self._error(f"Unknown data type {self._lex.current_identifier}")
         elif function_name == "length":
@@ -125,23 +127,15 @@ class Parser:
                 self._error(f"Variable {self._lex.current_identifier} is not an array")
             size = var.array_fixed_len if var.array_fixed_len > 0 else var.array_fixed_size
             if size <= 255:
-                context.append_code(f"PUSH {size}")
+                ret = Number(size, Type.Byte)
             else:
-                context.append_code(f"PUSH16 #{size}")
-                context.expr_is16bit = True
+                ret = Number(size, Type.Addr)
         elif function_name == "addressof":
-            context.expr_is16bit = True
             if self._accept(Symbol.String):
-                self._gen_address_of_str(self._lex.current_string, context)
+                ret = Instruction_AddressOfString(self._lex.current_string)
             else:
                 self._expect(Symbol.Identifier)
-                self._gen_address_of_variable(self._lex.current_identifier, context)
-        elif function_name == "pred":
-            self._parse_sum(context)
-            context.append_code("DEC") if not context.expr_is16bit else context.append_code("DEC16")
-        elif function_name == "succ":
-            self._parse_sum(context)
-            context.append_code("INC") if not context.expr_is16bit else context.append_code("INC16")
+                ret = Instruction_AddressOfVariable(self._lex.current_string)
         elif function_name == "readkey":
             context.append_code("SYSCALL Std.ReadKey")
         elif function_name == "getrandomnumber":
@@ -187,6 +181,7 @@ class Parser:
         else:
             self._error(f"Unknown function {function_name}")
         self._expect(Symbol.RParen)
+        return ret
 
     def _parse_factor(self, context: ExprContext) -> AbstractExpression:
         if self._accept(Symbol.Hash):

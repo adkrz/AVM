@@ -124,7 +124,7 @@ def offsetof(symbol_table: SymbolTable, scope, name: str, search_in_globals=Fals
 
 def _gen_address_of_str(symbol_table: SymbolTable, string_constant: str) -> CodeSnippet:
     index = symbol_table.get_index_of_string(string_constant)
-    return CodeSnippet(f"PUSH16 @string_{index}")
+    return CodeSnippet(f"PUSH16 @string_{index}", Type.Addr)
 
 
 def _gen_address_of_variable(symbol_table: SymbolTable, scope, var_name) -> CodeSnippet:
@@ -150,4 +150,5 @@ def _gen_address_of_variable(symbol_table: SymbolTable, scope, var_name) -> Code
         ret.add_line("PUSH_REG 2")
         ret.add_line(f"PUSH16 #{offsetof(symbol_table, scope, var_name)}")
         ret.add_line("ADD16")
+    ret.type = Type.Addr
     return ret

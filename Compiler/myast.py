@@ -1,7 +1,8 @@
 from enum import Enum
 from typing import List, Optional, Sequence, Iterable, TYPE_CHECKING
 
-from codegen_helpers import CodeSnippet, generate_prolog, gen_load_store_instruction, _gen_address_of_str, offsetof
+from codegen_helpers import CodeSnippet, generate_prolog, gen_load_store_instruction, _gen_address_of_str, offsetof, \
+    _gen_address_of_variable
 from symbols import Constant, FunctionSignature, Variable, Type
 
 if TYPE_CHECKING:
@@ -1353,6 +1354,32 @@ class ArrayInitialization_Pointer(ArrayInitializationStatement):
         c1.cast(Type.Addr)
         c2 = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, False)
         return CodeSnippet.join((c1, c2), Type.Addr)
+
+
+class Instruction_AddressOfString(AbstractExpression):
+    def __init__(self, string: str):
+        super().__init__()
+        self.string = string
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return _gen_address_of_str(self.symbol_table, self.string)
+
+    @property
+    def type(self) -> Optional[Type]:
+        return Type.Addr
+
+
+class Instruction_AddressOfVariable(AbstractExpression):
+    def __init__(self, name: str):
+        super().__init__()
+        self.name = name
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return _gen_address_of_variable(self.symbol_table, self.scope, self.name)
+
+    @property
+    def type(self) -> Optional[Type]:
+        return Type.Addr
 
 
 class AstProgram(AstNode):

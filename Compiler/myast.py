@@ -375,7 +375,11 @@ class AddConstant(UnaryOperation):
         self.value = value
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        target_type = highest_type((type_hint, self.operand.type))
+        op_type = self.operand.type
+        if isinstance(self.operand, VariableUsage):
+            if self.operand.is_array and self.operand.array_jump is None:
+                op_type = Type.Addr
+        target_type = highest_type((type_hint, op_type))
         c1 = self.operand.gen_code(target_type)
         c1.cast(target_type)
         if self.value.is_one:
@@ -614,6 +618,14 @@ class StoreAtPointer(AbstractExpression):
     def type(self) -> Optional[Type]:
         return self.type_
 
+    @property
+    def is_array(self):
+        return True
+
+    @property
+    def array_jump(self):
+        return None
+
 
 class Assign(AbstractStatement):
     def __init__(self, var: "VariableUsageLHS", value: AbstractExpression):
@@ -635,6 +647,13 @@ class Assign(AbstractStatement):
         yield self.var
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        if self.var.is_array and self.var.array_jump is None:
+            # direct ptr address assignment
+            c1 = self.value.gen_code(None)
+            c2 = self.var.gen_code(self.type)
+            snippet = CodeSnippet.join((c1, c2), self.type)
+            return snippet
+
         max_type = highest_type((type_hint, self.value.find_max_type(), self.type))
         c1 = self.value.gen_code(max_type)
         c1.cast(self.type)
@@ -746,6 +765,10 @@ class VariableUsage(AbstractStatement):
     def is_load(self):
         raise NotImplementedError()
 
+    @property
+    def is_array(self):
+        return self.definition.is_array
+
     def print(self, lvl):
         self._print_indented(lvl, f"Variable {self.definition.name} : {self.definition.type.name}")
         if self.array_jump is not None:
@@ -775,7 +798,10 @@ class VariableUsage(AbstractStatement):
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         if not self.array_jump:
             code = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, self.is_load)
-            code.type = self.definition.type
+            if self.definition.is_array:  # read address of pointer
+                code.type = Type.Addr
+            else:
+                code.type = self.definition.type
             return code
         # else: calculate address
         c1 = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, True)
@@ -1203,7 +1229,10 @@ class FunctionCall(AbstractStatement):
 
         for arg, arg_def in zip(self.arguments, self.signature.true_args):
             s = arg.gen_code(arg_def.type)
-            s.cast(arg_def.type)
+            adt = arg_def.type
+            if isinstance(arg_def, Variable) and arg_def.is_array:
+                adt = Type.Addr
+            s.cast(adt)
             if arg_def.by_ref or arg_def.is_array:
                 if not isinstance(arg, VariableUsageRHS):
                     raise RuntimeError("Reference target must be simple variable")

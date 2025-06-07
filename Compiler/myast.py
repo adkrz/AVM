@@ -682,6 +682,7 @@ class Assign(AbstractStatement):
             return True
         elif (isinstance(self.var, VariableUsageLHS)
               and self.var.definition.is_array
+              and self.var.array_jump
               and isinstance(self.value, BinaryOperation)
               and (var := self.value.last_used_array())):
             if var.definition == self.var.definition:

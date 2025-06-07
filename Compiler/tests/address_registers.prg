@@ -6,3 +6,5 @@ a[1] = a[1] + 1;
 a[index] = a[index] + 1;
 // here it cannot be reused:
 a[0] = a[1] + 1;
+// here as well
+a = a +1;

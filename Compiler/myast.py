@@ -706,7 +706,7 @@ class IncLocal(AbstractStatement):
             self.var.definition.type)
 
     def _instr(self, type):
-        return "MACRO_IC_LOCAL" if type == Type.Byte else f"MACRO_DEC_LOCAL16"
+        return "MACRO_INC_LOCAL" if type == Type.Byte else f"MACRO_DEC_LOCAL16"
 
 
 class DecLocal(IncLocal):

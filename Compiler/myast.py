@@ -972,6 +972,7 @@ class WhileLoop(AbstractStatement):
         self.number = number
         self.condition: AbstractExpression = None
         self.body: AbstractStatement = None
+        self._is_infinite = False
 
     def print(self, lvl):
         self._print_indented(lvl, f"while:")
@@ -996,15 +997,19 @@ class WhileLoop(AbstractStatement):
                 self.parent.replace_child(self, None)
                 return True
             else:
-                self.parent.replace_child(self, self.body)
-                return True
+                self.condition = Dummy()
+                self.condition.set_parents(self)
+                return False
         return super().optimize()
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         snippet1 = CodeSnippet(f":while{self.number}_begin")
         snippet2 = self.condition.gen_code(self.condition.type)
-        snippet3 = CodeSnippet(
-            f"JF @while{self.number}_endwhile" if self.condition.type == Type.Byte else f"JF16 @while{self.number}_endwhile")
+        if not isinstance(self.condition, Dummy):
+            snippet3 = CodeSnippet(
+                f"JF @while{self.number}_endwhile" if self.condition.type == Type.Byte else f"JF16 @while{self.number}_endwhile")
+        else:
+            snippet3 = CodeSnippet()
         snippet4 = self.body.gen_code(type_hint)
         snippet4.add_line(f"JMP @while{self.number}_begin")
         snippet4.add_line(f":while{self.number}_endwhile")

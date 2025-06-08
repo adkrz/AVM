@@ -1259,12 +1259,11 @@ class FunctionCall(AbstractStatement):
             elif arg.struct_def:
                 pop_count += 2
             else:
+                if pop_count > 0:
+                    snippets.append(CodeSnippet(f"POPN {pop_count}"))
+                    pop_count = 0
                 if arg != return_value:
                     snippets.append(gen_load_store_instruction(self.symbol_table, self.scope, refs_mapping[arg], False))
-                else:
-                    if pop_count > 0:
-                        snippets.append(CodeSnippet(f"POPN {pop_count}"))
-                        pop_count = 0
         if pop_count > 0:
             snippets.append(CodeSnippet(f"POPN {pop_count}"))
             pop_count = 0

@@ -49,27 +49,27 @@ class Parser:
         if self._accept(Symbol.RBracket):
             if self._accept(Symbol.Becomes):
                 if self._accept(Symbol.LCurly):
-                    node = ArrayInitialization_InitializerList(vdef)
+                    node = ArrayInitialization_InitializerList(self._lex.line_number, vdef)
                     size = 0
                     while 1:
                         if size > 0:
                             self._expect(Symbol.Comma)
                         self._expect(Symbol.Number)
                         size += 1
-                        node.elements.append(Number(self._lex.current_number, new_var_type))
+                        node.elements.append(Number(self._lex.line_number,self._lex.current_number, new_var_type))
                         if self._accept(Symbol.RCurly):
                             break
                         vdef.array_fixed_len = size
                 else:
                     # this is a raw pointer, no memory reservation, but read address
                     expr = self._parse_expression()
-                    node = ArrayInitialization_Pointer(vdef, expr)
+                    node = ArrayInitialization_Pointer(self._lex.line_number,vdef, expr)
             return vdef, node
 
         size_expr = self._parse_expression()
 
         self._expect(Symbol.RBracket)
-        node = ArrayInitialization_StackAlloc(vdef, size_expr)
+        node = ArrayInitialization_StackAlloc(self._lex.line_number,vdef, size_expr)
         return vdef, node
 
     def _parse_intrinsic(self, function_name, expected_return) -> AbstractExpression:
@@ -77,13 +77,13 @@ class Parser:
         ret = None
         if function_name == "sizeof":
             if self._accept(Symbol.Byte):
-                ret = Number(Type.Byte.size, Type.Byte)
+                ret = Number(self._lex.line_number, Type.Byte.size, Type.Byte)
             elif self._accept(Symbol.Addr):
-                ret = Number(Type.Addr.size, Type.Byte)
+                ret = Number(self._lex.line_number, Type.Addr.size, Type.Byte)
             else:
                 self._expect(Symbol.Identifier)
                 if struct_def := self.symbol_table.get_struct_definition(self._lex.current_identifier):
-                    ret = Number(struct_def.stack_size, Type.Byte)
+                    ret = Number(self._lex.line_number, struct_def.stack_size, Type.Byte)
                 else:
                     self._error(f"Unknown data type {self._lex.current_identifier}")
         elif function_name == "length":
@@ -93,55 +93,55 @@ class Parser:
                 self._error(f"Variable {self._lex.current_identifier} is not an array")
             size = var.array_fixed_len if var.array_fixed_len > 0 else var.array_fixed_size
             if size <= 255:
-                ret = Number(size, Type.Byte)
+                ret = Number(self._lex.line_number, size, Type.Byte)
             else:
-                ret = Number(size, Type.Addr)
+                ret = Number(self._lex.line_number, size, Type.Addr)
         elif function_name == "addressof":
             if self._accept(Symbol.String):
-                ret = Instruction_AddressOfString(self._lex.current_string)
+                ret = Instruction_AddressOfString(self._lex.line_number, self._lex.current_string)
             else:
                 self._expect(Symbol.Identifier)
-                ret = Instruction_AddressOfVariable(self._lex.current_identifier)
+                ret = Instruction_AddressOfVariable(self._lex.line_number, self._lex.current_identifier)
         elif function_name == "readkey":
-            ret = Syscall_ReadKey()
+            ret = Syscall_ReadKey(self._lex.line_number)
         elif function_name == "getrandomnumber":
             lower = self._parse_expression()
             self._expect(Symbol.Comma)
             upper = self._parse_expression()
-            ret = Syscall_GetRandomNumber(lower, upper)
+            ret = Syscall_GetRandomNumber(self._lex.line_number, lower, upper)
         elif function_name == "consoleclear":
             if expected_return:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
-            ret = NonReturningSyscall("Std.ConsoleClear")
+            ret = NonReturningSyscall(self._lex.line_number, "Std.ConsoleClear")
         elif function_name == "showconsolecursor":
             if expected_return:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
-            ret = NonReturningSyscall("Std.ShowConsoleCursor")
+            ret = NonReturningSyscall(self._lex.line_number, "Std.ShowConsoleCursor")
             ret.arg1 = self._parse_expression()
         elif function_name == "setconsolecursorposition":
             if expected_return:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
-            ret = NonReturningSyscall("Std.SetConsoleCursorPosition")
+            ret = NonReturningSyscall(self._lex.line_number, "Std.SetConsoleCursorPosition")
             ret.arg1 = self._parse_expression()
             self._expect(Symbol.Comma)
             ret.arg2 = self._parse_expression()
         elif function_name == "setconsolecolors":
             if expected_return:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
-            ret = NonReturningSyscall("Std.SetConsoleColors")
+            ret = NonReturningSyscall(self._lex.line_number, "Std.SetConsoleColors")
             ret.arg1 = self._parse_expression()
             self._expect(Symbol.Comma)
             ret.arg2 = self._parse_expression()
         elif function_name == "sleep":
             if expected_return:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
-            ret = NonReturningSyscall("Std.Sleep")
+            ret = NonReturningSyscall(self._lex.line_number, "Std.Sleep")
             ret.arg1 = self._parse_expression()
             ret.arg1_type = Type.Addr
         elif function_name == "readstring":
             if expected_return:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
-            ret = NonReturningSyscall("Std.ReadString")
+            ret = NonReturningSyscall(self._lex.line_number, "Std.ReadString")
             ret.arg1 = self._parse_expression()
             ret.arg1_type = Type.Addr
             self._expect(Symbol.Comma)
@@ -154,7 +154,7 @@ class Parser:
     def _parse_factor(self) -> AbstractExpression:
         if self._accept(Symbol.Hash):
             self._expect(Symbol.Number)
-            return Number(self._lex.current_number, Type.Addr)
+            return Number(self._lex.line_number, self._lex.current_number, Type.Addr)
         elif self._accept(Symbol.Identifier):
             var_name = self._lex.current_identifier
 
@@ -164,10 +164,10 @@ class Parser:
 
             constant = self.symbol_table.get_constant(self._current_context, var_name)
             if constant is not None:
-                return ConstantUsage(constant)
+                return ConstantUsage(self._lex.line_number, constant)
 
             var_def = self.symbol_table.get_variable(self._current_context, var_name)
-            node = VariableUsageRHS(var_def)
+            node = VariableUsageRHS(self._lex.line_number, var_def)
 
             if var_def.struct_def:
                 last_var_in_chain, node = self._generate_struct_address(var_def, var_name)
@@ -179,7 +179,7 @@ class Parser:
 
                 if self._accept(Symbol.RBracket):
                     # arr[] is the same as arr[0]
-                    node.array_jump = Number(0, Type.Addr)
+                    node.array_jump = Number(self._lex.line_number, 0, Type.Addr)
                 else:
                     expr = self._parse_expression()
                     self._expect(Symbol.RBracket)
@@ -188,7 +188,7 @@ class Parser:
             return node
         elif self._accept(Symbol.Number):
             number_type = Type.Byte if self._lex.current_number <= 255 else Type.Addr
-            return Number(self._lex.current_number, number_type)
+            return Number(self._lex.line_number, self._lex.current_number, number_type)
         elif self._accept(Symbol.LParen):
             node = self._parse_sum()
             self._expect(Symbol.RParen)
@@ -207,7 +207,7 @@ class Parser:
             if len(val) != 1:
                 self._error("Expected exactly one character in single quotes!")
 
-            return Number(ord(val), Type.Byte)
+            return Number(self._lex.line_number, ord(val), Type.Byte)
 
         elif self._accept(Symbol.Call):
             fcall = self._parse_function_call(inside_expression=True)
@@ -240,7 +240,7 @@ class Parser:
                 raise NotImplementedError(self._lex.current)
 
             old_node = node
-            node = LogicalOperation(op)
+            node = LogicalOperation(self._lex.line_number, op)
             node.operand1 = old_node
             node.operand2 = expr
         return node
@@ -257,7 +257,7 @@ class Parser:
 
                 expr = self._parse_logical()
                 old_node = node
-                node = LogicalChainOperation(BinOpType.LogicalOr, self._condition_counter)
+                node = LogicalChainOperation(self._lex.line_number, BinOpType.LogicalOr, self._condition_counter)
                 node.operand1 = old_node
                 node.operand2 = expr
 
@@ -266,7 +266,7 @@ class Parser:
 
                 expr = self._parse_logical()
                 old_node = node
-                node = LogicalChainOperation(BinOpType.LogicalAnd, self._condition_counter)
+                node = LogicalChainOperation(self._lex.line_number, BinOpType.LogicalAnd, self._condition_counter)
                 node.operand1 = old_node
                 node.operand2 = expr
 
@@ -287,7 +287,7 @@ class Parser:
 
             if v == Symbol.Mult:
                 op_ = BinOpType.Mul
-                node = MultiplyOperation()  # specialization important for constant folding
+                node = MultiplyOperation(self._lex.line_number)  # specialization important for constant folding
             elif v == Symbol.Divide:
                 op_ = BinOpType.Div
             elif v == Symbol.Modulo:
@@ -302,7 +302,7 @@ class Parser:
                 raise NotImplementedError(self._lex.current)
 
             if node is None:
-                node = BinaryOperation(op_)
+                node = BinaryOperation(self._lex.line_number, op_)
             node.operand1 = old_node
             node.operand2 = node2
 
@@ -322,9 +322,9 @@ class Parser:
         node = self._parse_term()
 
         if unary_minus:
-            node = UnaryOperation(UnOpType.UnaryMinus, node)
+            node = UnaryOperation(self._lex.line_number, UnOpType.UnaryMinus, node)
         if negate:
-            node = UnaryOperation(UnOpType.BitNegate, node)
+            node = UnaryOperation(self._lex.line_number, UnOpType.BitNegate, node)
 
         while self._lex.current in (Symbol.Plus, Symbol.Minus, Symbol.Pipe, Symbol.Hat):
             v = self._lex.current
@@ -336,10 +336,10 @@ class Parser:
 
             if v == Symbol.Plus:
                 op_ = BinOpType.Add
-                node = SumOperation()
+                node = SumOperation(self._lex.line_number, )
             elif v == Symbol.Minus:
                 op_ = BinOpType.Sub
-                node = SubtractOperation()
+                node = SubtractOperation(self._lex.line_number, )
             elif v == Symbol.Pipe:
                 op_ = BinOpType.BitOr
             elif v == Symbol.Hat:
@@ -348,7 +348,7 @@ class Parser:
                 raise NotImplementedError(v)
 
             if node is None:
-                node = BinaryOperation(op_)
+                node = BinaryOperation(self._lex.line_number, op_)
 
             node.operand1 = old_node
             node.operand2 = node2
@@ -360,7 +360,7 @@ class Parser:
         current_struct = var.struct_def
         if not current_struct:
             self._error("Expected structure")
-        ret = VariableUsage(var)
+        ret = VariableUsage(self._lex.line_number, var)
         current_level = ret
         while 1:
             if self._accept(Symbol.LBracket):
@@ -374,7 +374,7 @@ class Parser:
                 member_variable = current_struct.members[struct_member]
 
                 var = member_variable
-                child_node = VariableUsage(var)
+                child_node = VariableUsage(self._lex.line_number, var)
                 current_level.struct_child = child_node
                 if var.struct_def:
                     current_struct = var.struct_def
@@ -399,9 +399,9 @@ class Parser:
                 var_def = self.symbol_table.register_variable(self._current_context, var_name, var_type)
                 stmt = None
                 if self._accept(Symbol.Becomes):  # initial value, like byte A = 1;
-                    decl = VariableUsageLHS(var_def)
+                    decl = VariableUsageLHS(self._lex.line_number, var_def)
                     val = self._parse_logical_chain()
-                    stmt = Assign(decl, val)
+                    stmt = Assign(self._lex.line_number, decl, val)
                 self._expect(Symbol.Semicolon)
                 return stmt
 
@@ -425,7 +425,7 @@ class Parser:
             var_name = self._lex.current_identifier
             if self._accept(Symbol.LParen):
                 # Non-returning intrinsics
-                node =self._parse_intrinsic(var_name, expected_return=False)
+                node = self._parse_intrinsic(var_name, expected_return=False)
                 self._expect(Symbol.Semicolon)
                 return node
 
@@ -439,7 +439,7 @@ class Parser:
 
                 self._expect(Symbol.Semicolon)
 
-                node = Assign(struct_node, value)
+                node = Assign(self._lex.line_number, struct_node, value)
                 return node
 
             elif self._accept(Symbol.Becomes):
@@ -447,18 +447,18 @@ class Parser:
                 node2 = self._parse_expression()
                 self._expect(Symbol.Semicolon)
 
-                node = Assign(VariableUsageLHS(self.symbol_table.get_variable(self._current_context, var_name)), node2)
+                node = Assign(self._lex.line_number, VariableUsageLHS(self._lex.line_number, self.symbol_table.get_variable(self._current_context, var_name)), node2)
                 return node
             elif self._accept(Symbol.LBracket):
                 # Array element LHS assignment
                 var_def = self.symbol_table.get_variable(self._current_context, var_name)
                 if not var_def.is_array:
                     self._error(f"Variable {var_name} is not an array")
-                node = VariableUsageLHS(var_def)
+                node = VariableUsageLHS(self._lex.line_number, var_def)
                 element_size = var.type.size
                 if self._accept(Symbol.RBracket):
                     # arr[] = the same as arr[0], no skip to calculate
-                    node.array_jump = Number(0, Type.Addr)
+                    node.array_jump = Number(self._lex.line_number, 0, Type.Addr)
                     self._expect(Symbol.Becomes)
                 else:
                     jmp = self._parse_expression()
@@ -466,7 +466,7 @@ class Parser:
                     self._expect(Symbol.RBracket)
                     self._expect(Symbol.Becomes)
                 node2 = self._parse_expression()
-                node = Assign(node, node2)
+                node = Assign(self._lex.line_number, node, node2)
                 self._expect(Symbol.Semicolon)
                 return node
         elif self._accept(Symbol.Global):
@@ -482,7 +482,7 @@ class Parser:
             self._expect(Symbol.Semicolon)
 
         elif self._accept(Symbol.Begin):
-            stmt = GroupOfStatements([])
+            stmt = GroupOfStatements(self._lex.line_number, [])
             cont = True
             while cont:
                 s = self._parse_statement(inside_loop=inside_loop, inside_if=inside_if, inside_function=inside_function)
@@ -494,7 +494,7 @@ class Parser:
         elif self._accept(Symbol.If):
             # TODO: optimize unnecessary jumps if IF without ELSE
             no = self._if_counter
-            cond = Condition(no)
+            cond = Condition(self._lex.line_number, no)
             self._if_counter += 1  # increment right away, because we may nest code
             expr = self._parse_expression()
             cond.condition = expr
@@ -516,7 +516,7 @@ class Parser:
             no = self._while_counter
             self._while_counter += 1
 
-            node = WhileLoop(no)
+            node = WhileLoop(self._lex.line_number, no)
 
             expr = self._parse_expression()
             node.condition = expr
@@ -531,7 +531,7 @@ class Parser:
         elif self._accept(Symbol.Do):
             no = self._while_counter
             self._while_counter += 1
-            node = DoWhileLoop(no)
+            node = DoWhileLoop(self._lex.line_number, no)
 
             stmt = self._parse_statement(inside_loop=no, inside_if=inside_if, inside_function=inside_function)
             node.body = stmt
@@ -545,13 +545,13 @@ class Parser:
             self._expect(Symbol.Semicolon)
             if not inside_loop:
                 self._error("Break outside loop")
-            return Instruction_Break(inside_loop)
+            return Instruction_Break(self._lex.line_number, inside_loop)
 
         elif self._accept(Symbol.Continue):
             self._expect(Symbol.Semicolon)
             if not inside_loop:
                 self._error("Continue outside loop")
-            return Instruction_Continue(inside_loop)
+            return Instruction_Continue(self._lex.line_number, inside_loop)
 
         elif self._accept(Symbol.Call):
             return self._parse_function_call()
@@ -563,42 +563,42 @@ class Parser:
             if not self._accept(Symbol.Semicolon):
                 expr = self._parse_expression()
                 self._expect(Symbol.Semicolon)
-                return FunctionReturn(self.symbol_table.get_function_signature(self._current_context).return_value.type, expr)
+                return FunctionReturn(self._lex.line_number, self.symbol_table.get_function_signature(self._current_context).return_value.type, expr)
             else:
-                return FunctionReturn(None, None)
+                return FunctionReturn(self._lex.line_number, None, None)
 
         elif self._accept(Symbol.Print):
             if self._accept(Symbol.String):
                 idx = self.symbol_table.get_index_of_string(self._lex.current_string)
-                instr = Instruction_PrintStringConstant(idx, self._lex.current_string)
+                instr = Instruction_PrintStringConstant(self._lex.line_number, idx, self._lex.current_string)
             else:
                 expr = self._parse_expression()
-                instr = Instruction_PrintInteger(expr)
+                instr = Instruction_PrintInteger(self._lex.line_number, expr)
             self._expect(Symbol.Semicolon)
             return instr
 
         elif self._accept(Symbol.PrintChar):
             expr = self._parse_sum()
             self._expect(Symbol.Semicolon)
-            return Instruction_PrintChar(expr)
+            return Instruction_PrintChar(self._lex.line_number, expr)
 
         elif self._accept(Symbol.PrintStr):
             # print string from pointer
             expr = self._parse_expression()
             self._expect(Symbol.Semicolon)
-            return Instruction_PrintStringByPointer(expr)
+            return Instruction_PrintStringByPointer(self._lex.line_number, expr)
 
         elif self._accept(Symbol.PrintNewLine):
             self._expect(Symbol.Semicolon)
-            return Instruction_PrintNewLine()
+            return Instruction_PrintNewLine(self._lex.line_number, )
 
         elif self._accept(Symbol.Debugger):
             self._expect(Symbol.Semicolon)
-            return Instruction_Debugger()
+            return Instruction_Debugger(self._lex.line_number, )
 
         elif self._accept(Symbol.Halt):
             self._expect(Symbol.Semicolon)
-            return Instruction_Halt()
+            return Instruction_Halt(self._lex.line_number, )
 
         else:
             self._error("parse statement")
@@ -617,7 +617,7 @@ class Parser:
         if inside_expression and return_value is None:
             self._error(f"Function {func} does not return anything to be used in expression")
 
-        node = FunctionCall(func, signature) if not inside_expression else ReturningCall(func, signature)
+        node = FunctionCall(self._lex.line_number, func, signature) if not inside_expression else ReturningCall(self._lex.line_number, func, signature)
 
         first_arg = True
         for arg in signature.true_args:
@@ -635,7 +635,7 @@ class Parser:
                 self._generate_struct_address(self.symbol_table.get_variable(self._current_context, var_name), var_name)
             else:
                 self._expect(Symbol.Identifier)
-                node.arguments.append(VariableUsageRHS(self.symbol_table.get_variable(self._current_context, self._lex.current_identifier)))
+                node.arguments.append(VariableUsageRHS(self._lex.line_number, self.symbol_table.get_variable(self._current_context, self._lex.current_identifier)))
 
         self._expect(Symbol.RParen)
 
@@ -736,7 +736,7 @@ class Parser:
             else:
                 # definition
                 body = self._parse_block(True)
-                node = Function(self._current_context, signature, body)
+                node = Function(self._lex.line_number, self._current_context, signature, body)
                 node.scope = self._current_context
                 self._current_context = old_ctx
                 return node
@@ -791,7 +791,7 @@ class Parser:
             return stmt
 
     def do_parse(self) -> AstProgram:
-        node = AstProgram()
+        node = AstProgram(self._lex.line_number)
         self._lex.next_symbol()
         while not self._accept(Symbol.EOF):
             block = self._parse_block()

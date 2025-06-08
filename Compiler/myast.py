@@ -38,7 +38,8 @@ class UnOpType(Enum):
 
 
 class AstNode:
-    def __init__(self):
+    def __init__(self, line_no):
+        self.line_no = line_no
         self._scope: Optional[str] = None  # if none, goes to parent
         self.parent: Optional["AstNode"] = None
         self._symbol_table: Optional["SymbolTable"] = None
@@ -134,8 +135,8 @@ def highest_type(types: Iterable[Optional[Type]]) -> Type:
 
 
 class BinaryOperation(AbstractExpression):
-    def __init__(self, op: BinOpType):
-        super().__init__()
+    def __init__(self, line_no, op: BinOpType):
+        super().__init__(line_no)
         self.op = op
         self.operand1: AbstractExpression = None
         self.operand2: AbstractExpression = None
@@ -216,8 +217,8 @@ class BinaryOperation(AbstractExpression):
 
 
 class UnaryOperation(AbstractExpression):
-    def __init__(self, op: UnOpType, operand: AbstractExpression):
-        super().__init__()
+    def __init__(self, line_no, op: UnOpType, operand: AbstractExpression):
+        super().__init__(line_no)
         self.op = op
         self.operand = operand
 
@@ -283,24 +284,24 @@ class LogicalOperation(BinaryOperation):  # eq, less etc
             elif self.op == BinOpType.Le:
                 return _replace_with_bool(self.operand1.value <= self.operand2.value)
         if self.op == BinOpType.Equals and isinstance(self.operand1, Number) and self.operand1.is_zero:
-            self.parent.replace_child(self, CompareToZero(self.operand2, True))
+            self.parent.replace_child(self, CompareToZero(self.line_no, self.operand2, True))
             return True
         elif self.op == BinOpType.Equals and isinstance(self.operand2, Number) and self.operand2.is_zero:
-            self.parent.replace_child(self, CompareToZero(self.operand1, True))
+            self.parent.replace_child(self, CompareToZero(self.line_no, self.operand1, True))
             return True
         if self.op == BinOpType.NotEqual and isinstance(self.operand1, Number) and self.operand1.is_zero:
-            self.parent.replace_child(self, CompareToZero(self.operand2, False))
+            self.parent.replace_child(self, CompareToZero(self.line_no, self.operand2, False))
             return True
         elif self.op == BinOpType.NotEqual and isinstance(self.operand2, Number) and self.operand2.is_zero:
-            self.parent.replace_child(self, CompareToZero(self.operand1, False))
+            self.parent.replace_child(self, CompareToZero(self.line_no, self.operand1, False))
             return True
         else:
             return super().optimize()
 
 
 class CompareToZero(UnaryOperation):
-    def __init__(self, expr: AbstractExpression, eq: bool):
-        super().__init__(UnOpType.Other, expr)
+    def __init__(self, line_no, expr: AbstractExpression, eq: bool):
+        super().__init__(line_no, UnOpType.Other, expr)
         self.eq = eq
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
@@ -320,8 +321,8 @@ class CompareToZero(UnaryOperation):
 
 
 class SumOperation(BinaryOperation):
-    def __init__(self):
-        super().__init__(BinOpType.Add)
+    def __init__(self, line_no):
+        super().__init__(line_no, BinOpType.Add)
 
     def optimize(self) -> bool:
         if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
@@ -335,18 +336,18 @@ class SumOperation(BinaryOperation):
             self.parent.replace_child(self, self.operand1)
             return True
         elif isinstance(self.operand1, Number) and not isinstance(self.operand2, Number):
-            self.parent.replace_child(self, AddConstant(self.operand2, self.operand1))
+            self.parent.replace_child(self, AddConstant(self.line_no, self.operand2, self.operand1))
             return True
         elif isinstance(self.operand2, Number) and not isinstance(self.operand1, Number):
-            self.parent.replace_child(self, AddConstant(self.operand1, self.operand2))
+            self.parent.replace_child(self, AddConstant(self.line_no, self.operand1, self.operand2))
             return True
         else:
             return super().optimize()
 
 
 class SubtractOperation(BinaryOperation):
-    def __init__(self):
-        super().__init__(BinOpType.Sub)
+    def __init__(self, line_no):
+        super().__init__(line_no, BinOpType.Sub)
 
     def optimize(self) -> bool:
         if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
@@ -360,18 +361,18 @@ class SubtractOperation(BinaryOperation):
             self.parent.replace_child(self, self.operand1)
             return True
         elif isinstance(self.operand1, Number) and not isinstance(self.operand2, Number):
-            self.parent.replace_child(self, SubtractConstant(self.operand2, self.operand1))
+            self.parent.replace_child(self, SubtractConstant(self.line_no, self.operand2, self.operand1))
             return True
         elif isinstance(self.operand2, Number) and not isinstance(self.operand1, Number):
-            self.parent.replace_child(self, SubtractConstant(self.operand1, self.operand2))
+            self.parent.replace_child(self, SubtractConstant(self.line_no, self.operand1, self.operand2))
             return True
         else:
             return super().optimize()
 
 
 class AddConstant(UnaryOperation):
-    def __init__(self, expr: AbstractExpression, value: "Number"):
-        super().__init__(UnOpType.Other, expr)
+    def __init__(self, line_no, expr: AbstractExpression, value: "Number"):
+        super().__init__(line_no, UnOpType.Other, expr)
         self.value = value
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
@@ -414,8 +415,8 @@ class AddConstant(UnaryOperation):
 
 
 class SubtractConstant(UnaryOperation):
-    def __init__(self, expr: AbstractExpression, value: "Number"):
-        super().__init__(UnOpType.Other, expr)
+    def __init__(self, line_no, expr: AbstractExpression, value: "Number"):
+        super().__init__(line_no, UnOpType.Other, expr)
         self.value = value
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
@@ -458,8 +459,8 @@ class SubtractConstant(UnaryOperation):
 
 
 class MulConstant(UnaryOperation):
-    def __init__(self, expr: AbstractExpression, value: "Number"):
-        super().__init__(UnOpType.Other, expr)
+    def __init__(self, line_no, expr: AbstractExpression, value: "Number"):
+        super().__init__(line_no, UnOpType.Other, expr)
         self.value = value
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
@@ -498,8 +499,8 @@ class MulConstant(UnaryOperation):
 
 
 class MultiplyOperation(BinaryOperation):
-    def __init__(self):
-        super().__init__(BinOpType.Mul)
+    def __init__(self, line_no):
+        super().__init__(line_no, BinOpType.Mul)
 
     def optimize(self) -> bool:
         if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
@@ -514,21 +515,21 @@ class MultiplyOperation(BinaryOperation):
             return True
         elif (isinstance(self.operand1, Number) and self.operand1.is_zero) or (
                 isinstance(self.operand2, Number) and self.operand2.is_zero):
-            self.parent.replace_child(self, Number(0, self.type))
+            self.parent.replace_child(self, Number(self.line_no, 0, self.type))
             return True
         elif isinstance(self.operand1, Number) and not isinstance(self.operand2, Number):
-            self.parent.replace_child(self, MulConstant(self.operand2, self.operand1))
+            self.parent.replace_child(self, MulConstant(self.line_no, self.operand2, self.operand1))
             return True
         elif isinstance(self.operand2, Number) and not isinstance(self.operand1, Number):
-            self.parent.replace_child(self, MulConstant(self.operand1, self.operand2))
+            self.parent.replace_child(self, MulConstant(self.line_no, self.operand1, self.operand2))
             return True
         else:
             return super().optimize()
 
 
 class LogicalChainOperation(BinaryOperation):  # AND, OR
-    def __init__(self, op, condition_counter):
-        super().__init__(op)
+    def __init__(self, line_no, op, condition_counter):
+        super().__init__(line_no, op)
         self.condition_counter = condition_counter
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
@@ -552,8 +553,8 @@ class LogicalChainOperation(BinaryOperation):  # AND, OR
 
 
 class Number(AbstractExpression):
-    def __init__(self, value, type_: Type):
-        super().__init__()
+    def __init__(self, line_no, value, type_: Type):
+        super().__init__(line_no)
         self.value = value
         self._type = type_
 
@@ -593,14 +594,14 @@ class Number(AbstractExpression):
         resulting_type = highest_type((self.type, another.type))
         if new_value > 255:
             resulting_type = Type.Addr
-        const_node = Number(new_value, resulting_type)
+        const_node = Number(self.line_no, new_value, resulting_type)
         return const_node
 
 
 class ConstantUsage(Number):
-    def __init__(self, cdef: Constant):
+    def __init__(self, line_no, cdef: Constant):
         self.cdef = cdef
-        super().__init__(self.cdef.value, self.cdef.type)
+        super().__init__(line_no, self.cdef.value, self.cdef.type)
 
     @property
     def name(self):
@@ -611,8 +612,8 @@ class ConstantUsage(Number):
 
 
 class StoreAtPointer(AbstractExpression):
-    def __init__(self, type_: Type):
-        super().__init__()
+    def __init__(self, line_no, type_: Type):
+        super().__init__(line_no)
         self.type_ = type_
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
@@ -632,8 +633,8 @@ class StoreAtPointer(AbstractExpression):
 
 
 class Assign(AbstractStatement):
-    def __init__(self, var: "VariableUsageLHS", value: AbstractExpression):
-        super().__init__()
+    def __init__(self, line_no, var: "VariableUsageLHS", value: AbstractExpression):
+        super().__init__(line_no)
         self.var = var
         self.value = value
 
@@ -683,19 +684,19 @@ class Assign(AbstractStatement):
                 and not self.var.definition.is_arg
                 and not self.var.definition.from_global
         ):
-            self.parent.replace_child(self, IncLocal(self.var))
+            self.parent.replace_child(self, IncLocal(self.line_no, self.var))
             return True
         elif (isinstance(self.value, SubtractConstant)
-                and self.value.is_decrement
-                and isinstance(self.value.operand, VariableUsage)
-                and isinstance(self.var, VariableUsageLHS)
-                and self.var.definition == self.value.operand.definition
-                and not self.var.definition.is_array
-                and not self.var.definition.struct_def
-                and not self.var.definition.is_arg
-                and not self.var.definition.from_global
+              and self.value.is_decrement
+              and isinstance(self.value.operand, VariableUsage)
+              and isinstance(self.var, VariableUsageLHS)
+              and self.var.definition == self.value.operand.definition
+              and not self.var.definition.is_array
+              and not self.var.definition.struct_def
+              and not self.var.definition.is_arg
+              and not self.var.definition.from_global
         ):
-            self.parent.replace_child(self, DecLocal(self.var))
+            self.parent.replace_child(self, DecLocal(self.line_no, self.var))
             return True
         elif (isinstance(self.var, VariableUsageLHS)
               and isinstance(self.value, VariableUsageRHS)
@@ -721,7 +722,7 @@ class Assign(AbstractStatement):
                             code_equal = False
                             break
                     if code_equal:
-                        self.var = StoreAtPointer(self.var.definition.type)
+                        self.var = StoreAtPointer(self.line_no, self.var.definition.type)
                         self.var.parent = self
                         return True
             return False
@@ -731,8 +732,8 @@ class Assign(AbstractStatement):
 
 
 class IncLocal(AbstractStatement):
-    def __init__(self, var: "VariableUsageLHS"):
-        super().__init__()
+    def __init__(self, line_no, var: "VariableUsageLHS"):
+        super().__init__(line_no)
         self.var = var
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
@@ -752,8 +753,8 @@ class DecLocal(IncLocal):
 
 
 class VariableUsage(AbstractStatement):
-    def __init__(self, definition: Variable):
-        super().__init__()
+    def __init__(self, line_no, definition: Variable):
+        super().__init__(line_no)
         self.definition = definition
         self.array_jump: Optional[AbstractExpression] = None
         self.struct_child: Optional[VariableUsage] = None
@@ -815,11 +816,11 @@ class VariableUsage(AbstractStatement):
             element_size = 1 if self.definition.type == Type.Byte else 2
 
             # Create internally sum+multiply objects and exploit optimization functions to them:
-            self._processed_array_jump = SumOperation()
+            self._processed_array_jump = SumOperation(self.line_no)
             self._processed_array_jump.parent = self
-            self._processed_array_jump.operand1 = Dummy()
+            self._processed_array_jump.operand1 = Dummy(self.line_no)
             if element_size > 1:
-                self._processed_array_jump.operand2 = MulConstant(self.array_jump, Number(element_size, Type.Addr))
+                self._processed_array_jump.operand2 = MulConstant(self.line_no, self.array_jump, Number(self.line_no, element_size, Type.Addr))
             else:
                 self._processed_array_jump.operand2 = self.array_jump
             self._processed_array_jump.set_parents()
@@ -854,8 +855,8 @@ class VariableUsageRHS(VariableUsageLHS, AbstractExpression):
 
 
 class GroupOfStatements(AbstractStatement):
-    def __init__(self, statements: List[AbstractStatement]):
-        super().__init__()
+    def __init__(self, line_no, statements: List[AbstractStatement]):
+        super().__init__(line_no)
         self.statements = statements
 
     def print(self, lvl):
@@ -878,8 +879,8 @@ class GroupOfStatements(AbstractStatement):
 
 
 class Function(AbstractBlock):
-    def __init__(self, name, signature: FunctionSignature, body: AbstractBlock):
-        super().__init__()
+    def __init__(self, line_no, name, signature: FunctionSignature, body: AbstractBlock):
+        super().__init__(line_no)
         self.name = name
         self.body = body
         self.signature = signature
@@ -906,8 +907,8 @@ class Function(AbstractBlock):
 
 
 class Condition(AbstractStatement):
-    def __init__(self, number: int):
-        super().__init__()
+    def __init__(self, line_no, number: int):
+        super().__init__(line_no)
         self.number = number
         self.condition: AbstractExpression = None
         self.if_body: AbstractStatement = None
@@ -974,8 +975,8 @@ class Condition(AbstractStatement):
 
 
 class WhileLoop(AbstractStatement):
-    def __init__(self, number: int):
-        super().__init__()
+    def __init__(self, line_no, number: int):
+        super().__init__(line_no)
         self.number = number
         self.condition: AbstractExpression = None
         self.body: AbstractStatement = None
@@ -1004,8 +1005,8 @@ class WhileLoop(AbstractStatement):
                 self.parent.replace_child(self, None)
                 return True
             else:
-                self.condition = Dummy()
-                self.condition.set_parents(self)
+                self.condition = Dummy(self.line_no)
+                self.condition.set_parents(False)
                 return False
         return super().optimize()
 
@@ -1024,8 +1025,8 @@ class WhileLoop(AbstractStatement):
 
 
 class DoWhileLoop(AbstractStatement):
-    def __init__(self, number: int):
-        super().__init__()
+    def __init__(self, line_no, number: int):
+        super().__init__(line_no)
         self.number = number
         self.condition: AbstractExpression = None
         self.body: AbstractStatement = None
@@ -1065,8 +1066,8 @@ class DoWhileLoop(AbstractStatement):
 
 
 class Instruction_PrintStringConstant(AbstractStatement):
-    def __init__(self, string_number: int, content: str):
-        super().__init__()
+    def __init__(self, line_no, string_number: int, content: str):
+        super().__init__(line_no)
         self.string_number = string_number
         self.content = content
 
@@ -1080,8 +1081,8 @@ class Instruction_PrintStringConstant(AbstractStatement):
 
 
 class Instruction_PrintStringByPointer(AbstractStatement):
-    def __init__(self, expr: AbstractExpression):
-        super().__init__()
+    def __init__(self, line_no, expr: AbstractExpression):
+        super().__init__(line_no)
         self.expr = expr
 
     def print(self, lvl):
@@ -1104,8 +1105,8 @@ class Instruction_PrintStringByPointer(AbstractStatement):
 
 
 class Instruction_PrintInteger(AbstractStatement):
-    def __init__(self, expr: AbstractExpression):
-        super().__init__()
+    def __init__(self, line_no, expr: AbstractExpression):
+        super().__init__(line_no)
         self.expr = expr
 
     def print(self, lvl):
@@ -1132,8 +1133,8 @@ class Instruction_PrintInteger(AbstractStatement):
 
 
 class Instruction_PrintChar(AbstractStatement):
-    def __init__(self, expr: AbstractExpression):
-        super().__init__()
+    def __init__(self, line_no, expr: AbstractExpression):
+        super().__init__(line_no)
         self.expr = expr
 
     def print(self, lvl):
@@ -1180,8 +1181,8 @@ class Instruction_Debugger(AbstractStatement):
 
 
 class Instruction_Continue(AbstractStatement):
-    def __init__(self, loop_no):
-        super().__init__()
+    def __init__(self, line_no, loop_no):
+        super().__init__(line_no)
         self.loop_no = loop_no
 
     def print(self, lvl):
@@ -1192,8 +1193,8 @@ class Instruction_Continue(AbstractStatement):
 
 
 class Instruction_Break(AbstractStatement):
-    def __init__(self, loop_no):
-        super().__init__()
+    def __init__(self, line_no, loop_no):
+        super().__init__(line_no)
         self.loop_no = loop_no
 
     def print(self, lvl):
@@ -1204,8 +1205,8 @@ class Instruction_Break(AbstractStatement):
 
 
 class FunctionCall(AbstractStatement):
-    def __init__(self, name: str, signature: FunctionSignature):
-        super().__init__()
+    def __init__(self, line_no, name: str, signature: FunctionSignature):
+        super().__init__(line_no)
         self.name = name
         self.signature = signature
         self.arguments: List[AbstractExpression] = []
@@ -1279,8 +1280,8 @@ class FunctionCall(AbstractStatement):
 
 
 class FunctionReturn(AbstractStatement):
-    def __init__(self, return_type: Type, value: Optional[AbstractExpression]):
-        super().__init__()
+    def __init__(self, line_no, return_type: Type, value: Optional[AbstractExpression]):
+        super().__init__(line_no)
         self.return_type = return_type
         self.value = value
 
@@ -1317,14 +1318,14 @@ class ReturningCall(FunctionCall, AbstractExpression):
 
 
 class ArrayInitializationStatement(AbstractStatement):
-    def __init__(self, definition: Variable):
-        super().__init__()
+    def __init__(self, line_no, definition: Variable):
+        super().__init__(line_no)
         self.definition = definition
 
 
 class ArrayInitialization_StackAlloc(ArrayInitializationStatement):
-    def __init__(self, definition: Variable, length: AbstractExpression):
-        super().__init__(definition)
+    def __init__(self, line_no, definition: Variable, length: AbstractExpression):
+        super().__init__(line_no, definition)
         self.length = length
 
     def print(self, lvl):
@@ -1346,7 +1347,7 @@ class ArrayInitialization_StackAlloc(ArrayInitializationStatement):
         c3.cast(Type.Byte)  # limitation of PUSHN2
         if self.definition.type == Type.Addr:
             if isinstance(self.length, Number):
-                tmp = Number(self.length.value * 2, Type.Byte)
+                tmp = Number(self.line_no,  self.length.value * 2, Type.Byte)
                 c3 = tmp.gen_code(Type.Byte)
             else:
                 c3.add_line("MULC 2")
@@ -1361,8 +1362,8 @@ class ArrayInitialization_StackAlloc(ArrayInitializationStatement):
 
 
 class ArrayInitialization_InitializerList(ArrayInitializationStatement):
-    def __init__(self, definition: Variable):
-        super().__init__(definition)
+    def __init__(self, line_no, definition: Variable):
+        super().__init__(line_no, definition)
         self.elements: List[Number] = []
 
     def print(self, lvl):
@@ -1380,8 +1381,8 @@ class ArrayInitialization_InitializerList(ArrayInitializationStatement):
 
 
 class ArrayInitialization_Pointer(ArrayInitializationStatement):
-    def __init__(self, definition: Variable, pointer: AbstractExpression):
-        super().__init__(definition)
+    def __init__(self, line_no, definition: Variable, pointer: AbstractExpression):
+        super().__init__(line_no, definition)
         self.pointer = pointer
 
     def print(self, lvl):
@@ -1404,8 +1405,8 @@ class ArrayInitialization_Pointer(ArrayInitializationStatement):
 
 
 class Instruction_AddressOfString(AbstractExpression):
-    def __init__(self, string: str):
-        super().__init__()
+    def __init__(self, line_no, string: str):
+        super().__init__(line_no)
         self.string = string
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
@@ -1417,8 +1418,8 @@ class Instruction_AddressOfString(AbstractExpression):
 
 
 class Instruction_AddressOfVariable(AbstractExpression):
-    def __init__(self, name: str):
-        super().__init__()
+    def __init__(self, line_no, name: str):
+        super().__init__(line_no)
         self.name = name
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
@@ -1430,8 +1431,8 @@ class Instruction_AddressOfVariable(AbstractExpression):
 
 
 class Syscall_GetRandomNumber(AbstractExpression):
-    def __init__(self, lower: AbstractExpression, upper: AbstractExpression):
-        super().__init__()
+    def __init__(self, line_no, lower: AbstractExpression, upper: AbstractExpression):
+        super().__init__(line_no)
         self.lower = lower
         self.upper = upper
 
@@ -1469,8 +1470,8 @@ class Syscall_ReadKey(AbstractExpression):
 
 
 class NonReturningSyscall(AbstractExpression):
-    def __init__(self, call_name):
-        super().__init__()
+    def __init__(self, line_no, call_name):
+        super().__init__(line_no)
         self.arg1: Optional[AbstractExpression] = None
         self.arg2: Optional[AbstractExpression] = None
         self.arg1_type = Type.Byte
@@ -1505,8 +1506,8 @@ class NonReturningSyscall(AbstractExpression):
 
 
 class AstProgram(AstNode):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, line_no):
+        super().__init__(line_no)
         self.blocks: List[AbstractBlock] = []
 
     def print(self, lvl):

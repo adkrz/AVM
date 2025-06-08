@@ -827,6 +827,7 @@ void VM::RunProgram(bool profile)
         }
         case I::GET_PTR:
 			PUSH_ADDR(READ_REGISTER(POINTER_REGISTER));
+            break;
         case I::LOAD_GLOBAL_PTR:
             address = READ_REGISTER(POINTER_REGISTER);
             PUSH(memory[address]);

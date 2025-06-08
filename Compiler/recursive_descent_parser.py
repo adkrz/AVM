@@ -425,9 +425,9 @@ class Parser:
             var_name = self._lex.current_identifier
             if self._accept(Symbol.LParen):
                 # Non-returning intrinsics
-                self._parse_intrinsic(var_name, expected_return=False)
+                node =self._parse_intrinsic(var_name, expected_return=False)
                 self._expect(Symbol.Semicolon)
-                return
+                return node
 
             var = self.symbol_table.get_variable(self._current_context, var_name)
             if var.struct_def:

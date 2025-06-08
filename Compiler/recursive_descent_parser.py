@@ -13,31 +13,6 @@ from myast import AstProgram, VariableUsageLHS, VariableUsageRHS, BinaryOperatio
 from symbol_table import SymbolTable
 
 
-class ExprContext:
-    """
-    Expression context: if we expect 16bit, what type we really get, is it a dry run (no code generation yet)
-    """
-
-    def __init__(self, parent_parser: "Parser", expect_16bit=False):
-        self.parent_parser = parent_parser
-        self.expr_is16bit = False
-        self.dry_run = False
-        self.expect_16bit = expect_16bit
-        # Some expressions are simple like x[0], while 1 etc
-        self.is_simple_constant = True
-        self.simple_value = 0
-
-    def clone_with_same_buffer(self) -> "ExprContext":
-        c = ExprContext(self.parent_parser, self.expect_16bit)
-        c.expr_is16bit = self.expr_is16bit
-        c.dry_run = self.dry_run
-        return c
-
-    def append_code(self, data, newline=True):
-        if not self.dry_run:
-            self.parent_parser._append_code(data, newline)
-
-
 class Parser:
     def __init__(self, input_string: str):
         self._lex = Lexer(input_string)
@@ -48,15 +23,6 @@ class Parser:
         self._codes = {}  # per context
         self._current_context = ""  # empty = global, otherwise in function
         self.symbol_table = SymbolTable()
-
-    def _create_ec(self) -> ExprContext:
-        return ExprContext(self)
-
-    def _append_code(self, c: str, newline=True):
-        pass
-
-    def _prepend_code(self, c: str, newline=True):
-        pass
 
     def _accept(self, t: Symbol) -> bool:
         if t == self._lex.current:
@@ -73,7 +39,7 @@ class Parser:
     def _error(self, what: str):
         raise Exception(f"Error in line {self._lex.line_number}: {what}")
 
-    def _gen_array_initialization(self, context: ExprContext, new_var_name: str, new_var_type: Optional[Type] = None,
+    def _gen_array_initialization(self, new_var_name: str, new_var_type: Optional[Type] = None,
                                   struct_def=None) -> (Variable, ArrayInitializationStatement):
         vtype = Type.Struct if struct_def else new_var_type
         vdef = self.symbol_table.register_variable(self._current_context, new_var_name, vtype, is_array=True,
@@ -106,7 +72,7 @@ class Parser:
         node = ArrayInitialization_StackAlloc(vdef, size_expr)
         return vdef, node
 
-    def _parse_intrinsic(self, function_name, context: ExprContext, expected_return) -> AbstractExpression:
+    def _parse_intrinsic(self, function_name, expected_return) -> AbstractExpression:
         # self._expect(Symbol.LParen)
         ret = None
         if function_name == "sizeof":
@@ -185,9 +151,8 @@ class Parser:
         self._expect(Symbol.RParen)
         return ret
 
-    def _parse_factor(self, context: ExprContext) -> AbstractExpression:
+    def _parse_factor(self) -> AbstractExpression:
         if self._accept(Symbol.Hash):
-            context.expr_is16bit = True
             self._expect(Symbol.Number)
             return Number(self._lex.current_number, Type.Addr)
         elif self._accept(Symbol.Identifier):
@@ -195,7 +160,7 @@ class Parser:
 
             if self._accept(Symbol.LParen):
                 # Intrinsics that return value
-                return self._parse_intrinsic(var_name, context, expected_return=True)
+                return self._parse_intrinsic(var_name, expected_return=True)
 
             constant = self.symbol_table.get_constant(self._current_context, var_name)
             if constant is not None:
@@ -205,7 +170,7 @@ class Parser:
             node = VariableUsageRHS(var_def)
 
             if var_def.struct_def:
-                last_var_in_chain, node = self._generate_struct_address(var_def, var_name, context)
+                last_var_in_chain, node = self._generate_struct_address(var_def, var_name)
                 return node
 
             if self._accept(Symbol.LBracket):
@@ -225,8 +190,7 @@ class Parser:
             number_type = Type.Byte if self._lex.current_number <= 255 else Type.Addr
             return Number(self._lex.current_number, number_type)
         elif self._accept(Symbol.LParen):
-            context.is_simple_constant = False
-            node = self._parse_sum(context)
+            node = self._parse_sum()
             self._expect(Symbol.RParen)
             return node
         elif self._accept(Symbol.Char):
@@ -246,7 +210,7 @@ class Parser:
             return Number(ord(val), Type.Byte)
 
         elif self._accept(Symbol.Call):
-            fcall = self._parse_function_call(context, inside_expression=True)
+            fcall = self._parse_function_call(inside_expression=True)
             if not isinstance(fcall, ReturningCall):
                 self._error("Expected function returning value")
             return fcall
@@ -254,12 +218,12 @@ class Parser:
         else:
             self._error("factor: syntax error")
 
-    def _parse_logical(self, context: ExprContext) -> AbstractExpression:
-        node = self._parse_sum(context)
+    def _parse_logical(self) -> AbstractExpression:
+        node = self._parse_sum()
         while self._lex.current in (Symbol.Equals, Symbol.NotEqual, Symbol.Ge, Symbol.Gt, Symbol.Le, Symbol.Lt):
             v = self._lex.current
             self._lex.next_symbol()
-            expr = self._parse_sum(context)
+            expr = self._parse_sum()
             if v == Symbol.Equals:
                 op = BinOpType.Equals
             elif v == Symbol.NotEqual:
@@ -282,17 +246,16 @@ class Parser:
         return node
 
     def _parse_expression(self) -> AbstractExpression:
-        return self._parse_logical_chain(self._create_ec())
+        return self._parse_logical_chain()
 
-    def _parse_logical_chain(self, context: ExprContext) -> AbstractExpression:
-        node = self._parse_logical(context)
+    def _parse_logical_chain(self) -> AbstractExpression:
+        node = self._parse_logical()
         has_chain = False
         while self._lex.current in (Symbol.And, Symbol.Or):
-            context.is_simple_constant = False
             if self._accept(Symbol.Or):
                 has_chain = True
 
-                expr = self._parse_logical(context)
+                expr = self._parse_logical()
                 old_node = node
                 node = LogicalChainOperation(BinOpType.LogicalOr, self._condition_counter)
                 node.operand1 = old_node
@@ -301,7 +264,7 @@ class Parser:
             elif self._accept(Symbol.And):
                 has_chain = True
 
-                expr = self._parse_logical(context)
+                expr = self._parse_logical()
                 old_node = node
                 node = LogicalChainOperation(BinOpType.LogicalAnd, self._condition_counter)
                 node.operand1 = old_node
@@ -311,15 +274,13 @@ class Parser:
             self._condition_counter += 1
         return node
 
-    def _parse_term(self, context: ExprContext) -> AbstractExpression:
-        node = self._parse_factor(context)
+    def _parse_term(self) -> AbstractExpression:
+        node = self._parse_factor()
         while self._lex.current in (
                 Symbol.Mult, Symbol.Divide, Symbol.Modulo, Symbol.Ampersand, Symbol.Lsh, Symbol.Rsh):
-            context.is_simple_constant = False
-            context.expect_16bit = context.expr_is16bit
             v = self._lex.current
             self._lex.next_symbol()
-            node2 = self._parse_factor(context)
+            node2 = self._parse_factor()
 
             old_node = node
             node = None
@@ -347,7 +308,7 @@ class Parser:
 
         return node
 
-    def _parse_sum(self, context: ExprContext) -> AbstractExpression:
+    def _parse_sum(self) -> AbstractExpression:
         unary_minus = False
         negate = False
 
@@ -358,7 +319,7 @@ class Parser:
             negate = True
             self._lex.next_symbol()
 
-        node = self._parse_term(context)
+        node = self._parse_term()
 
         if unary_minus:
             node = UnaryOperation(UnOpType.UnaryMinus, node)
@@ -366,11 +327,9 @@ class Parser:
             node = UnaryOperation(UnOpType.BitNegate, node)
 
         while self._lex.current in (Symbol.Plus, Symbol.Minus, Symbol.Pipe, Symbol.Hat):
-            context.is_simple_constant = False
-            context.expect_16bit = context.expr_is16bit
             v = self._lex.current
             self._lex.next_symbol()
-            node2 = self._parse_term(context)
+            node2 = self._parse_term()
 
             old_node = node
             node = None
@@ -395,7 +354,7 @@ class Parser:
             node.operand2 = node2
         return node
 
-    def _generate_struct_address(self, var: Variable, var_name: str, context: ExprContext) -> (Variable, VariableUsage):
+    def _generate_struct_address(self, var: Variable, var_name: str) -> (Variable, VariableUsage):
         """ Generates instructions to compute address of last member in struct chain
          Returns this last member variable """
         current_struct = var.struct_def
@@ -433,7 +392,7 @@ class Parser:
             var_name = self._lex.current_identifier
 
             if self._accept(Symbol.LBracket):
-                _, node = self._gen_array_initialization(self._create_ec(), var_name, var_type)
+                _, node = self._gen_array_initialization(var_name, var_type)
                 self._expect(Symbol.Semicolon)
                 return node
             else:
@@ -441,7 +400,7 @@ class Parser:
                 stmt = None
                 if self._accept(Symbol.Becomes):  # initial value, like byte A = 1;
                     decl = VariableUsageLHS(var_def)
-                    val = self._parse_logical_chain(self._create_ec())
+                    val = self._parse_logical_chain()
                     stmt = Assign(decl, val)
                 self._expect(Symbol.Semicolon)
                 return stmt
@@ -454,7 +413,7 @@ class Parser:
             var_name = self._lex.current_identifier
 
             if self._accept(Symbol.LBracket):  # array of struct
-                self._gen_array_initialization(self._create_ec(), var_name, struct_def=struct_def)
+                self._gen_array_initialization(var_name, struct_def=struct_def)
             elif self._accept(Symbol.Becomes):
                 self._error("Cannot assign directly to structure")
 
@@ -466,14 +425,14 @@ class Parser:
             var_name = self._lex.current_identifier
             if self._accept(Symbol.LParen):
                 # Non-returning intrinsics
-                self._parse_intrinsic(var_name, self._create_ec(), expected_return=False)
+                self._parse_intrinsic(var_name, expected_return=False)
                 self._expect(Symbol.Semicolon)
                 return
 
             var = self.symbol_table.get_variable(self._current_context, var_name)
             if var.struct_def:
                 # LHS structure element assignment
-                last_var_in_chain, struct_node = self._generate_struct_address(var, var_name, self._create_ec())
+                last_var_in_chain, struct_node = self._generate_struct_address(var, var_name)
 
                 self._expect(Symbol.Becomes)
                 value = self._parse_expression()
@@ -595,7 +554,7 @@ class Parser:
             return Instruction_Continue(inside_loop)
 
         elif self._accept(Symbol.Call):
-            return self._parse_function_call(self._create_ec())
+            return self._parse_function_call()
 
         elif self._accept(Symbol.Return):
             if not inside_function:
@@ -619,8 +578,7 @@ class Parser:
             return instr
 
         elif self._accept(Symbol.PrintChar):
-            ctx = self._create_ec()
-            expr = self._parse_sum(ctx)
+            expr = self._parse_sum()
             self._expect(Symbol.Semicolon)
             return Instruction_PrintChar(expr)
 
@@ -645,7 +603,7 @@ class Parser:
         else:
             self._error("parse statement")
 
-    def _parse_function_call(self, context: ExprContext, inside_expression=False) -> FunctionCall:
+    def _parse_function_call(self, inside_expression=False) -> FunctionCall:
         self._expect(Symbol.Identifier)
         func = self._lex.current_identifier
         signature = self.symbol_table.get_function_signature(func)
@@ -674,8 +632,7 @@ class Parser:
                 # Structs are also passed by ref
                 self._expect(Symbol.Identifier)
                 var_name = self._lex.current_identifier
-                self._generate_struct_address(self.symbol_table.get_variable(self._current_context, var_name), var_name,
-                                              context)
+                self._generate_struct_address(self.symbol_table.get_variable(self._current_context, var_name), var_name)
             else:
                 self._expect(Symbol.Identifier)
                 node.arguments.append(VariableUsageRHS(self.symbol_table.get_variable(self._current_context, self._lex.current_identifier)))

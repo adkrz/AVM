@@ -426,4 +426,3 @@ JMP @while3_begin
 PUSH 0
 STORE_ARG 11 ; @ret
 RET
-RET

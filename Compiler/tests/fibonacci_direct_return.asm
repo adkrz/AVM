@@ -52,4 +52,3 @@ POPN 1
 ADD
 STORE_ARG 2 ; @ret
 RET
-RET

@@ -900,7 +900,8 @@ class Function(AbstractBlock):
         snippet1 = CodeSnippet(f":function_{self.name}\n;{self.signature}")
         snippet2 = generate_prolog(self.symbol_table, self.name)
         snippet3 = self.body.gen_code(None)
-        snippet3.add_line("RET")
+        if snippet3.codes and snippet3.codes[-1] != "RET":
+            snippet3.add_line("RET")
         return CodeSnippet.join((snippet1, snippet2, snippet3))
 
 

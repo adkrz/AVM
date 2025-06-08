@@ -198,8 +198,7 @@ LOAD_LOCAL16 2 ; row
 LOAD_LOCAL16 4 ; col
 LOAD_LOCAL16 6 ; box
 CALL @function_sudokuSolverRec
-POPN 10
-POP ; rv
+POPN 11
 LOAD_LOCAL16 0 ; mat
 CALL @function_print_sudoku
 POPN 2

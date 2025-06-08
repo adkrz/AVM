@@ -1259,22 +1259,22 @@ class FunctionCall(AbstractStatement):
             elif arg.struct_def:
                 pop_count += 2
             else:
+                if arg == return_value and self.clean_return_value():
+                    pop_count += 1 if not return_value.is_16bit else 2
+
                 if pop_count > 0:
                     snippets.append(CodeSnippet(f"POPN {pop_count}"))
                     pop_count = 0
                 if arg != return_value:
                     snippets.append(gen_load_store_instruction(self.symbol_table, self.scope, refs_mapping[arg], False))
+
         if pop_count > 0:
             snippets.append(CodeSnippet(f"POPN {pop_count}"))
-            pop_count = 0
 
-        if return_value is not None:
-            # do not change POPN1 to POP, optimizer will take care
-            snippets.append(self._gen_stack_cleanup_for_return_variable(return_value.is_16bit))
         return CodeSnippet.join(snippets)
 
-    def _gen_stack_cleanup_for_return_variable(self, is_16bit) -> CodeSnippet:
-        return CodeSnippet("POP ; rv" if not is_16bit else "POPN 2 ; rv")
+    def clean_return_value(self) -> bool:
+        return True
 
 
 class FunctionReturn(AbstractStatement):
@@ -1311,8 +1311,8 @@ class ReturningCall(FunctionCall, AbstractExpression):
     def _type(self):
         return "CALL_WITH_RET"
 
-    def _gen_stack_cleanup_for_return_variable(self, is_16bit) -> CodeSnippet:
-        return CodeSnippet()  # keep RV on stack to use in expression
+    def clean_return_value(self) -> bool:
+        return False  # keep RV on stack to use in expression
 
 
 class ArrayInitializationStatement(AbstractStatement):

@@ -1429,6 +1429,57 @@ class Instruction_AddressOfVariable(AbstractExpression):
         return Type.Addr
 
 
+class Syscall_GetRandomNumber(AbstractExpression):
+    def __init__(self, lower: AbstractExpression, upper: AbstractExpression):
+        super().__init__()
+        self.lower = lower
+        self.upper = lower
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        c1 = self.lower.gen_code(Type.Byte)
+        c1.cast(Type.Byte)
+        c2 = self.upper.gen_code(Type.Byte)
+        c2.cast(Type.Byte)
+        c3 = CodeSnippet("SYSCALL Std.GetRandomNumber", Type.Byte)
+        return CodeSnippet.join((c1, c2, c3), Type.Byte)
+
+    @property
+    def type(self) -> Optional[Type]:
+        return Type.Byte
+
+
+class Syscall_ReadKey(AbstractExpression):
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        return CodeSnippet("SYSCALL Std.ReadKey", Type.Byte)
+
+    @property
+    def type(self) -> Optional[Type]:
+        return Type.Byte
+
+
+class NonReturningSyscall(AbstractExpression):
+    def __init__(self, call_name):
+        super().__init__()
+        self.arg1: Optional[AbstractExpression] = None
+        self.arg2: Optional[AbstractExpression] = None
+        self.arg1_type = Type.Byte
+        self.arg2_type = Type.Byte
+        self.call_name = call_name
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        codes = []
+        if self.arg1 is not None:
+            c1 = self.arg1.gen_code(self.arg1_type)
+            codes.append(c1)
+
+        if self.arg2 is not None:
+            c2 = self.arg2.gen_code(self.arg2_type)
+            codes.append(c2)
+
+        codes.append(CodeSnippet(f"SYSCALL {self.call_name}"))
+        return CodeSnippet.join(codes)
+
+
 class AstProgram(AstNode):
     def __init__(self):
         super().__init__()

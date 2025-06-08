@@ -9,7 +9,7 @@ from myast import AstProgram, VariableUsageLHS, VariableUsageRHS, BinaryOperatio
     Instruction_Debugger, WhileLoop, DoWhileLoop, Instruction_Break, Instruction_Continue, FunctionCall, FunctionReturn, \
     ReturningCall, ArrayInitializationStatement, ArrayInitialization_InitializerList, ArrayInitialization_Pointer, \
     ArrayInitialization_StackAlloc, VariableUsage, SubtractOperation, Instruction_AddressOfString, \
-    Instruction_AddressOfVariable
+    Instruction_AddressOfVariable, Syscall_ReadKey, Syscall_GetRandomNumber, NonReturningSyscall
 from symbol_table import SymbolTable
 
 
@@ -137,47 +137,49 @@ class Parser:
                 self._expect(Symbol.Identifier)
                 ret = Instruction_AddressOfVariable(self._lex.current_identifier)
         elif function_name == "readkey":
-            context.append_code("SYSCALL Std.ReadKey")
+            ret = Syscall_ReadKey()
         elif function_name == "getrandomnumber":
-            self._parse_expression_typed(expect_16bit=False)
+            lower = self._parse_expression()
             self._expect(Symbol.Comma)
-            self._parse_expression_typed(expect_16bit=False)
-            context.append_code("SYSCALL Std.GetRandomNumber")
+            upper = self._parse_expression()
+            ret = Syscall_GetRandomNumber(lower, upper)
         elif function_name == "consoleclear":
             if expected_return:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
-            context.append_code("SYSCALL Std.ConsoleClear")
+            ret = NonReturningSyscall("Std.ConsoleClear")
         elif function_name == "showconsolecursor":
             if expected_return:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
-            self._parse_expression_typed(expect_16bit=False)
-            context.append_code("SYSCALL Std.ShowConsoleCursor")
+            ret = NonReturningSyscall("Std.ShowConsoleCursor")
+            ret.arg1 = self._parse_expression()
         elif function_name == "setconsolecursorposition":
             if expected_return:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
-            self._parse_expression_typed(expect_16bit=False)
+            ret = NonReturningSyscall("Std.ShowConsoleCursor")
+            ret.arg1 = self._parse_expression()
             self._expect(Symbol.Comma)
-            self._parse_expression_typed(expect_16bit=False)
-            context.append_code("SYSCALL Std.SetConsoleCursorPosition")
+            ret.arg2 = self._parse_expression()
         elif function_name == "setconsolecolors":
             if expected_return:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
-            self._parse_expression_typed(expect_16bit=False)
+            ret = NonReturningSyscall("Std.SetConsoleColors")
+            ret.arg1 = self._parse_expression()
             self._expect(Symbol.Comma)
-            self._parse_expression_typed(expect_16bit=False)
-            context.append_code("SYSCALL Std.SetConsoleColors")
+            ret.arg2 = self._parse_expression()
         elif function_name == "sleep":
             if expected_return:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
-            self._parse_expression_typed(expect_16bit=True)
-            context.append_code("SYSCALL Std.Sleep")
+            ret = NonReturningSyscall("Std.Sleep")
+            ret.arg1 = self._parse_expression()
+            ret.arg1_type = Type.Addr
         elif function_name == "readstring":
             if expected_return:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
-            self._parse_expression_typed(expect_16bit=True)
+            ret = NonReturningSyscall("Std.ReadString")
+            ret.arg1 = self._parse_expression()
+            ret.arg1_type = Type.Addr
             self._expect(Symbol.Comma)
-            self._parse_expression_typed(expect_16bit=False)
-            context.append_code("SYSCALL Std.ReadString")
+            ret.arg2 = self._parse_expression()
         else:
             self._error(f"Unknown function {function_name}")
         self._expect(Symbol.RParen)
@@ -392,28 +394,6 @@ class Parser:
             node.operand1 = old_node
             node.operand2 = node2
         return node
-
-    def _parse_expression_typed(self, expect_16bit=False) -> ExprContext:
-        lex_backup = self._lex.backup_state()
-        cond_backup = self._condition_counter
-
-        context = self._create_ec()
-        context.dry_run = True
-        context.expect_16bit = False
-        self._parse_logical_chain(context)
-
-        self._lex.restore_state(lex_backup)
-        self._condition_counter = cond_backup
-
-        downcast = context.expr_is16bit and not expect_16bit
-
-        context = self._create_ec()
-        context.expect_16bit = expect_16bit
-        self._parse_logical_chain(context)
-
-        if downcast:
-            context.append_code("DOWNCAST")
-        return context
 
     def _generate_struct_address(self, var: Variable, var_name: str, context: ExprContext) -> (Variable, VariableUsage):
         """ Generates instructions to compute address of last member in struct chain

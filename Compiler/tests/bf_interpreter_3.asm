@@ -22,9 +22,9 @@ LOAD_LOCAL16 7 ; memory_pointer
 PUSH16 #40000
 GREATER_OR_EQ16
 JF @while1_endwhile
-LOAD_LOCAL16 7 ; memory_pointer
 PUSH 0
-STORE_GLOBAL2
+LOAD_LOCAL16 7 ; memory_pointer
+STORE_GLOBAL
 LOAD_LOCAL16 7 ; memory_pointer
 INC16
 STORE_LOCAL16 7 ; memory_pointer
@@ -37,12 +37,9 @@ STORE_LOCAL16 9 ; strlen
 :while2_begin
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
-PUSH 0
-NE
+NZERO
 JF @while2_endwhile
-LOAD_LOCAL16 9 ; strlen
-INC16
-STORE_LOCAL16 9 ; strlen
+MACRO_INC_LOCAL16 9 ;strlen
 LOAD_LOCAL16 5 ; instruction_pointer
 INC16
 STORE_LOCAL16 5 ; instruction_pointer
@@ -50,22 +47,18 @@ JMP @while2_begin
 :while2_endwhile
 LOAD_LOCAL16 0 ; program
 STORE_LOCAL16 5 ; instruction_pointer
-PUSH_NEXT_SP
-PUSH16 #2
-SUB216
+PUSH_REG 1
 STORE_LOCAL16 11 ; jump_cache
 LOAD_LOCAL16 9 ; strlen
 DOWNCAST
-PUSH 2
-MUL
-PUSHN2 ; jump_cache alloc
+MULC 2
+PUSHN2
 LOAD_LOCAL16 11 ; jump_cache
 STORE_LOCAL16 13 ; cache_pointer
 :while3_begin
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
-PUSH 0
-NE
+NZERO
 JF @while3_endwhile
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
@@ -73,14 +66,12 @@ STORE_LOCAL 4 ; instruction
 LOAD_LOCAL 4 ; instruction
 PUSH 91
 EQ
-JF @if1_else
+JF @if1_endif
 PUSH 1
 STORE_LOCAL 15 ; count_brackets
 LOAD_LOCAL16 5 ; instruction_pointer
 STORE_LOCAL16 16 ; ip1
 :while4_begin
-PUSH 1
-JF @while4_endwhile
 LOAD_LOCAL16 5 ; instruction_pointer
 INC16
 STORE_LOCAL16 5 ; instruction_pointer
@@ -89,56 +80,45 @@ LOAD_GLOBAL
 PUSH 91
 EQ
 JF @if2_else
-LOAD_LOCAL 15 ; count_brackets
-INC
-STORE_LOCAL 15 ; count_brackets
+MACRO_INC_LOCAL 15 ;count_brackets
 JMP @if2_endif
 :if2_else
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
 PUSH 93
 EQ
-JF @if3_else
+JF @if3_endif
+MACRO_DEC_LOCAL 15 ;count_brackets
 LOAD_LOCAL 15 ; count_brackets
-DEC
-STORE_LOCAL 15 ; count_brackets
-LOAD_LOCAL 15 ; count_brackets
-PUSH 0
-EQ
-JF @if4_else
+ZERO
+JF @if4_endif
 LOAD_LOCAL16 11 ; jump_cache
 LOAD_LOCAL16 16 ; ip1
 LOAD_LOCAL16 0 ; program
 SUB216
 ADD16
 STORE_LOCAL16 13 ; cache_pointer
-LOAD_LOCAL16 13 ; cache_pointer
 LOAD_LOCAL16 5 ; instruction_pointer
 INC16
-STORE_GLOBAL216
+LOAD_LOCAL16 13 ; cache_pointer
+STORE_GLOBAL16
 LOAD_LOCAL16 11 ; jump_cache
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_LOCAL16 0 ; program
 SUB216
 ADD16
 STORE_LOCAL16 13 ; cache_pointer
-LOAD_LOCAL16 13 ; cache_pointer
 LOAD_LOCAL16 16 ; ip1
-STORE_GLOBAL216
+LOAD_LOCAL16 13 ; cache_pointer
+STORE_GLOBAL16
 JMP @while4_endwhile
-JMP @if4_endif
-:if4_else
 :if4_endif
-JMP @if3_endif
-:if3_else
 :if3_endif
 :if2_endif
 JMP @while4_begin
 :while4_endwhile
 LOAD_LOCAL16 16 ; ip1
 STORE_LOCAL16 5 ; instruction_pointer
-JMP @if1_endif
-:if1_else
 :if1_endif
 LOAD_LOCAL16 5 ; instruction_pointer
 INC16
@@ -148,8 +128,6 @@ JMP @while3_begin
 LOAD_LOCAL16 0 ; program
 STORE_LOCAL16 5 ; instruction_pointer
 :while5_begin
-PUSH 1
-JF @while5_endwhile
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
 STORE_LOCAL 4 ; instruction
@@ -159,9 +137,8 @@ EQ
 JF @if5_else
 LOAD_LOCAL16 7 ; memory_pointer
 LOAD_GLOBAL
-PUSH 0
-EQ
-JF @if6_else
+ZERO
+JF @if6_endif
 LOAD_LOCAL16 11 ; jump_cache
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_LOCAL16 0 ; program
@@ -172,8 +149,6 @@ LOAD_LOCAL16 13 ; cache_pointer
 LOAD_GLOBAL16
 STORE_LOCAL16 5 ; instruction_pointer
 JMP @while5_begin
-JMP @if6_endif
-:if6_else
 :if6_endif
 JMP @if5_endif
 :if5_else
@@ -216,10 +191,9 @@ PUSH 43
 EQ
 JF @if10_else
 LOAD_LOCAL16 7 ; memory_pointer
-LOAD_LOCAL16 7 ; memory_pointer
 LOAD_GLOBAL
 INC
-STORE_GLOBAL2
+STORE_GLOBAL_PTR
 JMP @if10_endif
 :if10_else
 LOAD_LOCAL 4 ; instruction
@@ -227,10 +201,9 @@ PUSH 45
 EQ
 JF @if11_else
 LOAD_LOCAL16 7 ; memory_pointer
-LOAD_LOCAL16 7 ; memory_pointer
 LOAD_GLOBAL
 DEC
-STORE_GLOBAL2
+STORE_GLOBAL_PTR
 JMP @if11_endif
 :if11_else
 LOAD_LOCAL 4 ; instruction
@@ -243,12 +216,9 @@ SYSCALL Std.PrintCharPop
 JMP @if12_endif
 :if12_else
 LOAD_LOCAL 4 ; instruction
-PUSH 0
-EQ
-JF @if13_else
+ZERO
+JF @if13_endif
 JMP @while5_endwhile
-JMP @if13_endif
-:if13_else
 :if13_endif
 :if12_endif
 :if11_endif
@@ -265,8 +235,7 @@ JMP @while5_begin
 PUSH16 @string_1
 SYSCALL Std.PrintString
 HALT
-
 :string_1
-"++++++++[>+>++++<<-]>++>>+<[-[>>+<<-]+>>]>+[-<<<[->[+[-]+>++>>>-<<]<[<]>>++++++[<<+++++>>-]+<<++.[-]<<]>.>+[>>]>+]"
-:string_2
 "Program finished\n"
+:string_2
+"++++++++[>+>++++<<-]>++>>+<[-[>>+<<-]+>>]>+[-<<<[->[+[-]+>++>>>-<<]<[<]>>++++++[<<+++++>>-]+<<++.[-]<<]>.>+[>>]>+]"

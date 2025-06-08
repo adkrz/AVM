@@ -5,7 +5,7 @@
 ; Byte memory_pointer[]
 ; Byte count_brackets
 PUSHN 10
-PUSH16 @string_1
+PUSH16 @string_2
 STORE_LOCAL16 0 ; program
 PUSH16 #10000
 STORE_LOCAL16 2 ; memory
@@ -18,9 +18,9 @@ LOAD_LOCAL16 7 ; memory_pointer
 PUSH16 #40000
 GREATER_OR_EQ16
 JF @while1_endwhile
-LOAD_LOCAL16 7 ; memory_pointer
 PUSH 0
-STORE_GLOBAL2
+LOAD_LOCAL16 7 ; memory_pointer
+STORE_GLOBAL
 LOAD_LOCAL16 7 ; memory_pointer
 INC16
 STORE_LOCAL16 7 ; memory_pointer
@@ -29,8 +29,6 @@ JMP @while1_begin
 LOAD_LOCAL16 2 ; memory
 STORE_LOCAL16 7 ; memory_pointer
 :while2_begin
-PUSH 1
-JF @while2_endwhile
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
 STORE_LOCAL 4 ; instruction
@@ -40,14 +38,11 @@ EQ
 JF @if1_else
 LOAD_LOCAL16 7 ; memory_pointer
 LOAD_GLOBAL
-PUSH 0
-EQ
-JF @if2_else
+ZERO
+JF @if2_endif
 PUSH 1
 STORE_LOCAL 9 ; count_brackets
 :while3_begin
-PUSH 1
-JF @while3_endwhile
 LOAD_LOCAL16 5 ; instruction_pointer
 INC16
 STORE_LOCAL16 5 ; instruction_pointer
@@ -56,39 +51,28 @@ LOAD_GLOBAL
 PUSH 91
 EQ
 JF @if3_else
-LOAD_LOCAL 9 ; count_brackets
-INC
-STORE_LOCAL 9 ; count_brackets
+MACRO_INC_LOCAL 9 ;count_brackets
 JMP @if3_endif
 :if3_else
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
 PUSH 93
 EQ
-JF @if4_else
+JF @if4_endif
+MACRO_DEC_LOCAL 9 ;count_brackets
 LOAD_LOCAL 9 ; count_brackets
-DEC
-STORE_LOCAL 9 ; count_brackets
-LOAD_LOCAL 9 ; count_brackets
-PUSH 0
-EQ
-JF @if5_else
+ZERO
+JF @if5_endif
 LOAD_LOCAL16 5 ; instruction_pointer
 INC16
 STORE_LOCAL16 5 ; instruction_pointer
 JMP @while3_endwhile
-JMP @if5_endif
-:if5_else
 :if5_endif
-JMP @if4_endif
-:if4_else
 :if4_endif
 :if3_endif
 JMP @while3_begin
 :while3_endwhile
 JMP @while2_begin
-JMP @if2_endif
-:if2_else
 :if2_endif
 JMP @if1_endif
 :if1_else
@@ -99,8 +83,6 @@ JF @if6_else
 PUSH 1
 STORE_LOCAL 9 ; count_brackets
 :while4_begin
-PUSH 1
-JF @while4_endwhile
 LOAD_LOCAL16 5 ; instruction_pointer
 DEC16
 STORE_LOCAL16 5 ; instruction_pointer
@@ -109,29 +91,20 @@ LOAD_GLOBAL
 PUSH 93
 EQ
 JF @if7_else
-LOAD_LOCAL 9 ; count_brackets
-INC
-STORE_LOCAL 9 ; count_brackets
+MACRO_INC_LOCAL 9 ;count_brackets
 JMP @if7_endif
 :if7_else
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
 PUSH 91
 EQ
-JF @if8_else
+JF @if8_endif
+MACRO_DEC_LOCAL 9 ;count_brackets
 LOAD_LOCAL 9 ; count_brackets
-DEC
-STORE_LOCAL 9 ; count_brackets
-LOAD_LOCAL 9 ; count_brackets
-PUSH 0
-EQ
-JF @if9_else
+ZERO
+JF @if9_endif
 JMP @while4_endwhile
-JMP @if9_endif
-:if9_else
 :if9_endif
-JMP @if8_endif
-:if8_else
 :if8_endif
 :if7_endif
 JMP @while4_begin
@@ -162,10 +135,9 @@ PUSH 43
 EQ
 JF @if12_else
 LOAD_LOCAL16 7 ; memory_pointer
-LOAD_LOCAL16 7 ; memory_pointer
 LOAD_GLOBAL
 INC
-STORE_GLOBAL2
+STORE_GLOBAL_PTR
 JMP @if12_endif
 :if12_else
 LOAD_LOCAL 4 ; instruction
@@ -173,10 +145,9 @@ PUSH 45
 EQ
 JF @if13_else
 LOAD_LOCAL16 7 ; memory_pointer
-LOAD_LOCAL16 7 ; memory_pointer
 LOAD_GLOBAL
 DEC
-STORE_GLOBAL2
+STORE_GLOBAL_PTR
 JMP @if13_endif
 :if13_else
 LOAD_LOCAL 4 ; instruction
@@ -189,12 +160,9 @@ SYSCALL Std.PrintCharPop
 JMP @if14_endif
 :if14_else
 LOAD_LOCAL 4 ; instruction
-PUSH 0
-EQ
-JF @if15_else
+ZERO
+JF @if15_endif
 JMP @while2_endwhile
-JMP @if15_endif
-:if15_else
 :if15_endif
 :if14_endif
 :if13_endif
@@ -208,11 +176,10 @@ INC16
 STORE_LOCAL16 5 ; instruction_pointer
 JMP @while2_begin
 :while2_endwhile
-PUSH16 @string_2
+PUSH16 @string_1
 SYSCALL Std.PrintString
 HALT
-
 :string_1
-"++++++++[>+>++++<<-]>++>>+<[-[>>+<<-]+>>]>+[-<<<[->[+[-]+>++>>>-<<]<[<]>>++++++[<<+++++>>-]+<<++.[-]<<]>.>+[>>]>+]"
-:string_2
 "Program finished\n"
+:string_2
+"++++++++[>+>++++<<-]>++>>+<[-[>>+<<-]+>>]>+[-<<<[->[+[-]+>++>>>-<<]<[<]>>++++++[<<+++++>>-]+<<++.[-]<<]>.>+[>>]>+]"

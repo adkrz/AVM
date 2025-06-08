@@ -47,10 +47,10 @@ class TestArrays(unittest.TestCase, Helpers):
         self.compare_programs("bf_interpreter.prg", "bf_interpreter.asm")
 
     def test_bf_interpreter_direct_pointers(self):
-        self.compare_programs("bf_interpreter_2.prg", "bf_interpreter_2.asm")
+        self.compare_programs("bf_interpreter_2.prg", "bf_interpreter_2.asm", optimize=True)
 
     def test_bf_interpreter_precompute_brackets(self):
-        self.compare_programs("bf_interpreter_3.prg", "bf_interpreter_3.asm")
+        self.compare_programs("bf_interpreter_3.prg", "bf_interpreter_3.asm", optimize=True)
 
     def test_downcast(self):
         self.compare_programs("test_downcast.prg", "test_downcast.asm")

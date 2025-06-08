@@ -1433,7 +1433,7 @@ class Syscall_GetRandomNumber(AbstractExpression):
     def __init__(self, lower: AbstractExpression, upper: AbstractExpression):
         super().__init__()
         self.lower = lower
-        self.upper = lower
+        self.upper = upper
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         c1 = self.lower.gen_code(Type.Byte)

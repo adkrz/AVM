@@ -163,7 +163,7 @@ enum I
     /// </summary>
     XOR,
     /// <summary>
-	/// pop: 2x val8bit, push: val8bit (offset on top of stack)
+    /// pop: 2x val8bit, push: val8bit (offset on top of stack)
     /// </summary>
     LSH,
     /// <summary>
@@ -299,36 +299,62 @@ enum I
     /// </summary>
     STORE_GLOBAL16,
 
+    // Ensure the subsequent load/store instructions are in the same order as in cpp
+    // this makes switch a bit faster        
+
     /// <summary>
     /// Load data before frame pointer. E.g. offset 3 usually is return value, because we are skipping IP and FP backed up by CALL.
     /// read: offset8bit, push: value8bit
     /// </summary>
     LOAD,
-    /// <summary>
-    /// Write data before frame pointer. E.g. offset 3 usually is return value, because we are skipping IP and FP backed up by CALL.
-    /// read: offset8bit, pop: value8bit
+    // <summary>
+    /// Copy data from after frame pointer to top of the stack, used to random access local variables. Offset counts from 0
+    /// read: offset8bit, push: value8bit
     /// </summary>
-    STORE,
+    LOAD_LOCAL,
     /// <summary>
     /// shortcut for LOAD which adds 2 to offset -> skips saved instruction and frame pointers, so offset 1 is return value or last argument
     /// read: offset8bit, push: value8bit
     /// </summary>
     LOAD_ARG,
     /// <summary>
-    /// shortcut for STORE which adds 2 to offset -> skips saved instruction and frame pointers, so offset 1 is return value or last argument
+    /// 16bit version of <see cref="I.LOAD_LOCAL"/>
+    /// read: offset8bit, push: address16bit
+    /// </summary>
+    LOAD_LOCAL16,
+    /// <summary>
+    /// 16bit version of <see cref="I.LOAD_ARG"/>
+    /// read: offset8bit, push: address16bit
+    /// </summary>
+    LOAD_ARG16,
+    /// <summary>
+    /// Write data before frame pointer. E.g. offset 3 usually is return value, because we are skipping IP and FP backed up by CALL.
     /// read: offset8bit, pop: value8bit
     /// </summary>
-    STORE_ARG,
-    /// <summary>
-    /// Copy data from after frame pointer to top of the stack, used to random access local variables. Offset counts from 0
-    /// read: offset8bit, push: value8bit
-    /// </summary>
-    LOAD_LOCAL,
+    STORE,
     /// <summary>
     /// Move data from stack top to place after frame pointer, used to random access local variables. Offset counts from 0
     /// read: offset8bit, pop: value8bit
     /// </summary>
     STORE_LOCAL,
+
+    /// <summary>
+    /// shortcut for STORE which adds 2 to offset -> skips saved instruction and frame pointers, so offset 1 is return value or last argument
+    /// read: offset8bit, pop: value8bit
+    /// </summary>
+    STORE_ARG,
+    /// <summary>
+    /// 16bit version of <see cref="I.STORE_LOCAL"/>
+    /// read: offset8bit, pop: address16bit
+    /// </summary>
+    STORE_LOCAL16,
+    /// <summary>
+    /// 16bit version of <see cref="I.STORE_ARG"/>
+    /// read: offset8bit, pop: address16bit
+    /// </summary>
+    STORE_ARG16,
+
+
 
     /// <summary>
     /// Register particular address (function) as interrupt handler for particular error/interrupt type. <see cref="InterruptCodes"/>
@@ -428,30 +454,11 @@ enum I
     EXTEND,
     /// <summary>
     /// Convert 16 bit value to 8bit.
-	/// In case of overflow, pushes 255 (0xFF) to the stack.
+    /// In case of overflow, pushes 255 (0xFF) to the stack.
     /// pop: address16bit, push: val8bit
     /// </summary>
     DOWNCAST,
-    /// <summary>
-    /// 16bit version of <see cref="I.LOAD_LOCAL"/>
-    /// read: offset8bit, push: address16bit
-    /// </summary>
-    LOAD_LOCAL16,
-    /// <summary>
-    /// 16bit version of <see cref="I.LOAD_ARG"/>
-    /// read: offset8bit, push: address16bit
-    /// </summary>
-    LOAD_ARG16,
-    /// <summary>
-    /// 16bit version of <see cref="I.STORE_LOCAL"/>
-    /// read: offset8bit, pop: address16bit
-    /// </summary>
-    STORE_LOCAL16,
-    /// <summary>
-    /// 16bit version of <see cref="I.STORE_ARG"/>
-    /// read: offset8bit, pop: address16bit
-    /// </summary>
-    STORE_ARG16,
+
     /// <summary>
     /// 16bit version of <see cref="I.LESS"/>. Note: result is 1 byte.
     /// pop: 2x address16bit, push: val8bit
@@ -595,44 +602,44 @@ enum I
     /// </summary>
     HALT,
 
-	// 16-bit bitwise operations:
+    // 16-bit bitwise operations:
     /// <summary>
     /// pop: 2x address16bit, push: address16bit
     /// </summary>
-	AND16, 
+    AND16,
     /// <summary>
     /// pop: 2x address16bit, push: address16bit
     /// </summary>
-    OR16, 
+    OR16,
     /// <summary>
     /// pop: 2x address16bit, push: address16bit
     /// </summary>
-    XOR16, 
+    XOR16,
     /// <summary>
-	/// Bitwise NOT (flip bits)
+    /// Bitwise NOT (flip bits)
     /// pop: address16bit, push: address16bit
     /// </summary>
-    FLIP16, 
+    FLIP16,
     /// <summary>
     /// pop: 2x address16bit, push: address16bit (offset on top of stack)
     /// </summary>
-    LSH16, 
+    LSH16,
     /// <summary>
     /// pop: 2x address16bit, push: address16bit (offset on top of stack)
     /// </summary>
     RSH16,
 
     /// <summary>
-	/// Like JT, but uses 16-bit address instead of 8-bit.
+    /// Like JT, but uses 16-bit address instead of 8-bit.
     /// </summary>
     JT16,
-	/// <summary>
-	/// Like JF, but uses 16-bit address instead of 8-bit.
-	/// </summary>
-	JF16,
+    /// <summary>
+    /// Like JF, but uses 16-bit address instead of 8-bit.
+    /// </summary>
+    JF16,
     /// <summary>
     /// Macro istruction common in 16-bit arrays:
-	/// Combines: EXTEND, PUSH16#2, MUL16, ADD16
+    /// Combines: EXTEND, PUSH16#2, MUL16, ADD16
     /// </summary>
     MACRO_POP_EXT_X2_ADD16,
     /// <summary>
@@ -657,7 +664,7 @@ enum I
     /// </summary>
     MACRO_LSH16_BY8,
     /// <summary>
-	/// Combines LOAD_LOCAL X, INC, STORE_LOCAL X
+    /// Combines LOAD_LOCAL X, INC, STORE_LOCAL X
     /// </summary>
     MACRO_INC_LOCAL,
     /// <summary>
@@ -682,26 +689,26 @@ enum I
     MACRO_X216,
 
     /// <summary>
-	/// Get value of pointer register (updated after calls to LOAD_GLOBAL, STORE_GLOBAL etc)
-	/// push: address16bit
+    /// Get value of pointer register (updated after calls to LOAD_GLOBAL, STORE_GLOBAL etc)
+    /// push: address16bit
     /// </summary>
     GET_PTR,
     /// <summary>
-	/// Reads the 8-bit value at address from pointer register and pushes it to the stack.
+    /// Reads the 8-bit value at address from pointer register and pushes it to the stack.
     /// </summary>
     LOAD_GLOBAL_PTR,
     /// <summary>
-	/// Reads the 16-bit value at address from pointer register and pushes it to the stack.
+    /// Reads the 16-bit value at address from pointer register and pushes it to the stack.
     /// </summary>
     LOAD_GLOBAL_PTR16,
-	/// <summary>
-	/// Reads the 8-bit value from the stack and stores it at address from pointer register.
-	/// </summary>
-	STORE_GLOBAL_PTR,
+    /// <summary>
+    /// Reads the 8-bit value from the stack and stores it at address from pointer register.
+    /// </summary>
+    STORE_GLOBAL_PTR,
     /// <summary>
     /// Reads the 16-bit value from the stack and stores it at address from pointer register.
     /// </summary>
-	STORE_GLOBAL_PTR16,
+    STORE_GLOBAL_PTR16,
 };
 
 enum InterruptCodes

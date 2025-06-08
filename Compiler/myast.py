@@ -1447,6 +1447,17 @@ class Syscall_GetRandomNumber(AbstractExpression):
     def type(self) -> Optional[Type]:
         return Type.Byte
 
+    def children(self) -> Sequence["AstNode"]:
+        yield self.lower
+        yield self.upper
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.lower:
+            self.lower = new
+        if old == self.upper:
+            self.upper = new
+        self.set_parents(False)
+
 
 class Syscall_ReadKey(AbstractExpression):
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
@@ -1478,6 +1489,19 @@ class NonReturningSyscall(AbstractExpression):
 
         codes.append(CodeSnippet(f"SYSCALL {self.call_name}"))
         return CodeSnippet.join(codes)
+
+    def children(self) -> Sequence["AstNode"]:
+        if self.arg1:
+            yield self.arg1
+        if self.arg2:
+            yield self.arg2
+
+    def replace_child(self, old: "AstNode", new: "AstNode"):
+        if old == self.arg1:
+            self.arg1 = new
+        if old == self.arg2:
+            self.arg2 = new
+        self.set_parents(False)
 
 
 class AstProgram(AstNode):

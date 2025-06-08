@@ -11,6 +11,16 @@ def peephole_optimize(snippet: CodeSnippet):
     while changes > 0:
         changes = 0
         for i, line in enumerate(snippet.codes):
+            if line == "PUSH16 #1" and line_equal(i + 1, "ADD16"):
+                snippet.codes[i] = "INC16"
+                del snippet.codes[i + 1]
+                changes += 1
+                break
+            if line == "PUSH16 #1" and line_equal(i + 1, "SUB1616"):
+                snippet.codes[i] = "DEC16"
+                del snippet.codes[i + 1]
+                changes += 1
+                break
             if line == "AND" and line_equal(i + 1, "EXTEND"):
                 snippet.codes[i] = "MACRO_ANDX"
                 del snippet.codes[i + 1]

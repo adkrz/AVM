@@ -419,7 +419,11 @@ class SubtractConstant(UnaryOperation):
         self.value = value
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        target_type = highest_type((type_hint, self.operand.type))
+        op_type = self.operand.type
+        if isinstance(self.operand, VariableUsage):
+            if self.operand.is_array and self.operand.array_jump is None:
+                op_type = Type.Addr
+        target_type = highest_type((type_hint, op_type))
         c1 = self.operand.gen_code(target_type)
         c1.cast(target_type)
         if self.value.is_one:
@@ -688,6 +692,8 @@ class Assign(AbstractStatement):
                 and self.var.definition == self.value.operand.definition
                 and not self.var.definition.is_array
                 and not self.var.definition.struct_def
+                and not self.var.definition.is_arg
+                and not self.var.definition.from_global
         ):
             self.parent.replace_child(self, DecLocal(self.var))
             return True

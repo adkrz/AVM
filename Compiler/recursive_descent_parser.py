@@ -121,7 +121,7 @@ class Parser:
         elif function_name == "setconsolecursorposition":
             if expected_return:
                 self._error(f"Function {function_name} does not return and cannot be used in expression")
-            ret = NonReturningSyscall("Std.ShowConsoleCursor")
+            ret = NonReturningSyscall("Std.SetConsoleCursorPosition")
             ret.arg1 = self._parse_expression()
             self._expect(Symbol.Comma)
             ret.arg2 = self._parse_expression()

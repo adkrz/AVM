@@ -122,7 +122,7 @@ class AbstractExpression(AstNode):
 
 class Dummy(AbstractExpression):
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        return CodeSnippet()
+        return CodeSnippet(self.line_no)
 
 
 def highest_type(types: Iterable[Optional[Type]]) -> Type:
@@ -164,38 +164,38 @@ class BinaryOperation(AbstractExpression):
 
     def _gen_operation_code(self, target_type) -> CodeSnippet:
         if self.op == BinOpType.Add:
-            return CodeSnippet("ADD" if target_type == Type.Byte else "ADD16", target_type)
+            return CodeSnippet(self.line_no, "ADD" if target_type == Type.Byte else "ADD16", target_type)
         elif self.op == BinOpType.Sub:
-            return CodeSnippet("SUB2" if target_type == Type.Byte else "SUB216", target_type)
+            return CodeSnippet(self.line_no, "SUB2" if target_type == Type.Byte else "SUB216", target_type)
         elif self.op == BinOpType.Mul:
-            return CodeSnippet("MUL" if target_type == Type.Byte else "MUL16", target_type)
+            return CodeSnippet(self.line_no, "MUL" if target_type == Type.Byte else "MUL16", target_type)
         elif self.op == BinOpType.Div:
-            return CodeSnippet("DIV2" if target_type == Type.Byte else "DIV16", target_type)
+            return CodeSnippet(self.line_no, "DIV2" if target_type == Type.Byte else "DIV16", target_type)
         elif self.op == BinOpType.Equals:
-            return CodeSnippet("EQ" if target_type == Type.Byte else "EQ16", target_type)
+            return CodeSnippet(self.line_no, "EQ" if target_type == Type.Byte else "EQ16", target_type)
         elif self.op == BinOpType.NotEqual:
-            return CodeSnippet("NE" if target_type == Type.Byte else "NE16", target_type)
+            return CodeSnippet(self.line_no, "NE" if target_type == Type.Byte else "NE16", target_type)
         elif self.op == BinOpType.Le:  # inverse because of order on stack
-            return CodeSnippet("GREATER_OR_EQ" if target_type == Type.Byte else "GREATER_OR_EQ16", target_type)
+            return CodeSnippet(self.line_no, "GREATER_OR_EQ" if target_type == Type.Byte else "GREATER_OR_EQ16", target_type)
         elif self.op == BinOpType.Lt:
-            return CodeSnippet("GREATER" if target_type == Type.Byte else "GREATER16", target_type)
+            return CodeSnippet(self.line_no, "GREATER" if target_type == Type.Byte else "GREATER16", target_type)
         elif self.op == BinOpType.Ge:
-            return CodeSnippet("LESS_OR_EQ" if target_type == Type.Byte else "LESS_OR_EQ16", target_type)
+            return CodeSnippet(self.line_no, "LESS_OR_EQ" if target_type == Type.Byte else "LESS_OR_EQ16", target_type)
         elif self.op == BinOpType.Gt:
-            return CodeSnippet("LESS" if target_type == Type.Byte else "LESS16", target_type)
+            return CodeSnippet(self.line_no, "LESS" if target_type == Type.Byte else "LESS16", target_type)
         elif self.op == BinOpType.BitAnd:
-            return CodeSnippet("AND" if target_type == Type.Byte else "AND16", target_type)
+            return CodeSnippet(self.line_no, "AND" if target_type == Type.Byte else "AND16", target_type)
         elif self.op == BinOpType.BitOr:
-            return CodeSnippet("OR" if target_type == Type.Byte else "OR16", target_type)
+            return CodeSnippet(self.line_no, "OR" if target_type == Type.Byte else "OR16", target_type)
         elif self.op == BinOpType.BitXor:
-            return CodeSnippet("XOR" if target_type == Type.Byte else "XOR16", target_type)
+            return CodeSnippet(self.line_no, "XOR" if target_type == Type.Byte else "XOR16", target_type)
         elif self.op == BinOpType.Mod:
-            cs = CodeSnippet("SWAP" if target_type == Type.Byte else "SWAP16", target_type)
+            cs = CodeSnippet(self.line_no, "SWAP" if target_type == Type.Byte else "SWAP16", target_type)
             cs.add_line("MOD" if target_type == Type.Byte else "MOD16")
         elif self.op == BinOpType.Lsh:
-            return CodeSnippet("LSH" if target_type == Type.Byte else "LSH16", target_type)
+            return CodeSnippet(self.line_no, "LSH" if target_type == Type.Byte else "LSH16", target_type)
         elif self.op == BinOpType.Rsh:
-            return CodeSnippet("RSH" if target_type == Type.Byte else "RSH16", target_type)
+            return CodeSnippet(self.line_no, "RSH" if target_type == Type.Byte else "RSH16", target_type)
 
     def replace_child(self, old: "AstNode", new: "AstNode"):
         if old == self.operand1:
@@ -237,10 +237,10 @@ class UnaryOperation(AbstractExpression):
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         c1 = self.operand.gen_code(type_hint)
         if self.op == UnOpType.BitNegate:
-            c2 = CodeSnippet("FLIP" if c1.type == Type.Byte else "FLIP16", c1.type)
+            c2 = CodeSnippet(self.line_no, "FLIP" if c1.type == Type.Byte else "FLIP16", c1.type)
             return CodeSnippet.join((c1, c2), c1.type)
         elif self.op == UnOpType.UnaryMinus:
-            c2 = CodeSnippet("NEG" if c1.type == Type.Byte else "NEG16", c1.type)
+            c2 = CodeSnippet(self.line_no, "NEG" if c1.type == Type.Byte else "NEG16", c1.type)
             return CodeSnippet.join((c1, c2), c1.type)
         return c1
 
@@ -310,7 +310,7 @@ class CompareToZero(UnaryOperation):
             code = "ZERO" if c1.type == Type.Byte else "ZERO16"
         else:
             code = "NZERO" if c1.type == Type.Byte else "NZERO16"
-        return CodeSnippet.join((c1, CodeSnippet(code, Type.Byte)), Type.Byte)  # logical ops are always 8bit
+        return CodeSnippet.join((c1, CodeSnippet(self.line_no, code, Type.Byte)), Type.Byte)  # logical ops are always 8bit
 
     def find_max_type(self) -> Optional[Type]:
         return Type.Byte
@@ -384,9 +384,9 @@ class AddConstant(UnaryOperation):
         c1 = self.operand.gen_code(target_type)
         c1.cast(target_type)
         if self.value.is_one:
-            c2 = CodeSnippet("INC" if target_type == Type.Byte else "INC16", target_type)
+            c2 = CodeSnippet(self.line_no, "INC" if target_type == Type.Byte else "INC16", target_type)
         else:
-            c2 = CodeSnippet(
+            c2 = CodeSnippet(self.line_no,
                 f"ADDC {self.value.value}" if target_type == Type.Byte else f"ADD16C #{self.value.value}",
                 target_type)
         return CodeSnippet.join((c1, c2), target_type)
@@ -428,9 +428,9 @@ class SubtractConstant(UnaryOperation):
         c1 = self.operand.gen_code(target_type)
         c1.cast(target_type)
         if self.value.is_one:
-            c2 = CodeSnippet("DEC" if target_type == Type.Byte else "DEC16", target_type)
+            c2 = CodeSnippet(self.line_no, "DEC" if target_type == Type.Byte else "DEC16", target_type)
         else:
-            c2 = CodeSnippet(
+            c2 = CodeSnippet(self.line_no,
                 f"SUBC {self.value.value}" if target_type == Type.Byte else f"SUB16C #{self.value.value}",
                 target_type)
         return CodeSnippet.join((c1, c2), target_type)
@@ -468,9 +468,9 @@ class MulConstant(UnaryOperation):
         c1 = self.operand.gen_code(target_type)
         c1.cast(target_type)
         if self.value.value == 2:
-            c2 = CodeSnippet("MACRO_X2" if target_type == Type.Byte else "MACRO_X216", target_type)
+            c2 = CodeSnippet(self.line_no, "MACRO_X2" if target_type == Type.Byte else "MACRO_X216", target_type)
         else:
-            c2 = CodeSnippet(
+            c2 = CodeSnippet(self.line_no,
                 f"MULC {self.value.value}" if target_type == Type.Byte else f"MUL16C #{self.value.value}",
                 target_type)
         return CodeSnippet.join((c1, c2), target_type)
@@ -539,7 +539,7 @@ class LogicalChainOperation(BinaryOperation):  # AND, OR
         suffix = "" if c1.type == Type.Byte else "16"
         code_dup = f"DUP{suffix}"
         code_jmp = f"{jmp}{suffix} @cond{self.condition_counter}_expr_end"
-        c2 = CodeSnippet(code_dup)
+        c2 = CodeSnippet(self.line_no, code_dup)
         c2.add_line(code_jmp)
         c3 = self.operand2.gen_code(type_hint)
         c3.add_line(comp2 + suffix)
@@ -568,15 +568,15 @@ class Number(AbstractExpression):
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         if self.type == Type.Byte:
             if type_hint == Type.Addr:
-                sn = CodeSnippet(f"PUSH16 #{self.value}", Type.Addr)
+                sn = CodeSnippet(self.line_no, f"PUSH16 #{self.value}", Type.Addr)
             else:
-                sn = CodeSnippet(f"PUSH {self.value}", Type.Byte)
+                sn = CodeSnippet(self.line_no, f"PUSH {self.value}", Type.Byte)
         else:
             if type_hint == Type.Byte:
                 val = self.value if self.value <= 255 else 255
-                sn = CodeSnippet(f"PUSH {val}", Type.Byte)
+                sn = CodeSnippet(self.line_no, f"PUSH {val}", Type.Byte)
             else:
-                sn = CodeSnippet(f"PUSH16 #{self.value}", Type.Addr)
+                sn = CodeSnippet(self.line_no, f"PUSH16 #{self.value}", Type.Addr)
         return sn
 
     def find_max_type(self) -> Optional[Type]:
@@ -617,7 +617,7 @@ class StoreAtPointer(AbstractExpression):
         self.type_ = type_
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        return CodeSnippet("STORE_GLOBAL_PTR" if self.type_ == Type.Byte else "STORE_GLOBAL_PTR16")
+        return CodeSnippet(self.line_no, "STORE_GLOBAL_PTR" if self.type_ == Type.Byte else "STORE_GLOBAL_PTR16")
 
     @property
     def type(self) -> Optional[Type]:
@@ -739,7 +739,7 @@ class IncLocal(AbstractStatement):
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         offs = offsetof(self.symbol_table, self.scope, self.var.name, False)
         instr = self._instr(self.var.definition.type)
-        return CodeSnippet(
+        return CodeSnippet(self.line_no,
             f"{instr} {offs} ;{self.var.name}" if self.var.definition.type == Type.Byte else f"{instr} {offs} ;{self.var.name}",
             self.var.definition.type)
 
@@ -804,14 +804,16 @@ class VariableUsage(AbstractStatement):
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         if not self.array_jump:
-            code = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, self.is_load)
+            code = gen_load_store_instruction(self.line_no, self.symbol_table, self.scope, self.definition.name, self.is_load)
+            code.line_numbers = [self.line_no]
             if self.definition.is_array:  # read address of pointer
                 code.type = Type.Addr
             else:
                 code.type = self.definition.type
             return code
         # else: calculate address
-        c1 = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, True)
+        c1 = gen_load_store_instruction(self.line_no, self.symbol_table, self.scope, self.definition.name, True)
+        c1.line_numbers = [self.line_no]
         if self.array_jump:
             element_size = 1 if self.definition.type == Type.Byte else 2
 
@@ -898,8 +900,8 @@ class Function(AbstractBlock):
         self.set_parents(False)
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        snippet1 = CodeSnippet(f":function_{self.name}\n;{self.signature}")
-        snippet2 = generate_prolog(self.symbol_table, self.name)
+        snippet1 = CodeSnippet(self.line_no, f":function_{self.name}\n;{self.signature}")
+        snippet2 = generate_prolog(self.line_no, self.symbol_table, self.name)
         snippet3 = self.body.gen_code(None)
         if snippet3.codes and snippet3.codes[-1] != "RET":
             snippet3.add_line("RET")
@@ -955,10 +957,10 @@ class Condition(AbstractStatement):
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         snippet1 = self.condition.gen_code(self.condition.type)
         if self.else_body:
-            snippet2 = CodeSnippet(
+            snippet2 = CodeSnippet(self.line_no,
                 f"JF @if{self.number}_else" if self.condition.type == Type.Byte else f"JF16 @if{self.number}_else")
         else:
-            snippet2 = CodeSnippet(
+            snippet2 = CodeSnippet(self.line_no,
                 f"JF @if{self.number}_endif" if self.condition.type == Type.Byte else f"JF16 @if{self.number}_endif")
         snippet3 = self.if_body.gen_code(type_hint)
         if self.else_body:
@@ -1011,13 +1013,13 @@ class WhileLoop(AbstractStatement):
         return super().optimize()
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        snippet1 = CodeSnippet(f":while{self.number}_begin")
+        snippet1 = CodeSnippet(self.line_no, f":while{self.number}_begin")
         snippet2 = self.condition.gen_code(self.condition.type)
         if not isinstance(self.condition, Dummy):
-            snippet3 = CodeSnippet(
+            snippet3 = CodeSnippet(self.line_no,
                 f"JF @while{self.number}_endwhile" if self.condition.type == Type.Byte else f"JF16 @while{self.number}_endwhile")
         else:
-            snippet3 = CodeSnippet()
+            snippet3 = CodeSnippet(self.line_no)
         snippet4 = self.body.gen_code(type_hint)
         snippet4.add_line(f"JMP @while{self.number}_begin")
         snippet4.add_line(f":while{self.number}_endwhile")
@@ -1056,10 +1058,10 @@ class DoWhileLoop(AbstractStatement):
         return super().optimize()
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        snippet1 = CodeSnippet(f":while{self.number}_begin")
+        snippet1 = CodeSnippet(self.line_no, f":while{self.number}_begin")
         snippet2 = self.body.gen_code(type_hint)
         snippet3 = self.condition.gen_code(self.condition.type)
-        snippet4 = CodeSnippet(
+        snippet4 = CodeSnippet(self.line_no,
             f"JT @while{self.number}_begin" if self.condition.type == Type.Byte else f"JT16 @while{self.number}_begin")
         snippet4.add_line(f":while{self.number}_endwhile")
         return CodeSnippet.join((snippet1, snippet2, snippet3, snippet4))
@@ -1075,7 +1077,7 @@ class Instruction_PrintStringConstant(AbstractStatement):
         self._print_indented(lvl, f"print string {self.string_number} \"{self.content}\"")
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        c1 = _gen_address_of_str(self.symbol_table, self.content)
+        c1 = _gen_address_of_str(self.line_no, self.symbol_table, self.content)
         c1.add_line("SYSCALL Std.PrintString")
         return c1
 
@@ -1161,7 +1163,7 @@ class Instruction_PrintNewLine(AbstractStatement):
         self._print_indented(lvl, "newline")
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        return CodeSnippet("SYSCALL Std.PrintNewLine")
+        return CodeSnippet(self.line_no, "SYSCALL Std.PrintNewLine")
 
 
 class Instruction_Halt(AbstractStatement):
@@ -1169,7 +1171,7 @@ class Instruction_Halt(AbstractStatement):
         self._print_indented(lvl, "halt")
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        return CodeSnippet("HALT")
+        return CodeSnippet(self.line_no, "HALT")
 
 
 class Instruction_Debugger(AbstractStatement):
@@ -1177,7 +1179,7 @@ class Instruction_Debugger(AbstractStatement):
         self._print_indented(lvl, "debugger")
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        return CodeSnippet("debugger")
+        return CodeSnippet(self.line_no, "debugger")
 
 
 class Instruction_Continue(AbstractStatement):
@@ -1189,7 +1191,7 @@ class Instruction_Continue(AbstractStatement):
         self._print_indented(lvl, "continue")
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        return CodeSnippet(f"JMP @while{self.loop_no}_begin")
+        return CodeSnippet(self.line_no, f"JMP @while{self.loop_no}_begin")
 
 
 class Instruction_Break(AbstractStatement):
@@ -1201,7 +1203,7 @@ class Instruction_Break(AbstractStatement):
         self._print_indented(lvl, "break")
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        return CodeSnippet(f"JMP @while{self.loop_no}_endwhile")
+        return CodeSnippet(self.line_no, f"JMP @while{self.loop_no}_endwhile")
 
 
 class FunctionCall(AbstractStatement):
@@ -1235,7 +1237,7 @@ class FunctionCall(AbstractStatement):
         return_value = self.signature.return_value
 
         if self.signature.return_value:
-            s = CodeSnippet("PUSH 0 ; rv" if not return_value.is_16bit else "PUSHN 2 ; rv")
+            s = CodeSnippet(self.line_no, "PUSH 0 ; rv" if not return_value.is_16bit else "PUSHN 2 ; rv")
             snippets.append(s)
 
         refs_mapping = {}
@@ -1252,7 +1254,7 @@ class FunctionCall(AbstractStatement):
                 refs_mapping[arg_def] = arg.name
             snippets.append(s)
 
-        snippets.append(CodeSnippet(f"CALL @function_{self.name}"))
+        snippets.append(CodeSnippet(self.line_no, f"CALL @function_{self.name}"))
 
         pop_count = 0
         for name, arg in reversed(self.signature.args.items()):
@@ -1265,13 +1267,13 @@ class FunctionCall(AbstractStatement):
                     pop_count += 1 if not return_value.is_16bit else 2
 
                 if pop_count > 0:
-                    snippets.append(CodeSnippet(f"POPN {pop_count}"))
+                    snippets.append(CodeSnippet(self.line_no, f"POPN {pop_count}"))
                     pop_count = 0
                 if arg != return_value:
-                    snippets.append(gen_load_store_instruction(self.symbol_table, self.scope, refs_mapping[arg], False))
+                    snippets.append(gen_load_store_instruction(self.line_no, self.symbol_table, self.scope, refs_mapping[arg], False))
 
         if pop_count > 0:
-            snippets.append(CodeSnippet(f"POPN {pop_count}"))
+            snippets.append(CodeSnippet(self.line_no, f"POPN {pop_count}"))
 
         return CodeSnippet.join(snippets)
 
@@ -1301,10 +1303,10 @@ class FunctionReturn(AbstractStatement):
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         if self.value is None:
-            return CodeSnippet("RET")
+            return CodeSnippet(self.line_no, "RET")
         snippet1 = self.value.gen_code(self.return_type)
         snippet1.cast(self.return_type)
-        snippet2 = gen_load_store_instruction(self.symbol_table, self.scope, FunctionSignature.RETURN_VALUE_NAME, False)
+        snippet2 = gen_load_store_instruction(self.line_no, self.symbol_table, self.scope, FunctionSignature.RETURN_VALUE_NAME, False)
         snippet2.add_line("RET")
         return CodeSnippet.join((snippet1, snippet2), self.return_type)
 
@@ -1341,8 +1343,8 @@ class ArrayInitialization_StackAlloc(ArrayInitializationStatement):
             self.set_parents(False)
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        c1 = CodeSnippet("PUSH_REG 1")
-        c2 = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, False)
+        c1 = CodeSnippet(self.line_no, "PUSH_REG 1")
+        c2 = gen_load_store_instruction(self.line_no, self.symbol_table, self.scope, self.definition.name, False)
         c3 = self.length.gen_code(type_hint)
         c3.cast(Type.Byte)  # limitation of PUSHN2
         if self.definition.type == Type.Addr:
@@ -1351,7 +1353,7 @@ class ArrayInitialization_StackAlloc(ArrayInitializationStatement):
                 c3 = tmp.gen_code(Type.Byte)
             else:
                 c3.add_line("MULC 2")
-        return CodeSnippet.join((c1, c2, c3, CodeSnippet("PUSHN2")))
+        return CodeSnippet.join((c1, c2, c3, CodeSnippet(self.line_no, "PUSHN2")))
 
     def optimize(self) -> bool:
         if isinstance(self.length, Number) and self.length.is_zero:
@@ -1374,8 +1376,8 @@ class ArrayInitialization_InitializerList(ArrayInitializationStatement):
         yield from self.elements
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        stack_pos = CodeSnippet("PUSH_REG 1", type_=self.definition.type)
-        store = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, False)
+        stack_pos = CodeSnippet(self.line_no, "PUSH_REG 1", type_=self.definition.type)
+        store = gen_load_store_instruction(self.line_no, self.symbol_table, self.scope, self.definition.name, False)
         numbers = [n.gen_code(type_hint) for n in self.elements]
         return CodeSnippet.join([stack_pos, store] + numbers, self.definition.type)
 
@@ -1400,7 +1402,7 @@ class ArrayInitialization_Pointer(ArrayInitializationStatement):
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         c1 = self.pointer.gen_code(Type.Addr)
         c1.cast(Type.Addr)
-        c2 = gen_load_store_instruction(self.symbol_table, self.scope, self.definition.name, False)
+        c2 = gen_load_store_instruction(self.line_no, self.symbol_table, self.scope, self.definition.name, False)
         return CodeSnippet.join((c1, c2), Type.Addr)
 
 
@@ -1410,7 +1412,7 @@ class Instruction_AddressOfString(AbstractExpression):
         self.string = string
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        return _gen_address_of_str(self.symbol_table, self.string)
+        return _gen_address_of_str(self.line_no, self.symbol_table, self.string)
 
     @property
     def type(self) -> Optional[Type]:
@@ -1423,7 +1425,7 @@ class Instruction_AddressOfVariable(AbstractExpression):
         self.name = name
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        return _gen_address_of_variable(self.symbol_table, self.scope, self.name)
+        return _gen_address_of_variable(self.line_no, self.symbol_table, self.scope, self.name)
 
     @property
     def type(self) -> Optional[Type]:
@@ -1441,7 +1443,7 @@ class Syscall_GetRandomNumber(AbstractExpression):
         c1.cast(Type.Byte)
         c2 = self.upper.gen_code(Type.Byte)
         c2.cast(Type.Byte)
-        c3 = CodeSnippet("SYSCALL Std.GetRandomNumber", Type.Byte)
+        c3 = CodeSnippet(self.line_no, "SYSCALL Std.GetRandomNumber", Type.Byte)
         return CodeSnippet.join((c1, c2, c3), Type.Byte)
 
     @property
@@ -1462,7 +1464,7 @@ class Syscall_GetRandomNumber(AbstractExpression):
 
 class Syscall_ReadKey(AbstractExpression):
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
-        return CodeSnippet("SYSCALL Std.ReadKey", Type.Byte)
+        return CodeSnippet(self.line_no, "SYSCALL Std.ReadKey", Type.Byte)
 
     @property
     def type(self) -> Optional[Type]:
@@ -1488,7 +1490,7 @@ class NonReturningSyscall(AbstractExpression):
             c2 = self.arg2.gen_code(self.arg2_type)
             codes.append(c2)
 
-        codes.append(CodeSnippet(f"SYSCALL {self.call_name}"))
+        codes.append(CodeSnippet(self.line_no, f"SYSCALL {self.call_name}"))
         return CodeSnippet.join(codes)
 
     def children(self) -> Sequence["AstNode"]:
@@ -1523,9 +1525,9 @@ class AstProgram(AstNode):
         blocks_main = [b for b in self.blocks if not isinstance(b, Function)]
 
         blocks = [b.gen_code(None) for b in blocks_main]
-        program_prolog = generate_prolog(self.symbol_table, "")
+        program_prolog = generate_prolog(self.line_no, self.symbol_table, "")
         blocks.insert(0, program_prolog)
-        blocks.append(CodeSnippet("HALT"))
+        blocks.append(CodeSnippet(self.line_no, "HALT"))
         main_block = CodeSnippet.join(blocks)
 
         blocks = [main_block]

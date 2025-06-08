@@ -5,9 +5,10 @@ from symbols import Type
 
 
 class CodeSnippet:
-    def __init__(self, code: str = "", type_: Optional[Type] = None):
+    def __init__(self, line_number: int = 0, code: str = "", type_: Optional[Type] = None):
         self.type = type_
         self.codes: List[str] = [code] if code else []
+        self.line_numbers = [line_number]
 
     def add_line(self, line):
         self.codes.append(line)
@@ -19,10 +20,14 @@ class CodeSnippet:
     @staticmethod
     def join(snippets: Iterable[Optional["CodeSnippet"]], type_: Optional[Type] = None) -> "CodeSnippet":
         ret = CodeSnippet(type_=type_)
+        lines = []
         for sn in snippets:
             if sn:
                 for code in sn.codes:
                     ret.codes.append(code)
+                for line in sn.line_numbers:
+                    lines.append(line)
+        ret.line_numbers = list(sorted(set(lines)))
         return ret
 
     def cast(self, expected_type: Optional[Type]):
@@ -34,8 +39,8 @@ class CodeSnippet:
             self.add_line("DOWNCAST")
 
 
-def generate_prolog(symbol_table: SymbolTable, function_name: str) -> CodeSnippet:
-    ret = CodeSnippet()
+def generate_prolog(line_no, symbol_table: SymbolTable, function_name: str) -> CodeSnippet:
+    ret = CodeSnippet(line_no)
     vars = symbol_table.get_all_variables(function_name)
     if not vars:
         return ret
@@ -62,7 +67,7 @@ def generate_prolog(symbol_table: SymbolTable, function_name: str) -> CodeSnippe
     return ret
 
 
-def gen_load_store_instruction(symbol_table: SymbolTable, scope, name: str, load: bool) -> CodeSnippet:
+def gen_load_store_instruction(line_no, symbol_table: SymbolTable, scope, name: str, load: bool) -> CodeSnippet:
     def gen(offset, is_arg, is_16bit):
         instr = "LOAD" if load else "STORE"
         bbits = "16" if is_16bit else ""
@@ -73,7 +78,7 @@ def gen_load_store_instruction(symbol_table: SymbolTable, scope, name: str, load
     var = symbol_table.get_variable(scope, name)
     offs = offsetof(symbol_table, scope, name, search_in_globals=var.from_global)
 
-    ret = CodeSnippet()
+    ret = CodeSnippet(line_no)
 
     if var.is_arg:
         ret.add_line(gen(offs, True, var.is_16bit))
@@ -122,18 +127,18 @@ def offsetof(symbol_table: SymbolTable, scope, name: str, search_in_globals=Fals
         offs += v.stack_size
 
 
-def _gen_address_of_str(symbol_table: SymbolTable, string_constant: str) -> CodeSnippet:
+def _gen_address_of_str(line_no, symbol_table: SymbolTable, string_constant: str) -> CodeSnippet:
     index = symbol_table.get_index_of_string(string_constant)
-    return CodeSnippet(f"PUSH16 @string_{index}", Type.Addr)
+    return CodeSnippet(line_no, f"PUSH16 @string_{index}", Type.Addr)
 
 
-def _gen_address_of_variable(symbol_table: SymbolTable, scope, var_name) -> CodeSnippet:
+def _gen_address_of_variable(line_no, symbol_table: SymbolTable, scope, var_name) -> CodeSnippet:
     var_def = symbol_table.get_variable(scope, var_name)
     if var_def is None:
         raise RuntimeError(f"Unknown variable {var_name}")
-    ret = CodeSnippet()
+    ret = CodeSnippet(line_no)
     if var_def.is_array:
-        return gen_load_store_instruction(symbol_table, scope, var_name, True)
+        return gen_load_store_instruction(line_no, symbol_table, scope, var_name, True)
     elif var_def.from_global:
         ret.add_line("PUSH_STACK_START")
         offset = offsetof(symbol_table, scope, var_name, True)

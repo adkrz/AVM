@@ -153,7 +153,9 @@ def _gen_address_of_variable(line_no, symbol_table: SymbolTable, scope, var_name
         ret.add_line("SUB16")
     else:
         ret.add_line("PUSH_REG 2")
-        ret.add_line(f"PUSH16 #{offsetof(symbol_table, scope, var_name)}")
-        ret.add_line("ADD16")
+        offset = offsetof(symbol_table, scope, var_name)
+        if offset > 0:
+            ret.add_line(f"PUSH16 #{offset}")
+            ret.add_line("ADD16")
     ret.type = Type.Addr
     return ret

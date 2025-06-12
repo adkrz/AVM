@@ -170,7 +170,7 @@ class Parser:
             node = VariableUsageRHS(self._lex.line_number, var_def)
 
             if var_def.struct_def:
-                last_var_in_chain, node = self._generate_struct_address(var_def, var_name)
+                last_var_in_chain, node = self._generate_struct_address(var_def, var_name, False)
                 return node
 
             if self._accept(Symbol.LBracket):
@@ -354,13 +354,13 @@ class Parser:
             node.operand2 = node2
         return node
 
-    def _generate_struct_address(self, var: Variable, var_name: str) -> (Variable, VariableUsage):
+    def _generate_struct_address(self, var: Variable, var_name: str, is_lhs) -> (Variable, VariableUsage):
         """ Generates instructions to compute address of last member in struct chain
          Returns this last member variable """
         current_struct = var.struct_def
         if not current_struct:
             self._error("Expected structure")
-        ret = VariableUsage(self._lex.line_number, var)
+        ret = VariableUsageLHS(self._lex.line_number, var) if is_lhs else VariableUsageRHS(self._lex.line_number, var)
         current_level = ret
         while 1:
             if self._accept(Symbol.LBracket):
@@ -374,10 +374,11 @@ class Parser:
                 member_variable = current_struct.members[struct_member]
 
                 var = member_variable
-                child_node = VariableUsage(self._lex.line_number, var)
+                child_node = VariableUsageLHS(self._lex.line_number, var) if is_lhs else VariableUsageRHS(self._lex.line_number, var)
                 current_level.struct_child = child_node
                 if var.struct_def:
                     current_struct = var.struct_def
+                    current_level = child_node
                 else:
                     break
             else:
@@ -432,7 +433,7 @@ class Parser:
             var = self.symbol_table.get_variable(self._current_context, var_name)
             if var.struct_def:
                 # LHS structure element assignment
-                last_var_in_chain, struct_node = self._generate_struct_address(var, var_name)
+                last_var_in_chain, struct_node = self._generate_struct_address(var, var_name, True)
 
                 self._expect(Symbol.Becomes)
                 value = self._parse_expression()
@@ -632,7 +633,7 @@ class Parser:
                 # Structs are also passed by ref
                 self._expect(Symbol.Identifier)
                 var_name = self._lex.current_identifier
-                self._generate_struct_address(self.symbol_table.get_variable(self._current_context, var_name), var_name)
+                self._generate_struct_address(self.symbol_table.get_variable(self._current_context, var_name), var_name, False)
             else:
                 self._expect(Symbol.Identifier)
                 node.arguments.append(VariableUsageRHS(self._lex.line_number, self.symbol_table.get_variable(self._current_context, self._lex.current_identifier)))

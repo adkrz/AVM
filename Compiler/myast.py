@@ -803,6 +803,32 @@ class VariableUsage(AbstractStatement):
         self.set_parents(False)
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        if self.definition.struct_def:
+            member_offset = 0
+            if not self.definition.is_arg:
+                base_address = _gen_address_of_variable(self.line_no, self.symbol_table, self.scope, self.name)
+            else:
+                base_address = gen_load_store_instruction(self.line_no, self.symbol_table, self.scope, self.definition.name, True)
+            snippets = [base_address]
+            current_level = self
+            while 1:
+                if current_level.array_jump and isinstance(current_level.array_jump, Number):
+                    member_offset += current_level.array_jump.value * current_level.definition.stack_size_single_element
+                if current_level.struct_child:
+                    member_offset += current_level.definition.struct_def.member_offset(current_level.struct_child.name)
+                    current_level = current_level.struct_child
+                else:
+                    last_var_type = current_level.type
+                    break
+            if member_offset > 0:
+                snippets.append(CodeSnippet(self.line_no, f"ADD16C #{member_offset}"))
+
+            if not self.definition.is_arg:  # in function, always use address
+                suffix = "" if last_var_type == Type.Byte else "16"
+                snippets.append(CodeSnippet(self.line_no, f"LOAD_GLOBAL{suffix}" if self.is_load else f"STORE_GLOBAL{suffix}"))
+
+            return CodeSnippet.join(snippets, last_var_type)
+
         if not self.array_jump:
             code = gen_load_store_instruction(self.line_no, self.symbol_table, self.scope, self.definition.name, self.is_load)
             code.line_numbers = [self.line_no]

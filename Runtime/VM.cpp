@@ -92,10 +92,10 @@ inline word VM::POP() { auto v = memory[registers[SP_REGISTER] - 1]; ADD_TO_REGI
 
 inline addr VM::POP_ADDR() { auto v = read16(memory, registers[SP_REGISTER] - ADDRESS_SIZE); ADD_TO_REGISTER(SP_REGISTER, -ADDRESS_SIZE); return v; }
 
-inline word VM::read_next_program_byte(word& skip, int offset)
+inline word VM::read_next_program_byte(word& skip)
 {
     auto instr = READ_REGISTER(IP_REGISTER);
-    auto targ = memory[instr + offset];
+    auto targ = memory[instr + 1];
     skip += WORD_SIZE;
     return targ;
 }

@@ -55,7 +55,7 @@ private:
     inline word POP();
     inline addr POP_ADDR();
     
-    inline word read_next_program_byte(word& skip, int offset = 1);
+    inline word read_next_program_byte(word& skip);
     
     inline addr read_addr_from_program(word&, int offset = 1);
     inline offs read_offs_from_program(word&, int offset = 1);

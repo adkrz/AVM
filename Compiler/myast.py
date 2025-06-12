@@ -659,7 +659,7 @@ class Assign(AbstractStatement):
             snippet = CodeSnippet.join((c1, c2), self.type)
             return snippet
 
-        max_type = highest_type((type_hint, self.value.find_max_type(), self.type))
+        max_type = highest_type((type_hint, self.value.find_max_type(), self.var.last_type()))
         c1 = self.value.gen_code(max_type)
         c1.cast(self.type)
         c2 = self.var.gen_code(self.type)
@@ -768,6 +768,12 @@ class VariableUsage(AbstractStatement):
     def type(self):
         return self.definition.type
 
+    def last_type(self):
+        """ In case of structs, returns last element type, otherwise just variable element type """
+        if self.struct_child:
+            return self.struct_child.last_type()
+        return self.type
+
     @property
     def is_load(self):
         raise NotImplementedError()
@@ -816,7 +822,9 @@ class VariableUsage(AbstractStatement):
                     if isinstance(current_level.array_jump, Number):
                         member_offset += current_level.array_jump.value * current_level.definition.stack_size_single_element
                     else:
-                        snippets.append(current_level.array_jump.gen_code(Type.Addr))
+                        index_var = current_level.array_jump.gen_code(Type.Addr)
+                        index_var.cast(Type.Addr)
+                        snippets.append(index_var)
                         if current_level.definition.stack_size_single_element > 1:
                             snippets.append(CodeSnippet(self.line_no, f"MUL16C #{current_level.definition.stack_size_single_element}", Type.Addr))
                         snippets.append(CodeSnippet(self.line_no, "ADD16", Type.Addr))

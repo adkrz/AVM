@@ -25,9 +25,7 @@ JF @while1_endwhile
 PUSH 0
 LOAD_LOCAL16 7 ; memory_pointer
 STORE_GLOBAL
-LOAD_LOCAL16 7 ; memory_pointer
-INC16
-STORE_LOCAL16 7 ; memory_pointer
+MACRO_INC_LOCAL16 7 ;memory_pointer
 JMP @while1_begin
 :while1_endwhile
 LOAD_LOCAL16 2 ; memory
@@ -40,9 +38,7 @@ LOAD_GLOBAL
 NZERO
 JF @while2_endwhile
 MACRO_INC_LOCAL16 9 ;strlen
-LOAD_LOCAL16 5 ; instruction_pointer
-INC16
-STORE_LOCAL16 5 ; instruction_pointer
+MACRO_INC_LOCAL16 5 ;instruction_pointer
 JMP @while2_begin
 :while2_endwhile
 LOAD_LOCAL16 0 ; program
@@ -72,9 +68,7 @@ STORE_LOCAL 15 ; count_brackets
 LOAD_LOCAL16 5 ; instruction_pointer
 STORE_LOCAL16 16 ; ip1
 :while4_begin
-LOAD_LOCAL16 5 ; instruction_pointer
-INC16
-STORE_LOCAL16 5 ; instruction_pointer
+MACRO_INC_LOCAL16 5 ;instruction_pointer
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
 PUSH 91
@@ -120,9 +114,7 @@ JMP @while4_begin
 LOAD_LOCAL16 16 ; ip1
 STORE_LOCAL16 5 ; instruction_pointer
 :if1_endif
-LOAD_LOCAL16 5 ; instruction_pointer
-INC16
-STORE_LOCAL16 5 ; instruction_pointer
+MACRO_INC_LOCAL16 5 ;instruction_pointer
 JMP @while3_begin
 :while3_endwhile
 LOAD_LOCAL16 0 ; program
@@ -172,18 +164,14 @@ LOAD_LOCAL 4 ; instruction
 PUSH 62
 EQ
 JF @if8_else
-LOAD_LOCAL16 7 ; memory_pointer
-INC16
-STORE_LOCAL16 7 ; memory_pointer
+MACRO_INC_LOCAL16 7 ;memory_pointer
 JMP @if8_endif
 :if8_else
 LOAD_LOCAL 4 ; instruction
 PUSH 60
 EQ
 JF @if9_else
-LOAD_LOCAL16 7 ; memory_pointer
-DEC16
-STORE_LOCAL16 7 ; memory_pointer
+MACRO_DEC_LOCAL16 7 ;memory_pointer
 JMP @if9_endif
 :if9_else
 LOAD_LOCAL 4 ; instruction
@@ -227,9 +215,7 @@ JMP @while5_endwhile
 :if8_endif
 :if7_endif
 :if5_endif
-LOAD_LOCAL16 5 ; instruction_pointer
-INC16
-STORE_LOCAL16 5 ; instruction_pointer
+MACRO_INC_LOCAL16 5 ;instruction_pointer
 JMP @while5_begin
 :while5_endwhile
 PUSH16 @string_1

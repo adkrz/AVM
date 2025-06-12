@@ -679,7 +679,7 @@ class Assign(AbstractStatement):
                 and isinstance(self.value.operand, VariableUsage)
                 and isinstance(self.var, VariableUsageLHS)
                 and self.var.definition == self.value.operand.definition
-                and not self.var.definition.is_array
+                and (not self.var.definition.is_array or self.var.definition.is_array and not self.var.array_jump)
                 and not self.var.definition.struct_def
                 and not self.var.definition.is_arg
                 and not self.var.definition.from_global
@@ -691,7 +691,7 @@ class Assign(AbstractStatement):
               and isinstance(self.value.operand, VariableUsage)
               and isinstance(self.var, VariableUsageLHS)
               and self.var.definition == self.value.operand.definition
-              and not self.var.definition.is_array
+              and (not self.var.definition.is_array or self.var.definition.is_array and not self.var.array_jump)
               and not self.var.definition.struct_def
               and not self.var.definition.is_arg
               and not self.var.definition.from_global
@@ -738,10 +738,10 @@ class IncLocal(AbstractStatement):
 
     def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
         offs = offsetof(self.symbol_table, self.scope, self.var.name, False)
-        instr = self._instr(self.var.definition.type)
+        vtype = self.var.definition.type if not self.var.is_array else Type.Addr
+        instr = self._instr(vtype)
         return CodeSnippet(self.line_no,
-            f"{instr} {offs} ;{self.var.name}" if self.var.definition.type == Type.Byte else f"{instr} {offs} ;{self.var.name}",
-            self.var.definition.type)
+            f"{instr} {offs} ;{self.var.name}", self.var.definition.type)
 
     def _instr(self, type):
         return "MACRO_INC_LOCAL" if type == Type.Byte else f"MACRO_INC_LOCAL16"

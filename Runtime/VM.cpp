@@ -80,22 +80,22 @@ void VM::LoadProgram(word* program, int program_length, int memory_size, const c
 inline offs VM::readoffs(word* list, int pos) { return list[pos + 1] * 256 + list[pos]; }
 
 
-#define PUSH(arg) { memory[registers[SP_REGISTER]] = arg; ADD_TO_REGISTER(SP_REGISTER, 1);}
+inline void VM::PUSH(word arg) { memory[registers[SP_REGISTER]] = arg; ADD_TO_REGISTER(SP_REGISTER, 1);}
 
-#define PUSH_ADDR(arg) {write16(memory, registers[SP_REGISTER], arg); ADD_TO_REGISTER(SP_REGISTER, ADDRESS_SIZE);}
+inline void VM::PUSH_ADDR(addr arg) {write16(memory, registers[SP_REGISTER], arg); ADD_TO_REGISTER(SP_REGISTER, ADDRESS_SIZE);}
 
-#define PUSHI(arg) { PUSH((word)arg); }
+inline void VM::PUSHI(int arg) { PUSH((word)arg); }
 
-#define PUSHI_ADDR(arg) { PUSH_ADDR((addr)arg); };
+inline void VM::PUSHI_ADDR(int arg) { PUSH_ADDR((addr)arg); };
 
 inline word VM::POP() { auto v = memory[registers[SP_REGISTER] - 1]; ADD_TO_REGISTER(SP_REGISTER, -1); return v; }
 
 inline addr VM::POP_ADDR() { auto v = read16(memory, registers[SP_REGISTER] - ADDRESS_SIZE); ADD_TO_REGISTER(SP_REGISTER, -ADDRESS_SIZE); return v; }
 
-inline word VM::read_next_program_byte(word& skip)
+inline word VM::read_next_program_byte(word& skip, int offset)
 {
     auto instr = READ_REGISTER(IP_REGISTER);
-    auto targ = memory[instr + 1];
+    auto targ = memory[instr + offset];
     skip += WORD_SIZE;
     return targ;
 }
@@ -631,13 +631,9 @@ void VM::RunProgram(bool profile)
             direction = (instr == I::LOAD || instr == I::LOAD_ARG || instr == I::LOAD_ARG16) ? -1 : 1;
             offset = (instr == I::LOAD_ARG || instr == I::LOAD_ARG16) ? 2 * ADDRESS_SIZE : 0;
             if (instr == I::LOAD_LOCAL16 || instr == I::LOAD_ARG16)
-            {
                 PUSH_ADDR(read16(memory, READ_REGISTER(FP_REGISTER) + (arg + offset) * direction));
-            }
             else
-            {
                 PUSH(memory[READ_REGISTER(FP_REGISTER) + (arg + offset) * direction]);
-            }
             break;
         case I::STORE:
         case I::STORE_LOCAL:

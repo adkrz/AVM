@@ -812,8 +812,14 @@ class VariableUsage(AbstractStatement):
             snippets = [base_address]
             current_level = self
             while 1:
-                if current_level.array_jump and isinstance(current_level.array_jump, Number):
-                    member_offset += current_level.array_jump.value * current_level.definition.stack_size_single_element
+                if current_level.array_jump:
+                    if isinstance(current_level.array_jump, Number):
+                        member_offset += current_level.array_jump.value * current_level.definition.stack_size_single_element
+                    else:
+                        snippets.append(current_level.array_jump.gen_code(Type.Addr))
+                        if current_level.definition.stack_size_single_element > 1:
+                            snippets.append(CodeSnippet(self.line_no, f"MUL16C #{current_level.definition.stack_size_single_element}", Type.Addr))
+                        snippets.append(CodeSnippet(self.line_no, "ADD16", Type.Addr))
                 if current_level.struct_child:
                     member_offset += current_level.definition.struct_def.member_offset(current_level.struct_child.name)
                     current_level = current_level.struct_child

@@ -8,16 +8,16 @@
 
 #define NOMINMAX
 #ifdef _WIN32
-    #include <Windows.h>
-    #include <conio.h>
+#include <Windows.h>
+#include <conio.h>
 #else
-    #include <termios.h>
-    #include <unistd.h>
-    #include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
 #undef NZERO // avoid conflict with <sys/ioctl.h>
 #endif
 
-VM::VM() : memory(nullptr), registers{ 0, 0, 0, 0 }, mt(rd())
+VM::VM() : memory(nullptr), mt(rd())
 {
 #ifdef _WIN32
     hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -62,16 +62,17 @@ void VM::LoadProgram(word* program, int program_length, int memory_size, const c
     Free();
     memory = new word[memory_size];
 
-    WRITE_REGISTER(IP_REGISTER, PROGRAM_BEGIN);
+    IP = PROGRAM_BEGIN;
+
     for (int i = 0; i < program_length; i++)
     {
         memory[i + PROGRAM_BEGIN] = program[i];
     }
     stackStartPos = (addr)(program_length + PROGRAM_BEGIN);
-    WRITE_REGISTER(SP_REGISTER, stackStartPos);
-    WRITE_REGISTER(FP_REGISTER, stackStartPos);
-    WRITE_REGISTER(POINTER_REGISTER, 0);
-    //max_sp = READ_REGISTER(SP_REGISTER);
+    SP = stackStartPos;
+    FP = stackStartPos;
+    POINTER = 0;
+    //max_sp = SP;
     handlers.clear();
     nvram_file = nvr_file;
 }
@@ -80,21 +81,21 @@ void VM::LoadProgram(word* program, int program_length, int memory_size, const c
 inline offs VM::readoffs(word* list, int pos) { return list[pos + 1] * 256 + list[pos]; }
 
 
-inline void VM::PUSH(word arg) { memory[registers[SP_REGISTER]] = arg; ADD_TO_REGISTER(SP_REGISTER, 1);}
+inline void VM::PUSH(word arg) { memory[SP] = arg; SP++; }
 
-inline void VM::PUSH_ADDR(addr arg) {write16(memory, registers[SP_REGISTER], arg); ADD_TO_REGISTER(SP_REGISTER, ADDRESS_SIZE);}
+inline void VM::PUSH_ADDR(addr arg) { write16(memory, SP, arg); SP += ADDRESS_SIZE; }
 
 inline void VM::PUSHI(int arg) { PUSH((word)arg); }
 
 inline void VM::PUSHI_ADDR(int arg) { PUSH_ADDR((addr)arg); };
 
-inline word VM::POP() { auto v = memory[registers[SP_REGISTER] - 1]; ADD_TO_REGISTER(SP_REGISTER, -1); return v; }
+inline word VM::POP() { auto v = memory[SP - 1]; SP--; return v; }
 
-inline addr VM::POP_ADDR() { auto v = read16(memory, registers[SP_REGISTER] - ADDRESS_SIZE); ADD_TO_REGISTER(SP_REGISTER, -ADDRESS_SIZE); return v; }
+inline addr VM::POP_ADDR() { auto v = read16(memory, SP - ADDRESS_SIZE); SP -= ADDRESS_SIZE; return v; }
 
 inline word VM::read_next_program_byte(word& skip)
 {
-    auto instr = READ_REGISTER(IP_REGISTER);
+    auto instr = IP;
     auto targ = memory[instr + 1];
     skip += WORD_SIZE;
     return targ;
@@ -102,7 +103,7 @@ inline word VM::read_next_program_byte(word& skip)
 
 inline addr VM::read_addr_from_program(word& skip, int offset)
 {
-    auto instr = READ_REGISTER(IP_REGISTER);
+    auto instr = IP;
     auto targ = read16(memory, instr + offset);
     skip += ADDRESS_SIZE;
     return targ;
@@ -110,7 +111,7 @@ inline addr VM::read_addr_from_program(word& skip, int offset)
 
 inline offs VM::read_offs_from_program(word& skip, int offset)
 {
-    auto instr = READ_REGISTER(IP_REGISTER);
+    auto instr = IP;
     auto targ = readoffs(memory, instr + offset);
     skip += ADDRESS_SIZE;
     return targ;
@@ -118,10 +119,10 @@ inline offs VM::read_offs_from_program(word& skip, int offset)
 
 inline void VM::CALL(addr address, int offset)
 {
-    PUSHI_ADDR((READ_REGISTER(IP_REGISTER) + offset));
-    PUSH_ADDR(READ_REGISTER(FP_REGISTER));
-    WRITE_REGISTER(IP_REGISTER, address);
-    WRITE_REGISTER(FP_REGISTER, READ_REGISTER(SP_REGISTER));
+    PUSHI_ADDR((IP + offset));
+    PUSH_ADDR(FP);
+    IP = address;
+    FP = SP;
 }
 
 void VM::RunProgram(bool profile)
@@ -145,12 +146,12 @@ void VM::RunProgram(bool profile)
 
     while (true)
     {
-        instr = (I)memory[READ_REGISTER(IP_REGISTER)];
+        instr = (I)memory[IP];
 #ifdef WITH_PROFILER
         if (profile)
         {
-            if (READ_REGISTER(SP_REGISTER) > max_sp)
-                max_sp = READ_REGISTER(SP_REGISTER);
+            if (SP > max_sp)
+                max_sp = SP;
             if (counters.count(instr))
                 counters[instr]++;
             else
@@ -172,18 +173,18 @@ void VM::RunProgram(bool profile)
             break;
         case I::PUSH16_REL:
             offset = read_offs_from_program(skip);
-            address = (addr)(READ_REGISTER(IP_REGISTER) + offset);
+            address = (addr)(IP + offset);
             PUSH_ADDR(address);
             break;
         case I::PUSHN:
             arg = read_next_program_byte(skip);
-            ADD_TO_REGISTER(SP_REGISTER, arg);
+            SP += arg;
             break;
         case I::PUSHN2:
-            ADD_TO_REGISTER(SP_REGISTER, POP());
+            SP += POP();
             break;
         case I::PUSH_NEXT_SP:
-            sp_value = READ_REGISTER(SP_REGISTER);
+            sp_value = SP;
             PUSHI_ADDR(sp_value + ADDRESS_SIZE);
             break;
         case I::PUSH_STACK_START:
@@ -195,18 +196,28 @@ void VM::RunProgram(bool profile)
             break;
         case I::POPN:
             arg = read_next_program_byte(skip);
-            ADD_TO_REGISTER(SP_REGISTER, -arg);
+            SP -= arg;
             break;
         case I::POPN2:
-            ADD_TO_REGISTER(SP_REGISTER, -POP());
+            SP -= POP();
             break;
         case I::PUSH_REG:
             arg = read_next_program_byte(skip);
-            PUSHI_ADDR(READ_REGISTER(arg));
+            if (arg == 0)
+                PUSHI_ADDR(IP);
+            else if (arg == 1)
+                PUSHI_ADDR(SP);
+            else if (arg == 2)
+                PUSHI_ADDR(FP);
             break;
         case I::POP_REG:
             arg = read_next_program_byte(skip);
-            WRITE_REGISTER(arg, POP_ADDR());
+            if (arg == 0)
+                IP = POP_ADDR();
+            else if (arg == 1)
+                SP = POP_ADDR();
+            else if (arg == 2)
+                FP = POP_ADDR();
             break;
         case I::ADD:
             signedResult = POP() + POP();
@@ -346,11 +357,11 @@ void VM::RunProgram(bool profile)
             PUSHI(POP() >= POP() ? 1 : 0);
             break;
         case I::ZERO:
-            sp_value = READ_REGISTER(SP_REGISTER);
+            sp_value = SP;
             memory[sp_value - 1] = (word)(memory[sp_value - 1] == 0 ? 1 : 0);
             break;
         case I::NZERO:
-            sp_value = READ_REGISTER(SP_REGISTER);
+            sp_value = SP;
             memory[sp_value - 1] = (word)(memory[sp_value - 1] != 0 ? 1 : 0);
             break;
 
@@ -445,23 +456,23 @@ void VM::RunProgram(bool profile)
             break;
 
         case I::NOT:
-            sp_value = READ_REGISTER(SP_REGISTER);
+            sp_value = SP;
             memory[sp_value - 1] = (word)(memory[sp_value - 1] ? 0 : 1);
             break;
         case I::INC:
-            sp_value = READ_REGISTER(SP_REGISTER);
+            sp_value = SP;
             memory[sp_value - 1]++;
             break;
         case I::DEC:
-            sp_value = READ_REGISTER(SP_REGISTER);
+            sp_value = SP;
             memory[sp_value - 1]--;
             break;
         case I::INC16:
-            offset = READ_REGISTER(SP_REGISTER) - ADDRESS_SIZE;
+            offset = SP - ADDRESS_SIZE;
             write16(memory, offset, (addr)(read16(memory, offset) + 1));
             break;
         case I::DEC16:
-            offset = READ_REGISTER(SP_REGISTER) - ADDRESS_SIZE;
+            offset = SP - ADDRESS_SIZE;
             write16(memory, offset, (addr)(read16(memory, offset) - 1));
             break;
         case I::EXTEND:
@@ -475,19 +486,19 @@ void VM::RunProgram(bool profile)
         }
         case I::JMP:
             address = read_addr_from_program(skip);
-            WRITE_REGISTER(IP_REGISTER, address);
+            IP = address;
             skip = 0;
             break;
         case I::JMP_REL:
             offset = read_offs_from_program(skip);
-            ADD_TO_REGISTER(IP_REGISTER, offset);
+            IP += offset;
             skip = 0;
             break;
         case I::JF:
             address = read_addr_from_program(skip);
             if (!POP())
             {
-                WRITE_REGISTER(IP_REGISTER, address);
+                IP = address;
                 skip = 0;
             }
             break;
@@ -495,7 +506,7 @@ void VM::RunProgram(bool profile)
             address = read_addr_from_program(skip);
             if (!POP_ADDR())
             {
-                WRITE_REGISTER(IP_REGISTER, address);
+                IP = address;
                 skip = 0;
             }
             break;
@@ -503,7 +514,7 @@ void VM::RunProgram(bool profile)
             address = read_addr_from_program(skip);
             if (POP())
             {
-                WRITE_REGISTER(IP_REGISTER, address);
+                IP = address;
                 skip = 0;
             }
             break;
@@ -511,7 +522,7 @@ void VM::RunProgram(bool profile)
             address = read_addr_from_program(skip);
             if (POP_ADDR())
             {
-                WRITE_REGISTER(IP_REGISTER, address);
+                IP = address;
                 skip = 0;
             }
             break;
@@ -519,7 +530,7 @@ void VM::RunProgram(bool profile)
             offset = read_offs_from_program(skip);
             if (POP() == 0)
             {
-                ADD_TO_REGISTER(IP_REGISTER, offset);
+                IP += offset;
                 skip = 0;
             }
             break;
@@ -527,20 +538,20 @@ void VM::RunProgram(bool profile)
             offset = read_offs_from_program(skip);
             if (POP() != 0)
             {
-                ADD_TO_REGISTER(IP_REGISTER, offset);
+                IP += offset;
                 skip = 0;
             }
             break;
         case I::JMP2:
             address = POP_ADDR();
-            WRITE_REGISTER(IP_REGISTER, address);
+            IP = address;
             skip = 0;
             break;
         case I::JT2:
             address = POP_ADDR();
             if (POP())
             {
-                WRITE_REGISTER(IP_REGISTER, address);
+                IP = address;
                 skip = 0;
             }
             break;
@@ -548,7 +559,7 @@ void VM::RunProgram(bool profile)
             address = POP_ADDR();
             if (!POP())
             {
-                WRITE_REGISTER(IP_REGISTER, address);
+                IP = address;
                 skip = 0;
             }
             break;
@@ -556,70 +567,70 @@ void VM::RunProgram(bool profile)
             arg = read_next_program_byte(skip);
             address = read_addr_from_program(skip, 2);
             skip = 2 + ADDRESS_SIZE;
-            sp_value = READ_REGISTER(SP_REGISTER);
+            sp_value = SP;
             if (memory[sp_value - 1] == arg)
             {
                 POP();
-                WRITE_REGISTER(IP_REGISTER, address);
+                IP = address;
                 skip = 0;
             }
             break;
         case I::ELSE:
             POP();
             address = read_addr_from_program(skip);
-            WRITE_REGISTER(IP_REGISTER, address);
+            IP = address;
             skip = 0;
             break;
         case I::CASE_REL:
             arg = read_next_program_byte(skip);
             offset = read_offs_from_program(skip, 2);
             skip = 2 + ADDRESS_SIZE;
-            sp_value = READ_REGISTER(SP_REGISTER);
+            sp_value = SP;
             if (memory[sp_value - 1] == arg)
             {
                 POP();
-                ADD_TO_REGISTER(IP_REGISTER, offset + 1);
+                IP += offset + 1;
                 skip = 0;
             }
             break;
         case I::ELSE_REL:
             POP();
             offset = read_offs_from_program(skip);
-            ADD_TO_REGISTER(IP_REGISTER, offset);
+            IP += offset;
             skip = 0;
             break;
         case I::LOAD_GLOBAL:
             address = POP_ADDR();
-			WRITE_REGISTER(POINTER_REGISTER, address);
+            POINTER = address;
             PUSH(memory[address]);
             break;
         case I::STORE_GLOBAL:
             address = POP_ADDR();
-            WRITE_REGISTER(POINTER_REGISTER, address);
+            POINTER = address;;
             arg = POP();
             memory[address] = arg;
             break;
         case I::STORE_GLOBAL2:
             arg = POP();
             address = POP_ADDR();
-            WRITE_REGISTER(POINTER_REGISTER, address);
+            POINTER = address;;
             memory[address] = arg;
             break;
         case I::LOAD_GLOBAL16:
             address = POP_ADDR();
-            WRITE_REGISTER(POINTER_REGISTER, address);
+            POINTER = address;;
             PUSH_ADDR(read16(memory, address));
             break;
         case I::STORE_GLOBAL16:
             address = POP_ADDR();
-            WRITE_REGISTER(POINTER_REGISTER, address);
+            POINTER = address;;
             val = POP_ADDR();
             write16(memory, address, val);
             break;
         case I::STORE_GLOBAL216:
             val = POP_ADDR();
             address = POP_ADDR();
-            WRITE_REGISTER(POINTER_REGISTER, address);
+            POINTER = address;;
             write16(memory, address, val);
             break;
         case I::LOAD: // merged cases optimize better
@@ -631,9 +642,9 @@ void VM::RunProgram(bool profile)
             direction = (instr == I::LOAD || instr == I::LOAD_ARG || instr == I::LOAD_ARG16) ? -1 : 1;
             offset = (instr == I::LOAD_ARG || instr == I::LOAD_ARG16) ? 2 * ADDRESS_SIZE : 0;
             if (instr == I::LOAD_LOCAL16 || instr == I::LOAD_ARG16)
-                PUSH_ADDR(read16(memory, READ_REGISTER(FP_REGISTER) + (arg + offset) * direction));
+                PUSH_ADDR(read16(memory, FP + (arg + offset) * direction));
             else
-                PUSH(memory[READ_REGISTER(FP_REGISTER) + (arg + offset) * direction]);
+                PUSH(memory[FP + (arg + offset) * direction]);
             break;
         case I::STORE:
         case I::STORE_LOCAL:
@@ -644,9 +655,9 @@ void VM::RunProgram(bool profile)
             direction = (instr == I::STORE || instr == I::STORE_ARG || instr == I::STORE_ARG16) ? -1 : 1;
             offset = (instr == I::STORE_ARG || instr == I::STORE_ARG16) ? 2 * ADDRESS_SIZE : 0;
             if (instr == I::STORE_LOCAL16 || instr == I::STORE_ARG16)
-                write16(memory, READ_REGISTER(FP_REGISTER) + (arg + offset) * direction, POP_ADDR());
+                write16(memory, FP + (arg + offset) * direction, POP_ADDR());
             else
-                memory[READ_REGISTER(FP_REGISTER) + (arg + offset) * direction] = POP();
+                memory[FP + (arg + offset) * direction] = POP();
             break;
         case I::LOAD_NVRAM:
             address = POP_ADDR();
@@ -670,7 +681,7 @@ void VM::RunProgram(bool profile)
             if (instr == I::CALL_REL)
             {
                 offset = read_offs_from_program(skip);
-                address = (addr)(READ_REGISTER(IP_REGISTER) + offset);
+                address = (addr)(IP + offset);
             }
             else
             {
@@ -680,30 +691,30 @@ void VM::RunProgram(bool profile)
             skip = 0;
             break;
         case I::RET:
-            WRITE_REGISTER(SP_REGISTER, READ_REGISTER(FP_REGISTER)); // clear stack after function execution
-            WRITE_REGISTER(FP_REGISTER, POP_ADDR());
+            SP = FP;
+            FP = POP_ADDR();
             address = POP_ADDR();
-            WRITE_REGISTER(IP_REGISTER, (addr)(address + ADDRESS_SIZE + 1)); // skip address of call and go to next instruction
+            IP = (addr)(address + ADDRESS_SIZE + 1); // skip address of call and go to next instruction
             skip = 0;
             break;
         case I::SWAP:
-            sp_value = READ_REGISTER(SP_REGISTER);
+            sp_value = SP;
             tmp = memory[sp_value - 1];
             memory[sp_value - 1] = memory[sp_value - 2];
             memory[sp_value - 2] = tmp;
             break;
         case I::SWAP16:
-            sp_value = READ_REGISTER(SP_REGISTER);
+            sp_value = SP;
             val = read16(memory, sp_value - ADDRESS_SIZE * 2);
             write16(memory, sp_value - ADDRESS_SIZE * 2, read16(memory, sp_value - ADDRESS_SIZE));
             write16(memory, sp_value - ADDRESS_SIZE, val);
             break;
         case I::DUP:
-            sp_value = READ_REGISTER(SP_REGISTER);
+            sp_value = SP;
             PUSH(memory[sp_value - 1]);
             break;
         case I::DUP16:
-            sp_value = READ_REGISTER(SP_REGISTER);
+            sp_value = SP;
             PUSH_ADDR(read16(memory, sp_value - ADDRESS_SIZE));
             break;
         case I::ROLL3:
@@ -756,7 +767,7 @@ void VM::RunProgram(bool profile)
 #ifdef WITH_PROFILER
             goto end;
 #else
-			return; // end of program
+            return; // end of program
 #endif
         case I::MACRO_POP_EXT_X2_ADD16:
         {
@@ -770,7 +781,7 @@ void VM::RunProgram(bool profile)
             address = POP() * 2; // extends to addr
             addr a2 = POP_ADDR();
             address += a2;
-            WRITE_REGISTER(POINTER_REGISTER, address);
+            POINTER = address;;
             PUSH_ADDR(read16(memory, address));
         }
         break;
@@ -797,19 +808,19 @@ void VM::RunProgram(bool profile)
         }
         case I::MACRO_INC_LOCAL:
             arg = read_next_program_byte(skip);
-            memory[READ_REGISTER(FP_REGISTER) + arg] += 1;
+            memory[FP + arg] += 1;
             break;
         case I::MACRO_DEC_LOCAL:
             arg = read_next_program_byte(skip);
-            memory[READ_REGISTER(FP_REGISTER) + arg] -= 1;
+            memory[FP + arg] -= 1;
             break;
         case I::MACRO_INC_LOCAL16:
             arg = read_next_program_byte(skip);
-            write16(memory, READ_REGISTER(FP_REGISTER) + arg, read16(memory, READ_REGISTER(FP_REGISTER) + arg) + 1);
+            write16(memory, FP + arg, read16(memory, FP + arg) + 1);
             break;
         case I::MACRO_DEC_LOCAL16:
             arg = read_next_program_byte(skip);
-            write16(memory, READ_REGISTER(FP_REGISTER) + arg, read16(memory, READ_REGISTER(FP_REGISTER) + arg) - 1);
+            write16(memory, FP + arg, read16(memory, FP + arg) - 1);
             break;
         case I::MACRO_X2:
         {
@@ -822,35 +833,34 @@ void VM::RunProgram(bool profile)
             break;
         }
         case I::GET_PTR:
-			PUSH_ADDR(READ_REGISTER(POINTER_REGISTER));
+            PUSH_ADDR(POINTER);
             break;
         case I::LOAD_GLOBAL_PTR:
-            address = READ_REGISTER(POINTER_REGISTER);
+            address = POINTER;
             PUSH(memory[address]);
             break;
         case I::STORE_GLOBAL_PTR:
-            address = READ_REGISTER(POINTER_REGISTER);
+            address = POINTER;
             arg = POP();
             memory[address] = arg;
             break;
         case I::LOAD_GLOBAL_PTR16:
-            address = READ_REGISTER(POINTER_REGISTER);
+            address = POINTER;
             PUSH_ADDR(read16(memory, address));
             break;
         case I::STORE_GLOBAL_PTR16:
-            address = READ_REGISTER(POINTER_REGISTER);
+            address = POINTER;
             val = POP_ADDR();
             write16(memory, address, val);
             break;
         default:
-			std::cerr << "Instruction not implemented: " << std::to_string(instr) << std::endl;
+            std::cerr << "Instruction not implemented: " << std::to_string(instr) << std::endl;
             throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));
         }
-
-        ADD_TO_REGISTER(IP_REGISTER, skip);
+        IP += skip;
     }
 
-    
+
 
 #ifdef WITH_PROFILER
     end :
@@ -895,19 +905,19 @@ InterruptCodes VM::STDLIB(int callNumber)
     switch ((Stdlib)callNumber)
     {
     case Stdlib::PrintInt:
-        sp_value = READ_REGISTER(SP_REGISTER);
+        sp_value = SP;
         std::cout << (int)memory[sp_value - 1];
         break;
     case Stdlib::PrintInt16:
-        sp_value = READ_REGISTER(SP_REGISTER);
+        sp_value = SP;
         std::cout << (int)read16(memory, sp_value - ADDRESS_SIZE);
         break;
     case Stdlib::PrintNewLine:
         std::cout << std::endl;
         break;
-    
+
     case Stdlib::PrintChar:
-        sp_value = READ_REGISTER(SP_REGISTER);
+        sp_value = SP;
         std::cout << (char)memory[sp_value - 1];
         break;
     case Stdlib::PrintCharPop:
@@ -922,7 +932,7 @@ InterruptCodes VM::STDLIB(int callNumber)
             std::cout << (char)arg;
         } while (arg != 0);
         break;
-        
+
     case Stdlib::ReadString:
         maxLen = POP();
         address = POP_ADDR();
@@ -952,7 +962,7 @@ InterruptCodes VM::STDLIB(int callNumber)
         else PUSH(0);
 #endif
         break;
-    
+
     case Stdlib::SetConsoleCursorPosition:
         arg = POP() + 1; // top
         arg2 = POP() + 1; // left
@@ -1037,7 +1047,7 @@ InterruptCodes VM::STDLIB(int callNumber)
         }
         PUSHI(result);
         break;
-        
+
     case Stdlib::Strlen:
         address = POP_ADDR();
         result = 0;
@@ -1159,43 +1169,43 @@ int VM::FgColorToVT100(Colors color)
 {
     switch (color)
     {
-        case Colors::Black:
-            return 30;
-        case Colors::Red:
-            return 31;
-        case Colors::Green:
-            return 32;
-        case Colors::Yellow:
-            return 33;
-        case Colors::Blue:
-            return 34;
-        case Colors::Magenta:
-            return 35;
-        case Colors::Cyan:
-            return 36;
-        case Colors::White:
-            return 37;
-        case Colors::BrightBlack:
-            return 90;
-        case Colors::BrightRed:
-            return 91;
-        case Colors::BrightGreen:
-            return 92;
-        case Colors::BrightYellow:
-            return 93;
-        case Colors::BrightBlue:
-            return 94;
-        case Colors::BrightMagenta:
-            return 95;
-        case Colors::BrightCyan:
-            return 96;
-        case Colors::BrightWhite:
-            return 97;
-        case Colors::Gray:
-        case Colors::BrightGray:
-            return 37; // unsupported - use dark white
-        default:
-            return 37;
+    case Colors::Black:
+        return 30;
+    case Colors::Red:
+        return 31;
+    case Colors::Green:
+        return 32;
+    case Colors::Yellow:
+        return 33;
+    case Colors::Blue:
+        return 34;
+    case Colors::Magenta:
+        return 35;
+    case Colors::Cyan:
+        return 36;
+    case Colors::White:
+        return 37;
+    case Colors::BrightBlack:
+        return 90;
+    case Colors::BrightRed:
+        return 91;
+    case Colors::BrightGreen:
+        return 92;
+    case Colors::BrightYellow:
+        return 93;
+    case Colors::BrightBlue:
+        return 94;
+    case Colors::BrightMagenta:
+        return 95;
+    case Colors::BrightCyan:
+        return 96;
+    case Colors::BrightWhite:
+        return 97;
+    case Colors::Gray:
+    case Colors::BrightGray:
+        return 37; // unsupported - use dark white
+    default:
+        return 37;
     }
 }
 int VM::BgColorToVT100(Colors color)

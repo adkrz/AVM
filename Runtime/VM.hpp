@@ -29,7 +29,6 @@ private:
     
     addr stackStartPos = 0;
     addr IP, SP, FP, POINTER;
-    bool carry = false;
 
 
     void* hConsole;

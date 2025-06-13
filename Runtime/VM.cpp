@@ -221,47 +221,39 @@ void VM::RunProgram(bool profile)
             break;
         case I::ADD:
             signedResult = POP() + POP();
-            carry = signedResult > 255;
             PUSHI(signedResult);
             break;
         case I::ADD16:
             signedResult = POP_ADDR() + POP_ADDR();
-            carry = signedResult > 65535;
             PUSHI_ADDR(signedResult);
             break;
         case I::ADD16C:
             address = read_addr_from_program(skip);
             signedResult = POP_ADDR() + address;
-            carry = signedResult > 65535;
             PUSHI_ADDR(signedResult);
             break;
         case I::SUB16C:
             address = read_addr_from_program(skip);
             signedResult = POP_ADDR() - address;
-            carry = signedResult < 0;
             PUSHI_ADDR(signedResult);
             break;
         case I::ADDC:
             address = read_next_program_byte(skip);
             signedResult = POP() + address;
-            carry = signedResult > 255;
             PUSHI(signedResult);
             break;
         case I::SUBC:
             address = read_next_program_byte(skip);
             signedResult = POP() - address;
-            carry = signedResult < 0;
             PUSHI(signedResult);
             break;
         case I::MULC:
             address = read_next_program_byte(skip);
             signedResult = POP() * address;
-            carry = signedResult > 255;
             PUSHI(signedResult);
             break;
         case I::SUB:
             signedResult = POP() - POP();
-            carry = signedResult < 0;
             PUSHI(signedResult);
             break;
         case I::SUB2:
@@ -269,13 +261,11 @@ void VM::RunProgram(bool profile)
             auto tmp1 = POP();
             auto tmp2 = POP();
             signedResult = tmp2 - tmp1;
-            carry = signedResult < 0;
             PUSHI(signedResult);
         }
         break;
         case I::SUB16:
             signedResult = POP_ADDR() - POP_ADDR();
-            carry = signedResult < 0;
             PUSHI_ADDR(signedResult);
             break;
         case I::SUB216:
@@ -283,13 +273,9 @@ void VM::RunProgram(bool profile)
             auto tmp1 = POP_ADDR();
             auto tmp2 = POP_ADDR();
             signedResult = tmp2 - tmp1;
-            carry = signedResult < 0;
             PUSHI_ADDR(signedResult);
         }
         break;
-        case I::CARRY:
-            PUSH(carry ? 1 : 0);
-            break;
         case I::DIV:
             arg = POP();
             tmp = POP();

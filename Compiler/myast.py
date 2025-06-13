@@ -527,6 +527,21 @@ class MultiplyOperation(BinaryOperation):
             return super().optimize()
 
 
+class DivisionOperation(BinaryOperation):
+    def __init__(self, line_no):
+        super().__init__(line_no, BinOpType.Div)
+
+    def optimize(self) -> bool:
+        if isinstance(self.operand2, Number) and self.operand2.is_zero:
+            raise ValueError(f"Division by zero detected in line {self.line_no}")
+        if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
+            new_node = self.operand1.combine(self.operand2, int(self.operand1.value / self.operand2.value))
+            self.parent.replace_child(self, new_node)
+            return True
+        else:
+            return super().optimize()
+
+
 class LogicalChainOperation(BinaryOperation):  # AND, OR
     def __init__(self, line_no, op, condition_counter):
         super().__init__(line_no, op)

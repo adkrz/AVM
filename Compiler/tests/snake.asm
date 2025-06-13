@@ -96,9 +96,7 @@ MACRO_INC_LOCAL16 1 ;length
 PUSH 0
 STORE_LOCAL 5 ; fruit_x
 PUSH 55
-PUSH 22
-PUSH 2
-DIV2
+PUSH 11
 SYSCALL Std.SetConsoleCursorPosition
 LOAD_LOCAL16 1 ; length
 SUB16C #5

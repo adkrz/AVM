@@ -10,7 +10,7 @@ from myast import AstProgram, VariableUsageLHS, VariableUsageRHS, BinaryOperatio
     ReturningCall, ArrayInitializationStatement, ArrayInitialization_InitializerList, ArrayInitialization_Pointer, \
     ArrayInitialization_StackAlloc, VariableUsage, SubtractOperation, Instruction_AddressOfString, \
     Instruction_AddressOfVariable, Syscall_ReadKey, Syscall_GetRandomNumber, NonReturningSyscall, \
-    VariableUsageJustStructAddress
+    VariableUsageJustStructAddress, DivisionOperation
 from symbol_table import SymbolTable
 
 
@@ -291,6 +291,7 @@ class Parser:
                 node = MultiplyOperation(self._lex.line_number)  # specialization important for constant folding
             elif v == Symbol.Divide:
                 op_ = BinOpType.Div
+                node = DivisionOperation(self._lex.line_number)  # specialization important for constant folding
             elif v == Symbol.Modulo:
                 op_ = BinOpType.Mod
             elif v == Symbol.Ampersand:

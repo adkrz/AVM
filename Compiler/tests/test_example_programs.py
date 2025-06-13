@@ -109,6 +109,9 @@ class TestExamples(unittest.TestCase, Helpers):
     def test_pointer_bug(self):
         self.compare_programs("pointer_bug.prg", "pointer_bug.asm", optimize=False)
 
+    def test_constant_folding(self):
+        self.compare_programs("constant_folding.prg", "constant_folding.asm", optimize=True)
+
 
 if __name__ == '__main__':
     unittest.main()

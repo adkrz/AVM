@@ -9,7 +9,8 @@ from myast import AstProgram, VariableUsageLHS, VariableUsageRHS, BinaryOperatio
     Instruction_Debugger, WhileLoop, DoWhileLoop, Instruction_Break, Instruction_Continue, FunctionCall, FunctionReturn, \
     ReturningCall, ArrayInitializationStatement, ArrayInitialization_InitializerList, ArrayInitialization_Pointer, \
     ArrayInitialization_StackAlloc, VariableUsage, SubtractOperation, Instruction_AddressOfString, \
-    Instruction_AddressOfVariable, Syscall_ReadKey, Syscall_GetRandomNumber, NonReturningSyscall
+    Instruction_AddressOfVariable, Syscall_ReadKey, Syscall_GetRandomNumber, NonReturningSyscall, \
+    VariableUsageJustStructAddress
 from symbol_table import SymbolTable
 
 
@@ -360,7 +361,18 @@ class Parser:
         current_struct = var.struct_def
         if not current_struct:
             self._error("Expected structure")
-        ret = VariableUsageLHS(self._lex.line_number, var) if is_lhs else VariableUsageRHS(self._lex.line_number, var)
+
+        def create_vu(v: Variable):
+            if is_lhs is None:
+                return VariableUsageJustStructAddress(self._lex.line_number, v)
+            elif is_lhs:
+                return VariableUsageLHS(self._lex.line_number, v)
+            else:
+                return VariableUsageRHS(self._lex.line_number, var)
+
+        ret = create_vu(var)
+        if is_lhs is None:
+            ret.generate_struct_load_store = False
         current_level = ret
         while 1:
             if self._accept(Symbol.LBracket):
@@ -374,7 +386,9 @@ class Parser:
                 member_variable = current_struct.members[struct_member]
 
                 var = member_variable
-                child_node = VariableUsageLHS(self._lex.line_number, var) if is_lhs else VariableUsageRHS(self._lex.line_number, var)
+                child_node = create_vu(var)
+                if is_lhs is None:
+                    child_node.generate_struct_load_store = False
                 current_level.struct_child = child_node
                 if var.struct_def:
                     current_struct = var.struct_def
@@ -633,7 +647,8 @@ class Parser:
                 # Structs are also passed by ref
                 self._expect(Symbol.Identifier)
                 var_name = self._lex.current_identifier
-                self._generate_struct_address(self.symbol_table.get_variable(self._current_context, var_name), var_name, False)
+                _, node2 = self._generate_struct_address(self.symbol_table.get_variable(self._current_context, var_name), var_name, None)
+                node.arguments.append(node2)
             else:
                 self._expect(Symbol.Identifier)
                 node.arguments.append(VariableUsageRHS(self._lex.line_number, self.symbol_table.get_variable(self._current_context, self._lex.current_identifier)))

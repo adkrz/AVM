@@ -3,7 +3,7 @@ import unittest
 from helpers import Helpers
 
 
-class TestArrays(unittest.TestCase, Helpers):
+class TestExamples(unittest.TestCase, Helpers):
     def test_math_expression(self):
         self.compare_programs("math_expression.prg", "math_expression.asm")
 

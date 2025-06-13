@@ -18,5 +18,6 @@ Z[2].x[0].a = 6;
 end
 
 call modify_by_ref2(zmienna_tablica);
-print zmienna_tablica[2].x[0].a;
+addr index = 2;
+print zmienna_tablica[index].x[0].a;
 printnl;

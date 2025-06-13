@@ -778,6 +778,10 @@ class VariableUsage(AbstractStatement):
     def is_load(self):
         raise NotImplementedError()
 
+    def _gen_struct_load_store(self):
+        """ Generate the final load/store after struct address, or not? """
+        return True
+
     @property
     def is_array(self):
         return self.definition.is_array
@@ -820,12 +824,12 @@ class VariableUsage(AbstractStatement):
             while 1:
                 if current_level.array_jump:
                     if isinstance(current_level.array_jump, Number):
-                        member_offset += current_level.array_jump.value * current_level.definition.stack_size_single_element
+                        member_offset += current_level.array_jump.value * current_level.definition.struct_def.stack_size
                     else:
                         index_var = current_level.array_jump.gen_code(Type.Addr)
                         index_var.cast(Type.Addr)
                         snippets.append(index_var)
-                        if current_level.definition.stack_size_single_element > 1:
+                        if current_level.definition.struct_def.stack_size > 1:
                             snippets.append(CodeSnippet(self.line_no, f"MUL16C #{current_level.definition.stack_size_single_element}", Type.Addr))
                         snippets.append(CodeSnippet(self.line_no, "ADD16", Type.Addr))
                 if current_level.struct_child:
@@ -837,7 +841,7 @@ class VariableUsage(AbstractStatement):
             if member_offset > 0:
                 snippets.append(CodeSnippet(self.line_no, f"ADD16C #{member_offset}"))
 
-            if not self.definition.is_arg:  # in function, always use address
+            if self._gen_struct_load_store():
                 suffix = "" if last_var_type == Type.Byte else "16"
                 snippets.append(CodeSnippet(self.line_no, f"LOAD_GLOBAL{suffix}" if self.is_load else f"STORE_GLOBAL{suffix}"))
 
@@ -894,6 +898,15 @@ class VariableUsageRHS(VariableUsageLHS, AbstractExpression):
     @property
     def is_load(self):
         return True
+
+
+class VariableUsageJustStructAddress(VariableUsage):
+    @property
+    def is_load(self):
+        return True
+
+    def _gen_struct_load_store(self):
+        return False
 
 
 class GroupOfStatements(AbstractStatement):
@@ -1289,7 +1302,7 @@ class FunctionCall(AbstractStatement):
                 adt = Type.Addr
             s.cast(adt)
             if arg_def.by_ref or arg_def.is_array:
-                if not isinstance(arg, VariableUsageRHS):
+                if not isinstance(arg, (VariableUsageRHS, VariableUsageJustStructAddress)):
                     raise RuntimeError("Reference target must be simple variable")
                 refs_mapping[arg_def] = arg.name
             snippets.append(s)

@@ -56,6 +56,12 @@ else\
 #define BIN_OP(op) { memory[SP-2] = memory[SP-1] op memory[SP-2]; SP--; }
 #define BIN_OP_INV(op) { memory[SP-2] = memory[SP-2] op memory[SP-1]; SP--; }
 #define LOGICAL_OP(op) { memory[SP - 2] = memory[SP - 1] op memory[SP - 2] ? 1 : 0; SP--; }
+#define OP_WITH_CONST(op, con) { memory[SP-1] = memory[SP-1] op con; }
+
+#define BIN_OP_16(op) { write16(memory, SP-4, read16(memory,SP-2) op read16(memory,SP-4)); SP-=2; }
+#define BIN_OP_16_INV(op) { write16(memory, SP-4, read16(memory,SP-4) op read16(memory,SP-2)); SP-=2; }
+#define LOGICAL_OP_16(op) { memory[SP-4] = read16(memory,SP-2) op read16(memory,SP-4) ? 1 : 0 ; SP-=3; }
+#define OP_WITH_CONST_16(op, con) { write16(memory, SP-4, read16(memory,SP-2) op con); SP-=2; }
 
 void VM::LoadProgram(word* program, int program_length, int memory_size, const char* nvr_file)
 {
@@ -227,33 +233,27 @@ void VM::RunProgram(bool profile)
             BIN_OP(+);
             break;
         case I::ADD16:
-            signedResult = POP_ADDR() + POP_ADDR();
-            PUSHI_ADDR(signedResult);
+            BIN_OP_16(+);
             break;
         case I::ADD16C:
             address = read_addr_from_program(skip);
-            signedResult = POP_ADDR() + address;
-            PUSHI_ADDR(signedResult);
+            OP_WITH_CONST_16(+, address);
             break;
         case I::SUB16C:
             address = read_addr_from_program(skip);
-            signedResult = POP_ADDR() - address;
-            PUSHI_ADDR(signedResult);
+            OP_WITH_CONST_16(-, address);
             break;
         case I::ADDC:
             address = read_next_program_byte(skip);
-            signedResult = POP() + address;
-            PUSHI(signedResult);
+            OP_WITH_CONST(+, address);
             break;
         case I::SUBC:
             address = read_next_program_byte(skip);
-            signedResult = POP() - address;
-            PUSHI(signedResult);
+            OP_WITH_CONST(-, address);
             break;
         case I::MULC:
             address = read_next_program_byte(skip);
-            signedResult = POP() * address;
-            PUSHI(signedResult);
+            OP_WITH_CONST(*, address);
             break;
         case I::SUB:
             BIN_OP(-);
@@ -262,15 +262,11 @@ void VM::RunProgram(bool profile)
             BIN_OP_INV(-);
             break;
         case I::SUB16:
-            signedResult = POP_ADDR() - POP_ADDR();
-            PUSHI_ADDR(signedResult);
+            BIN_OP_16(-);
             break;
         case I::SUB216:
         {
-            auto tmp1 = POP_ADDR();
-            auto tmp2 = POP_ADDR();
-            signedResult = tmp2 - tmp1;
-            PUSHI_ADDR(signedResult);
+            BIN_OP_16_INV(-);
         }
         break;
         case I::DIV:
@@ -293,11 +289,9 @@ void VM::RunProgram(bool profile)
             break;
         }
         case I::MOD:
-            arg = POP();
-            tmp = POP();
-            if (tmp == 0)
+            if (memory[SP - 2] == 0)
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
-            PUSHI((arg % tmp));
+            BIN_OP(%)
             break;
         case I::MOD16:
             address = POP_ADDR();
@@ -310,11 +304,11 @@ void VM::RunProgram(bool profile)
             BIN_OP(*);
             break;
         case I::MUL16:
-            PUSHI_ADDR((POP_ADDR() * POP_ADDR()));
+            BIN_OP_16(*);
             break;
         case I::MUL16C:
             address = read_addr_from_program(skip);
-            PUSHI_ADDR((POP_ADDR() * address));
+            OP_WITH_CONST_16(*, address);
             break;
 
         case I::EQ:
@@ -345,22 +339,22 @@ void VM::RunProgram(bool profile)
             break;
 
         case I::EQ16:
-            PUSHI(POP_ADDR() == POP_ADDR() ? 1 : 0);
+            LOGICAL_OP_16(==);
             break;
         case I::NE16:
-            PUSHI(POP_ADDR() != POP_ADDR() ? 1 : 0);
+            LOGICAL_OP_16(!=);
             break;
         case I::LESS16:
-            PUSHI(POP_ADDR() < POP_ADDR() ? 1 : 0);
+            LOGICAL_OP_16(<);
             break;
         case I::LESS_OR_EQ16:
-            PUSHI(POP_ADDR() <= POP_ADDR() ? 1 : 0);
+            LOGICAL_OP_16(<=);
             break;
         case I::GREATER16:
-            PUSHI(POP_ADDR() > POP_ADDR() ? 1 : 0);
+            LOGICAL_OP_16(>);
             break;
         case I::GREATER_OR_EQ16:
-            PUSHI(POP_ADDR() >= POP_ADDR() ? 1 : 0);
+            LOGICAL_OP_16(>=);
             break;
         case I::ZERO16:
             PUSHI(POP_ADDR() == 0 ? 1 : 0);
@@ -400,28 +394,22 @@ void VM::RunProgram(bool profile)
 
 
         case I::AND16:
-            PUSHI_ADDR(POP_ADDR() & POP_ADDR());
+            BIN_OP_16(&);
             break;
         case I::OR16:
-            PUSHI_ADDR(POP_ADDR() | POP_ADDR());
+            BIN_OP_16(|);
             break;
         case I::XOR16:
-            PUSHI_ADDR(POP_ADDR() ^ POP_ADDR());
+            BIN_OP_16(^);
             break;
         case I::LSH16:
         {
-            auto tmp1 = POP_ADDR();
-            auto tmp2 = POP_ADDR();
-            signedResult = tmp2 << tmp1;
-            PUSHI_ADDR(signedResult);
+            BIN_OP_16_INV(<< );
             break;
         }
         case I::RSH16:
         {
-            auto tmp1 = POP_ADDR();
-            auto tmp2 = POP_ADDR();
-            signedResult = tmp2 >> tmp1;
-            PUSHI_ADDR(signedResult);
+            BIN_OP_16_INV(>>);
             break;
         }
         case I::FLIP16:

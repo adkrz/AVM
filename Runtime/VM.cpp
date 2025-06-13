@@ -53,6 +53,10 @@ else\
     return;\
 }
 
+#define BIN_OP(op) { memory[SP-2] = memory[SP-1] op memory[SP-2]; SP--; }
+#define BIN_OP_INV(op) { memory[SP-2] = memory[SP-2] op memory[SP-1]; SP--; }
+#define LOGICAL_OP(op) { memory[SP - 2] = memory[SP - 1] op memory[SP - 2] ? 1 : 0; SP--; }
+
 void VM::LoadProgram(word* program, int program_length, int memory_size, const char* nvr_file)
 {
     if (memory_size < program_length + 3) // plus registers
@@ -220,8 +224,7 @@ void VM::RunProgram(bool profile)
                 FP = POP_ADDR();
             break;
         case I::ADD:
-            signedResult = POP() + POP();
-            PUSHI(signedResult);
+            BIN_OP(+);
             break;
         case I::ADD16:
             signedResult = POP_ADDR() + POP_ADDR();
@@ -253,17 +256,11 @@ void VM::RunProgram(bool profile)
             PUSHI(signedResult);
             break;
         case I::SUB:
-            signedResult = POP() - POP();
-            PUSHI(signedResult);
+            BIN_OP(-);
             break;
         case I::SUB2:
-        {
-            auto tmp1 = POP();
-            auto tmp2 = POP();
-            signedResult = tmp2 - tmp1;
-            PUSHI(signedResult);
-        }
-        break;
+            BIN_OP_INV(-);
+            break;
         case I::SUB16:
             signedResult = POP_ADDR() - POP_ADDR();
             PUSHI_ADDR(signedResult);
@@ -277,18 +274,14 @@ void VM::RunProgram(bool profile)
         }
         break;
         case I::DIV:
-            arg = POP();
-            tmp = POP();
-            if (tmp == 0)
+            if (memory[SP-2] == 0)
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
-            PUSHI(arg / tmp);
+            BIN_OP(/)
             break;
         case I::DIV2:
-            arg = POP();
-            tmp = POP();
-            if (arg == 0)
+            if (memory[SP-1] == 0)
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
-            PUSHI(tmp / arg);
+            BIN_OP_INV(/)
             break;
         case I::DIV216:
         {
@@ -314,7 +307,7 @@ void VM::RunProgram(bool profile)
             PUSHI_ADDR(address % val);
             break;
         case I::MUL:
-            PUSHI((POP() * POP()));
+            BIN_OP(*);
             break;
         case I::MUL16:
             PUSHI_ADDR((POP_ADDR() * POP_ADDR()));
@@ -325,22 +318,22 @@ void VM::RunProgram(bool profile)
             break;
 
         case I::EQ:
-            PUSHI(POP() == POP() ? 1 : 0);
+            LOGICAL_OP(==);
             break;
         case I::NE:
-            PUSHI(POP() == POP() ? 0 : 1);
+            LOGICAL_OP(!=);
             break;
         case I::LESS:
-            PUSHI(POP() < POP() ? 1 : 0);
+            LOGICAL_OP(<);
             break;
         case I::LESS_OR_EQ:
-            PUSHI(POP() <= POP() ? 1 : 0);
+            LOGICAL_OP(<=);
             break;
         case I::GREATER:
-            PUSHI(POP() > POP() ? 1 : 0);
+            LOGICAL_OP(>);
             break;
         case I::GREATER_OR_EQ:
-            PUSHI(POP() >= POP() ? 1 : 0);
+            LOGICAL_OP(>=);
             break;
         case I::ZERO:
             sp_value = SP;
@@ -377,10 +370,10 @@ void VM::RunProgram(bool profile)
             break;
 
         case I::AND:
-            PUSHI(POP() & POP());
+            BIN_OP(&);
             break;
         case I::OR:
-            PUSHI(POP() | POP());
+            BIN_OP(|);
             break;
         case I::LAND:
             PUSHI((POP() != 0) && (POP() != 0) ? 1 : 0);
@@ -389,22 +382,16 @@ void VM::RunProgram(bool profile)
             PUSHI((POP() != 0) || (POP() != 0) ? 1 : 0);
             break;
         case I::XOR:
-            PUSHI(POP() ^ POP());
+            BIN_OP(^);
             break;
         case I::LSH:
         {
-            auto tmp1 = POP();
-            auto tmp2 = POP();
-            signedResult = tmp2 << tmp1;
-            PUSHI(signedResult);
+            BIN_OP_INV(<<);
             break;
         }
         case I::RSH:
         {
-            auto tmp1 = POP();
-            auto tmp2 = POP();
-            signedResult = tmp2 >> tmp1;
-            PUSHI(signedResult);
+            BIN_OP_INV(>>);
             break;
         }
         case I::FLIP:

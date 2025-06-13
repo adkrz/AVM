@@ -504,7 +504,7 @@ class MultiplyOperation(BinaryOperation):
 
     def optimize(self) -> bool:
         if isinstance(self.operand1, Number) and isinstance(self.operand2, Number):
-            new_node = self.operand1.combine(self.operand2, self.operand1.value + self.operand2.value)
+            new_node = self.operand1.combine(self.operand2, self.operand1.value * self.operand2.value)
             self.parent.replace_child(self, new_node)
             return True
         elif isinstance(self.operand1, Number) and self.operand1.is_one:

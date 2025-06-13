@@ -766,6 +766,8 @@ class VariableUsage(AbstractStatement):
 
     @property
     def type(self):
+        if self.definition.is_array and not self.array_jump:  # simple pointer
+            return Type.Addr
         return self.definition.type
 
     def last_type(self):

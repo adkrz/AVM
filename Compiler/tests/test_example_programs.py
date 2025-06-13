@@ -106,6 +106,9 @@ class TestExamples(unittest.TestCase, Helpers):
     def test_logical_chain_typed(self):
         self.compare_programs("test_logical_chain_typed.prg", "test_logical_chain_typed.asm", optimize=True)
 
+    def test_pointer_bug(self):
+        self.compare_programs("pointer_bug.prg", "pointer_bug.asm", optimize=False)
+
 
 if __name__ == '__main__':
     unittest.main()

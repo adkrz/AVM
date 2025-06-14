@@ -785,12 +785,27 @@ void VM::RunProgram(bool profile)
             break;
         case I::MACRO_X2:
         {
-            PUSH(POP() << 1);
+			OP_WITH_CONST(<< , 1);
             break;
         }
         case I::MACRO_X216:
         {
-            PUSH_ADDR(POP_ADDR() << 1);
+			OP_WITH_CONST_16(<< , 1);
+            break;
+        }
+        case I::MACRO_DIV2:
+        {
+            OP_WITH_CONST(>> , 1);
+            break;
+        }
+        case I::MACRO_X3:
+        {
+            OP_WITH_CONST(* , 3);
+            break;
+        }
+        case I::MACRO_DIV3:
+        {
+            OP_WITH_CONST(/ , 3);
             break;
         }
         case I::GET_PTR:

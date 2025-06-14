@@ -69,3 +69,18 @@ def peephole_optimize(snippet: CodeSnippet):
                 del snippet.codes[i + 1]
                 changes += 1
                 break
+            if line == "PUSH 2" and line_equal(i + 1, "DIV2"):
+                snippet.codes[i] = "MACRO_DIV2"
+                del snippet.codes[i + 1]
+                changes += 1
+                break
+            if line == "PUSH 3" and line_equal(i + 1, "DIV2"):
+                snippet.codes[i] = "MACRO_DIV3"
+                del snippet.codes[i + 1]
+                changes += 1
+                break
+            if line == "PUSH 3" and line_equal(i + 1, "MUL"):
+                snippet.codes[i] = "MACRO_MUL3"
+                del snippet.codes[i + 1]
+                changes += 1
+                break

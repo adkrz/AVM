@@ -675,13 +675,25 @@ enum I
     /// </summary>
     MACRO_DEC_LOCAL16,
     /// <summary>
-    /// Combines PUSH2, MUL
+    /// Combines PUSH 2, MUL
     /// </summary>
     MACRO_X2,
     /// <summary>
     /// Combines PUSH16 #2, MUL16
     /// </summary>
     MACRO_X216,
+    /// <summary>
+    /// Combines PUSH 3, MUL
+    /// </summary>
+    MACRO_X3,
+    /// <summary>
+    /// Combines PUSH 2, DIV2
+    /// </summary>
+    MACRO_DIV2,
+    /// <summary>
+    /// Combines PUSH 3, DIV2
+    /// </summary>
+    MACRO_DIV3,
 
     /// <summary>
     /// Get value of pointer register (updated after calls to LOAD_GLOBAL, STORE_GLOBAL etc)

@@ -61,7 +61,7 @@ else\
 #define BIN_OP_16(op) { write16(memory, SP-4, read16(memory,SP-2) op read16(memory,SP-4)); SP-=2; }
 #define BIN_OP_16_INV(op) { write16(memory, SP-4, read16(memory,SP-4) op read16(memory,SP-2)); SP-=2; }
 #define LOGICAL_OP_16(op) { memory[SP-4] = read16(memory,SP-2) op read16(memory,SP-4) ? 1 : 0 ; SP-=3; }
-#define OP_WITH_CONST_16(op, con) { write16(memory, SP-4, read16(memory,SP-2) op con); SP-=2; }
+#define OP_WITH_CONST_16(op, con) { write16(memory, SP-2, read16(memory,SP-2) op con); }
 
 void VM::LoadProgram(word* program, int program_length, int memory_size, const char* nvr_file)
 {

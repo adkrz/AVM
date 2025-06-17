@@ -44,10 +44,6 @@ private:
 
     static inline offs readoffs(word* list, int pos);
    
-   
-    inline void PUSH_ADDR(addr arg);
-    inline void PUSHI(int arg);
-    inline void PUSHI_ADDR(int arg);
     inline word POP();
     inline addr POP_ADDR();
     

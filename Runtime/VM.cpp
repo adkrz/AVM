@@ -34,9 +34,6 @@ VM::~VM()
 }
 
 #define read16(list, pos) (*reinterpret_cast<addr*>(list + pos))
-#define READ_REGISTER(r) registers[r]
-#define WRITE_REGISTER(r, value) registers[r] = value
-#define ADD_TO_REGISTER(r, value) registers[r] += value
 
 #define HANDLE_EXCEPTION(code) if (handlers.count(code))\
 {\
@@ -93,11 +90,11 @@ inline offs VM::readoffs(word* list, int pos) { return list[pos + 1] * 256 + lis
 
 #define PUSH(arg) { memory[SP++] = arg;}
 
-inline void VM::PUSH_ADDR(addr arg) { write16(memory, SP, arg); SP += ADDRESS_SIZE; }
+#define PUSH_ADDR(arg) { write16(memory, SP, arg); SP += ADDRESS_SIZE; }
 
-inline void VM::PUSHI(int arg) { PUSH((word)arg); }
+#define PUSHI(arg) { PUSH((word)arg); }
 
-inline void VM::PUSHI_ADDR(int arg) { PUSH_ADDR((addr)arg); };
+#define PUSHI_ADDR(arg) { PUSH_ADDR((addr)arg); };
 
 inline word VM::POP() { auto v = memory[SP - 1]; SP--; return v; }
 
@@ -142,7 +139,6 @@ void VM::RunProgram(bool profile)
     word arg;
     addr address;
     addr sp_value;
-    int direction;
     int offset;
     addr val;
     word tmp;
@@ -214,11 +210,17 @@ void VM::RunProgram(bool profile)
         case I::PUSH_REG:
             arg = read_next_program_byte(skip);
             if (arg == 0)
-                PUSHI_ADDR(IP);
+            {
+                PUSH_ADDR(IP);
+            }
             else if (arg == 1)
-                PUSHI_ADDR(SP);
+            {
+                PUSH_ADDR(SP);
+            }
             else if (arg == 2)
-                PUSHI_ADDR(FP);
+            {
+                PUSH_ADDR(FP);
+            }
             break;
         case I::POP_REG:
             arg = read_next_program_byte(skip);
@@ -271,12 +273,16 @@ void VM::RunProgram(bool profile)
         break;
         case I::DIV:
             if (memory[SP-2] == 0)
+            {
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
+            }
             BIN_OP(/)
             break;
         case I::DIV2:
             if (memory[SP-1] == 0)
+            {
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
+            }
             BIN_OP_INV(/)
             break;
         case I::DIV216:
@@ -284,20 +290,26 @@ void VM::RunProgram(bool profile)
             auto tmp1 = POP_ADDR();
             auto tmp2 = POP_ADDR();
             if (tmp1 == 0)
+            {
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
+            }
             PUSHI(tmp2 / tmp1);
             break;
         }
         case I::MOD:
             if (memory[SP - 2] == 0)
+            {
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
+            }
             BIN_OP(%)
             break;
         case I::MOD16:
             address = POP_ADDR();
             val = POP_ADDR();
             if (val == 0)
+            {
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
+            }
             PUSHI_ADDR(address % val);
             break;
         case I::MUL:
@@ -726,7 +738,9 @@ void VM::RunProgram(bool profile)
             {
                 auto result = STDLIB(arg);
                 if (result != InterruptCodes::NoError)
+                {
                     HANDLE_EXCEPTION(result);
+                }
             }
             break;
         case I::HALT:

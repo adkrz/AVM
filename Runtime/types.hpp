@@ -302,11 +302,6 @@ enum I
     // Ensure the subsequent load/store instructions are in the same order as in cpp
     // this makes switch a bit faster        
 
-    /// <summary>
-    /// Load data before frame pointer. E.g. offset 3 usually is return value, because we are skipping IP and FP backed up by CALL.
-    /// read: offset8bit, push: value8bit
-    /// </summary>
-    LOAD,
     // <summary>
     /// Copy data from after frame pointer to top of the stack, used to random access local variables. Offset counts from 0
     /// read: offset8bit, push: value8bit
@@ -327,11 +322,6 @@ enum I
     /// read: offset8bit, push: address16bit
     /// </summary>
     LOAD_ARG16,
-    /// <summary>
-    /// Write data before frame pointer. E.g. offset 3 usually is return value, because we are skipping IP and FP backed up by CALL.
-    /// read: offset8bit, pop: value8bit
-    /// </summary>
-    STORE,
     /// <summary>
     /// Move data from stack top to place after frame pointer, used to random access local variables. Offset counts from 0
     /// read: offset8bit, pop: value8bit

@@ -456,36 +456,40 @@ void VM::RunProgram(bool profile)
             skip = 0;
             break;
         case I::JF:
-            address = read_addr_from_program(skip);
             if (!POP())
             {
-                IP = address;
+                IP = read16(memory, IP+1);
                 skip = 0;
             }
+            else
+                skip += ADDRESS_SIZE;
             break;
         case I::JF16:
-            address = read_addr_from_program(skip);
             if (!POP_ADDR())
             {
-                IP = address;
+                IP = read16(memory, IP+1);
                 skip = 0;
             }
+            else
+                skip += ADDRESS_SIZE;
             break;
         case I::JT:
-            address = read_addr_from_program(skip);
             if (POP())
             {
-                IP = address;
+                IP = read16(memory, IP+1);;
                 skip = 0;
             }
+            else
+                skip += ADDRESS_SIZE;
             break;
         case I::JT16:
-            address = read_addr_from_program(skip);
             if (POP_ADDR())
             {
-                IP = address;
+                IP = read16(memory, IP+1);;
                 skip = 0;
             }
+            else
+                skip += ADDRESS_SIZE;
             break;
         case I::JF_REL:
             offset = read_offs_from_program(skip);

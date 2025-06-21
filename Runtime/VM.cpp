@@ -341,6 +341,31 @@ void VM::RunProgram(bool profile)
         case I::GREATER_OR_EQ:
             LOGICAL_OP(>=);
             break;
+        case I::MACRO_GE_CONST_JF:
+            arg = read_next_program_byte(skip);
+            address = read_addr_from_program(skip, 2);
+            skip = 2 + ADDRESS_SIZE;
+            sp_value = SP;
+            tmp = POP();
+            if (arg < tmp)  // inverse, because it's a JF
+            {
+                IP = address;
+                skip = 0;
+            }            
+            break;
+        case I::MACRO_G_CONST_JF:
+            arg = read_next_program_byte(skip);
+            address = read_addr_from_program(skip, 2);
+            skip = 2 + ADDRESS_SIZE;
+            sp_value = SP;
+            tmp = POP();
+            if (arg <= tmp)  // inverse, because it's a JF
+            {
+                IP = address;
+                skip = 0;
+            }            
+            break;
+
         case I::ZERO:
             sp_value = SP;
             memory[sp_value - 1] = (word)(memory[sp_value - 1] == 0 ? 1 : 0);

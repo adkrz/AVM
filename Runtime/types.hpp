@@ -684,6 +684,8 @@ enum I
     /// Combines PUSH 3, DIV2
     /// </summary>
     MACRO_DIV3,
+    MACRO_GE_CONST_JF,
+    MACRO_G_CONST_JF,
 
     /// <summary>
     /// Get value of pointer register (updated after calls to LOAD_GLOBAL, STORE_GLOBAL etc)

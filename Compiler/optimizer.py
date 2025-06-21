@@ -6,6 +6,10 @@ def peephole_optimize(snippet: CodeSnippet):
         if j < len(snippet.codes):
             return snippet.codes[j] == val
         return False
+    def line_starts_with(j, val):
+        if j < len(snippet.codes):
+            return snippet.codes[j].startswith(val)
+        return False
 
     changes = 1
     while changes > 0:
@@ -84,3 +88,21 @@ def peephole_optimize(snippet: CodeSnippet):
                 del snippet.codes[i + 1]
                 changes += 1
                 break
+            if line.startswith("PUSH ") and line_equal(i+1, "GREATER_OR_EQ") and line_starts_with(i+2, "JF "):
+                num = line[5:]
+                target = snippet.codes[i+2][3:]
+                snippet.codes[i] = f"MACRO_GE_CONST_JF {num} {target}"
+                del snippet.codes[i + 2]
+                del snippet.codes[i + 1]
+                changes += 1
+                break
+            if line.startswith("PUSH ") and line_equal(i+1, "GREATER") and line_starts_with(i+2, "JF "):
+                num = line[5:]
+                target = snippet.codes[i+2][3:]
+                snippet.codes[i] = f"MACRO_G_CONST_JF {num} {target}"
+                del snippet.codes[i + 2]
+                del snippet.codes[i + 1]
+                changes += 1
+                break
+
+

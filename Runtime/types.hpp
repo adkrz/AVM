@@ -686,6 +686,7 @@ enum I
     MACRO_DIV3,
     MACRO_GE_CONST_JF,
     MACRO_G_CONST_JF,
+    MACRO_SET_LOCAL,
 
     /// <summary>
     /// Get value of pointer register (updated after calls to LOAD_GLOBAL, STORE_GLOBAL etc)

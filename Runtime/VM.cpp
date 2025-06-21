@@ -365,6 +365,12 @@ void VM::RunProgram(bool profile)
                 skip = 0;
             }            
             break;
+        case I::MACRO_SET_LOCAL:
+            arg = read_next_program_byte(skip);
+            tmp = memory[IP+2];
+            skip = 3;
+            memory[FP + arg] = tmp;
+            break;
 
         case I::ZERO:
             sp_value = SP;

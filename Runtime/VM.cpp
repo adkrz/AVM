@@ -143,6 +143,9 @@ void VM::RunProgram(bool profile)
     addr val;
     word tmp;
     int signedResult;
+#ifdef _MSC_VER
+	int direction; // for MSVC
+#endif
 
 #ifdef WITH_PROFILER
 
@@ -610,13 +613,43 @@ void VM::RunProgram(bool profile)
             POINTER = address;;
             write16(memory, address, val);
             break;
+#ifdef _MSC_VER
+		// merged cases optimize better for MSVC
+        case I::LOAD_LOCAL:
+        case I::LOAD_ARG:
+        case I::LOAD_LOCAL16:
+        case I::LOAD_ARG16:
+            arg = read_next_program_byte(skip);
+            direction = (instr == I::LOAD_ARG || instr == I::LOAD_ARG16) ? -1 : 1;
+            offset = (instr == I::LOAD_ARG || instr == I::LOAD_ARG16) ? 2 * ADDRESS_SIZE : 0;
+            if (instr == I::LOAD_LOCAL16 || instr == I::LOAD_ARG16)
+            {
+                PUSH_ADDR(read16(memory, FP + (arg + offset) * direction));
+            }
+            else
+                PUSH(memory[FP + (arg + offset) * direction]);
+            break;
+        case I::STORE_LOCAL:
+        case I::STORE_ARG:
+        case I::STORE_LOCAL16:
+        case I::STORE_ARG16:
+            arg = read_next_program_byte(skip);
+            direction = (instr == I::STORE_ARG || instr == I::STORE_ARG16) ? -1 : 1;
+            offset = (instr == I::STORE_ARG || instr == I::STORE_ARG16) ? 2 * ADDRESS_SIZE : 0;
+            if (instr == I::STORE_LOCAL16 || instr == I::STORE_ARG16)
+                write16(memory, FP + (arg + offset) * direction, POP_ADDR());
+            else
+                memory[FP + (arg + offset) * direction] = POP();
+            break;
+#else
+			// Separate cases for better performance on GCC/Clang
         case I::LOAD_LOCAL:
             arg = read_next_program_byte(skip);
             PUSH(memory[FP + arg]);
             break;
         case I::LOAD_ARG:
             arg = read_next_program_byte(skip);
-            PUSH(memory[FP - arg - 2*ADDRESS_SIZE]);
+            PUSH(memory[FP - arg - 2 * ADDRESS_SIZE]);
             break;
         case I::LOAD_LOCAL16:
             arg = read_next_program_byte(skip);
@@ -624,7 +657,7 @@ void VM::RunProgram(bool profile)
             break;
         case I::LOAD_ARG16:
             arg = read_next_program_byte(skip);
-            PUSH_ADDR(read16(memory, FP - arg - 2*ADDRESS_SIZE));
+            PUSH_ADDR(read16(memory, FP - arg - 2 * ADDRESS_SIZE));
             break;
         case I::STORE_LOCAL:
             arg = read_next_program_byte(skip);
@@ -632,7 +665,7 @@ void VM::RunProgram(bool profile)
             break;
         case I::STORE_ARG:
             arg = read_next_program_byte(skip);
-            memory[FP - arg - 2*ADDRESS_SIZE] = POP();
+            memory[FP - arg - 2 * ADDRESS_SIZE] = POP();
             break;
         case I::STORE_LOCAL16:
             arg = read_next_program_byte(skip);
@@ -640,8 +673,9 @@ void VM::RunProgram(bool profile)
             break;
         case I::STORE_ARG16:
             arg = read_next_program_byte(skip);
-            write16(memory, FP - arg - 2*ADDRESS_SIZE, POP_ADDR());
+            write16(memory, FP - arg - 2 * ADDRESS_SIZE, POP_ADDR());
             break;
+#endif
         case I::LOAD_NVRAM:
             address = POP_ADDR();
             if (!nvram.is_open())

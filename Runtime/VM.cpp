@@ -149,7 +149,9 @@ void VM::RunProgram(bool profile)
 
 #ifdef WITH_PROFILER
 
-    std::map<I, long> counters;
+    long long counters[256];
+    for (int i = 0; i < 256; i++)
+		counters[i] = 0;
     addr max_sp = 0;
 #endif
 
@@ -161,10 +163,7 @@ void VM::RunProgram(bool profile)
         {
             if (SP > max_sp)
                 max_sp = SP;
-            if (counters.count(instr))
-                counters[instr]++;
-            else
-                counters[instr] = 1;
+			counters[instr]++;
         }
 #endif
 
@@ -901,7 +900,13 @@ void VM::RunProgram(bool profile)
     if (profile)
     {
         // Sort counters by value (descending)
-        std::vector<std::pair<I, long>> sortedCounters(counters.begin(), counters.end());
+        std::map<I, long long> counterMaps;
+        for (int i = 0; i < 256; i++)
+        {
+			if (counters[i] == 0) continue;
+            counterMaps[(I)i] = counters[i];
+		}
+        std::vector<std::pair<I, long long>> sortedCounters(counterMaps.begin(), counterMaps.end());
         std::sort(sortedCounters.begin(), sortedCounters.end(),
             [](const auto& a, const auto& b) { return a.second > b.second; });
 

@@ -7,11 +7,17 @@ from symbols import Type
 class CodeSnippet:
     def __init__(self, line_number: int = 0, code: str = "", type_: Optional[Type] = None):
         self.type = type_
+        self.ln = line_number
         self.codes: List[str] = [code] if code else []
-        self.line_numbers = [line_number]
+        self.line_numbers = [self.ln] if code else []
 
     def add_line(self, line):
         self.codes.append(line)
+        self.line_numbers.append(self.ln)
+
+    def remove_line(self, no):
+        del self.codes[no]
+        del self.line_numbers[no]
 
     def print(self):
         for c in self.codes:
@@ -20,14 +26,14 @@ class CodeSnippet:
     @staticmethod
     def join(snippets: Iterable[Optional["CodeSnippet"]], type_: Optional[Type] = None) -> "CodeSnippet":
         ret = CodeSnippet(type_=type_)
-        lines = []
         for sn in snippets:
             if sn:
                 for code in sn.codes:
                     ret.codes.append(code)
                 for line in sn.line_numbers:
-                    lines.append(line)
-        ret.line_numbers = list(sorted(set(lines)))
+                    ret.line_numbers.append(line)
+        if ret.line_numbers:
+            ret.ln = ret.line_numbers[0]
         return ret
 
     def cast(self, expected_type: Optional[Type]):
@@ -35,8 +41,10 @@ class CodeSnippet:
             return
         if self.type == Type.Byte and expected_type == Type.Addr:
             self.add_line("EXTEND")
+            self.line_numbers.append(self.ln)
         elif self.type == Type.Addr and expected_type == Type.Byte:
             self.add_line("DOWNCAST")
+            self.line_numbers.append(self.ln)
 
 
 def generate_prolog(line_no, symbol_table: SymbolTable, function_name: str) -> CodeSnippet:
@@ -159,3 +167,18 @@ def _gen_address_of_variable(line_no, symbol_table: SymbolTable, scope, var_name
             ret.add_line("ADD16")
     ret.type = Type.Addr
     return ret
+
+
+def write_code_to_file(code: CodeSnippet, source_text: str, filename: str, write_debug_info=False):
+    with open(filename, "wt") as asm:
+        if not write_debug_info:
+            asm.writelines("\n".join(code.codes))
+        else:
+            last_line = -1
+            code_lines = source_text.split("\n")
+            for line, c in zip(code.line_numbers, code.codes):
+                if line != last_line:
+                    asm.write(f"; LINE {line}: {code_lines[line - 1].strip()}\n")
+                    last_line = line
+                asm.write(c)
+                asm.write("\n")

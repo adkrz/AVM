@@ -1,19 +1,19 @@
 import os
 
+from codegen_helpers import write_code_to_file
 from recursive_descent_parser import Parser
 
 with open("input.prg", "rt") as program:
-    code = program.read()
+    text = program.read()
 
-parser = Parser(code)
+parser = Parser(text)
 tree = parser.do_parse()
 opt = True
 while opt:
     opt = tree.optimize()
 code = tree.gen_code(True)
 
-with open("output.asm", "wt") as asm:
-    asm.writelines("\n".join(code.codes))
+write_code_to_file(code, text, "output.asm", write_debug_info=False)
 
 runtime = r"..\x64\Release\Runtime.exe"
 os.system(f"{runtime} output.asm -r -c")

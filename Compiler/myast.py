@@ -869,7 +869,6 @@ class VariableUsage(AbstractStatement):
 
         if not self.array_jump:
             code = gen_load_store_instruction(self.line_no, self.symbol_table, self.scope, self.definition.name, self.is_load)
-            code.line_numbers = [self.line_no]
             if self.definition.is_array:  # read address of pointer
                 code.type = Type.Addr
             else:
@@ -877,7 +876,6 @@ class VariableUsage(AbstractStatement):
             return code
         # else: calculate address
         c1 = gen_load_store_instruction(self.line_no, self.symbol_table, self.scope, self.definition.name, True)
-        c1.line_numbers = [self.line_no]
         if self.array_jump:
             element_size = 1 if self.definition.type == Type.Byte else 2
 

@@ -10,18 +10,13 @@ PUSHN 10
 PUSH 0
 SYSCALL Std.ShowConsoleCursor
 SYSCALL Std.ConsoleClear
-PUSH 1
-STORE_LOCAL 0 ; direction
+MACRO_SET_LOCAL 0 1
 PUSH16 #5
 STORE_LOCAL16 1 ; length
-PUSH 24
-STORE_LOCAL 3 ; head_x
-PUSH 10
-STORE_LOCAL 4 ; head_y
-PUSH 0
-STORE_LOCAL 5 ; fruit_x
-PUSH 0
-STORE_LOCAL 6 ; fruit_y
+MACRO_SET_LOCAL 3 24
+MACRO_SET_LOCAL 4 10
+MACRO_SET_LOCAL 5 0
+MACRO_SET_LOCAL 6 0
 CALL @function_clear_memory
 CALL @function_draw_borders
 CALL @function_write_initial_body
@@ -93,8 +88,7 @@ AND
 :cond2_expr_end
 JF @if22_endif
 MACRO_INC_LOCAL16 1 ;length
-PUSH 0
-STORE_LOCAL 5 ; fruit_x
+MACRO_SET_LOCAL 5 0
 PUSH 55
 PUSH 11
 SYSCALL Std.SetConsoleCursorPosition
@@ -108,8 +102,7 @@ INC16
 LOAD_LOCAL16 7 ; mem_ptr
 STORE_GLOBAL16
 LOAD_LOCAL 5 ; fruit_x
-ZERO
-JF @if23_endif
+MACRO_CONDITIONAL_JF 6 @if23_endif
 LOAD_LOCAL 5 ; fruit_x
 LOAD_LOCAL 6 ; fruit_y
 CALL @function_random_fruit_position
@@ -177,8 +170,7 @@ PUSHN 1
 PUSH 0
 PUSH 16
 SYSCALL Std.SetConsoleColors
-PUSH 50
-STORE_LOCAL 0 ; w
+MACRO_SET_LOCAL 0 50
 :while2_begin
 LOAD_LOCAL 0 ; w
 PUSH 0
@@ -192,14 +184,12 @@ PUSH 35
 SYSCALL Std.PrintCharPop
 MACRO_DEC_LOCAL 0 ;w
 LOAD_LOCAL 0 ; w
-ZERO
-JF @if1_endif
+MACRO_CONDITIONAL_JF 6 @if1_endif
 JMP @while2_endwhile
 :if1_endif
 JMP @while2_begin
 :while2_endwhile
-PUSH 22
-STORE_LOCAL 0 ; w
+MACRO_SET_LOCAL 0 22
 :while3_begin
 PUSH 1
 LOAD_LOCAL 0 ; w
@@ -213,8 +203,7 @@ PUSH 35
 SYSCALL Std.PrintCharPop
 MACRO_DEC_LOCAL 0 ;w
 LOAD_LOCAL 0 ; w
-ZERO
-JF @if2_endif
+MACRO_CONDITIONAL_JF 6 @if2_endif
 JMP @while3_endwhile
 :if2_endif
 JMP @while3_begin
@@ -227,17 +216,13 @@ RET
 ; Byte L
 ; Addr loc[]
 PUSHN 5
-PUSH 20
-STORE_LOCAL 0 ; X
-PUSH 10
-STORE_LOCAL 1 ; Y
-PUSH 0
-STORE_LOCAL 2 ; L
+MACRO_SET_LOCAL 0 20
+MACRO_SET_LOCAL 1 10
+MACRO_SET_LOCAL 2 0
 :while4_begin
 LOAD_LOCAL 2 ; L
 PUSH 5
-GREATER
-JF @while4_endwhile
+MACRO_CONDITIONAL_JF 4 @while4_endwhile
 LOAD_LOCAL 0 ; X
 LOAD_LOCAL 1 ; Y
 LOAD_LOCAL16 3 ; loc
@@ -261,11 +246,9 @@ RET
 ; Addr loc[]
 ; Addr value
 PUSHN 6
-PUSH 49
-STORE_LOCAL 0 ; X
+MACRO_SET_LOCAL 0 49
 :while5_begin
-PUSH 21
-STORE_LOCAL 1 ; Y
+MACRO_SET_LOCAL 1 21
 :while6_begin
 LOAD_LOCAL 0 ; X
 LOAD_LOCAL 1 ; Y
@@ -299,8 +282,7 @@ SYSCALL Std.PrintCharPop
 :if3_endif
 MACRO_DEC_LOCAL 1 ;Y
 LOAD_LOCAL 1 ; Y
-ZERO
-JF @if5_endif
+MACRO_CONDITIONAL_JF 6 @if5_endif
 JMP @while6_endwhile
 :if5_endif
 JMP @while6_begin
@@ -308,8 +290,7 @@ JMP @while6_begin
 MACRO_DEC_LOCAL 0 ;X
 LOAD_LOCAL 0 ; X
 PUSH 1
-EQ
-JF @if6_endif
+MACRO_CONDITIONAL_JF 0 @if6_endif
 JMP @while5_endwhile
 :if6_endif
 JMP @while5_begin
@@ -344,32 +325,28 @@ RET
 ;(Byte key, Byte direction&)
 LOAD_ARG 2 ; key
 PUSH 119
-EQ
-JF @if7_else
+MACRO_CONDITIONAL_JF 0 @if7_else
 PUSH 3
 STORE_ARG 1 ; direction
 JMP @if7_endif
 :if7_else
 LOAD_ARG 2 ; key
 PUSH 115
-EQ
-JF @if8_else
+MACRO_CONDITIONAL_JF 0 @if8_else
 PUSH 4
 STORE_ARG 1 ; direction
 JMP @if8_endif
 :if8_else
 LOAD_ARG 2 ; key
 PUSH 97
-EQ
-JF @if9_else
+MACRO_CONDITIONAL_JF 0 @if9_else
 PUSH 2
 STORE_ARG 1 ; direction
 JMP @if9_endif
 :if9_else
 LOAD_ARG 2 ; key
 PUSH 100
-EQ
-JF @if10_endif
+MACRO_CONDITIONAL_JF 0 @if10_endif
 PUSH 1
 STORE_ARG 1 ; direction
 :if10_endif
@@ -381,8 +358,7 @@ RET
 ;(Byte headX&, Byte headY&, Byte direction)
 LOAD_ARG 1 ; direction
 PUSH 3
-EQ
-JF @if11_else
+MACRO_CONDITIONAL_JF 0 @if11_else
 LOAD_ARG 2 ; headY
 DEC
 STORE_ARG 2 ; headY
@@ -390,8 +366,7 @@ JMP @if11_endif
 :if11_else
 LOAD_ARG 1 ; direction
 PUSH 4
-EQ
-JF @if12_else
+MACRO_CONDITIONAL_JF 0 @if12_else
 LOAD_ARG 2 ; headY
 INC
 STORE_ARG 2 ; headY
@@ -399,8 +374,7 @@ JMP @if12_endif
 :if12_else
 LOAD_ARG 1 ; direction
 PUSH 2
-EQ
-JF @if13_else
+MACRO_CONDITIONAL_JF 0 @if13_else
 LOAD_ARG 3 ; headX
 DEC
 STORE_ARG 3 ; headX
@@ -408,8 +382,7 @@ JMP @if13_endif
 :if13_else
 LOAD_ARG 1 ; direction
 PUSH 1
-EQ
-JF @if14_endif
+MACRO_CONDITIONAL_JF 0 @if14_endif
 LOAD_ARG 3 ; headX
 INC
 STORE_ARG 3 ; headX
@@ -451,11 +424,9 @@ RET
 ; Byte X
 ; Addr value
 PUSHN 6
-PUSH 21
-STORE_LOCAL 0 ; Y
+MACRO_SET_LOCAL 0 21
 :while8_begin
-PUSH 49
-STORE_LOCAL 3 ; X
+MACRO_SET_LOCAL 3 49
 LOAD_LOCAL 3 ; X
 LOAD_LOCAL 0 ; Y
 LOAD_LOCAL16 1 ; loc
@@ -494,16 +465,14 @@ SUB16C #2
 STORE_LOCAL16 1 ; loc
 LOAD_LOCAL 3 ; X
 PUSH 1
-EQ
-JF @if17_endif
+MACRO_CONDITIONAL_JF 0 @if17_endif
 JMP @while9_endwhile
 :if17_endif
 JMP @while9_begin
 :while9_endwhile
 MACRO_DEC_LOCAL 0 ;Y
 LOAD_LOCAL 0 ; Y
-ZERO
-JF @if18_endif
+MACRO_CONDITIONAL_JF 6 @if18_endif
 JMP @while8_endwhile
 :if18_endif
 JMP @while8_begin

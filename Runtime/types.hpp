@@ -685,6 +685,7 @@ enum I
     /// </summary>
     MACRO_DIV3,
 
+
     /// <summary>
     /// Get value of pointer register (updated after calls to LOAD_GLOBAL, STORE_GLOBAL etc)
     /// push: address16bit
@@ -706,6 +707,19 @@ enum I
     /// Reads the 16-bit value from the stack and stores it at address from pointer register.
     /// </summary>
     STORE_GLOBAL_PTR16,
+    
+    /// <summary>
+	/// Condidional instructions often go together with JF.
+	/// read: val8bit, address16bit
+    /// pop 1 or 2 8-bit values
+	/// First value is condition, second is address to jump to if condition is false.
+	/// Conditions: 0: EQ, 1: NE, 2: LESS, 3: LESS_OR_EQ, 4: GREATER, 5: GREATER_OR_EQ, 6: ZERO, 7: NZERO
+    /// </summary>
+    MACRO_CONDITIONAL_JF,
+    /// <summary>
+    /// Combines POP x and STORE_LOCAL 
+    /// </summary>
+    MACRO_SET_LOCAL,
 };
 
 enum InterruptCodes

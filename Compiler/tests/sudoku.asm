@@ -124,20 +124,16 @@ PUSH16 #0
 PUSH16 #0
 PUSH16 #0
 PUSH16 #0
-PUSH 0
-STORE_LOCAL 8 ; r
+MACRO_SET_LOCAL 8 0
 :while4_begin
 LOAD_LOCAL 8 ; r
 PUSH 9
-GREATER
-JF @while4_endwhile
-PUSH 0
-STORE_LOCAL 9 ; c
+MACRO_CONDITIONAL_JF 4 @while4_endwhile
+MACRO_SET_LOCAL 9 0
 :while5_begin
 LOAD_LOCAL 9 ; c
 PUSH 9
-GREATER
-JF @while5_endwhile
+MACRO_CONDITIONAL_JF 4 @while5_endwhile
 LOAD_LOCAL 8 ; r
 MULC 9
 LOAD_LOCAL 9 ; c
@@ -147,8 +143,7 @@ LOAD_LOCAL16 0 ; mat
 LOAD_LOCAL 10 ; index
 MACRO_ADD8_TO_16
 LOAD_GLOBAL
-NZERO
-JF @if7_endif
+MACRO_CONDITIONAL_JF 7 @if7_endif
 PUSH16 #1
 LOAD_LOCAL16 0 ; mat
 LOAD_LOCAL 10 ; index
@@ -207,20 +202,16 @@ HALT
 ; Byte c
 ; Byte index
 PUSHN 3
-PUSH 0
-STORE_LOCAL 0 ; r
+MACRO_SET_LOCAL 0 0
 :while1_begin
 LOAD_LOCAL 0 ; r
 PUSH 9
-GREATER
-JF @while1_endwhile
-PUSH 0
-STORE_LOCAL 1 ; c
+MACRO_CONDITIONAL_JF 4 @while1_endwhile
+MACRO_SET_LOCAL 1 0
 :while2_begin
 LOAD_LOCAL 1 ; c
 PUSH 9
-GREATER
-JF @while2_endwhile
+MACRO_CONDITIONAL_JF 4 @while2_endwhile
 LOAD_LOCAL 0 ; r
 MULC 9
 LOAD_LOCAL 1 ; c
@@ -267,8 +258,7 @@ RET
 :if1_endif
 LOAD_ARG 7 ; j
 PUSH 9
-EQ
-JF @if2_endif
+MACRO_CONDITIONAL_JF 0 @if2_endif
 LOAD_ARG 8 ; i
 INC
 STORE_ARG 8 ; i
@@ -284,8 +274,7 @@ LOAD_ARG16 10 ; mat
 LOAD_LOCAL 1 ; index
 MACRO_ADD8_TO_16
 LOAD_GLOBAL
-NZERO
-JF @if3_endif
+MACRO_CONDITIONAL_JF 7 @if3_endif
 PUSH 0 ; rv
 LOAD_ARG16 10 ; mat
 LOAD_ARG 8 ; i
@@ -299,13 +288,11 @@ POPN 10
 STORE_ARG 11 ; @ret
 RET
 :if3_endif
-PUSH 1
-STORE_LOCAL 2 ; num
+MACRO_SET_LOCAL 2 1
 :while3_begin
 LOAD_LOCAL 2 ; num
 PUSH 9
-GREATER_OR_EQ
-JF @while3_endwhile
+MACRO_CONDITIONAL_JF 5 @while3_endwhile
 LOAD_ARG 8 ; i
 MACRO_DIV3
 MULC 3
@@ -340,12 +327,10 @@ AND16
 OR16
 :cond2_expr_end
 JF16 @if4_else
-PUSH 0
-STORE_LOCAL 0 ; ok
+MACRO_SET_LOCAL 0 0
 JMP @if4_endif
 :if4_else
-PUSH 1
-STORE_LOCAL 0 ; ok
+MACRO_SET_LOCAL 0 1
 :if4_endif
 LOAD_LOCAL 0 ; ok
 JF @if5_endif

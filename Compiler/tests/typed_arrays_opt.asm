@@ -26,20 +26,17 @@ PUSH 44
 LOAD_LOCAL16 0 ; arr
 ADD16C #3
 STORE_GLOBAL
-PUSH 4
-STORE_LOCAL 2 ; X
+MACRO_SET_LOCAL 2 4
 PUSH 55
 LOAD_LOCAL16 0 ; arr
 LOAD_LOCAL 2 ; X
 MACRO_ADD8_TO_16
 STORE_GLOBAL
-PUSH 0
-STORE_LOCAL 3 ; counter
+MACRO_SET_LOCAL 3 0
 :while3_begin
 LOAD_LOCAL 3 ; counter
 PUSH 4
-GREATER_OR_EQ
-JF @while3_endwhile
+MACRO_CONDITIONAL_JF 5 @while3_endwhile
 LOAD_LOCAL16 0 ; arr
 LOAD_LOCAL 3 ; counter
 MACRO_ADD8_TO_16
@@ -52,8 +49,7 @@ JMP @while3_begin
 :while3_endwhile
 PUSH16 @string_2
 SYSCALL Std.PrintString
-PUSH 0
-STORE_LOCAL 4 ; sum8
+MACRO_SET_LOCAL 4 0
 LOAD_LOCAL16 0 ; arr
 LOAD_LOCAL 4 ; sum8
 CALL @function_sum8bit
@@ -88,13 +84,11 @@ PUSH16 #55
 LOAD_LOCAL16 5 ; arr2
 ADD16C #8
 STORE_GLOBAL16
-PUSH 0
-STORE_LOCAL 3 ; counter
+MACRO_SET_LOCAL 3 0
 :while4_begin
 LOAD_LOCAL 3 ; counter
 PUSH 4
-GREATER_OR_EQ
-JF @while4_endwhile
+MACRO_CONDITIONAL_JF 5 @while4_endwhile
 LOAD_LOCAL16 5 ; arr2
 LOAD_LOCAL 3 ; counter
 MACRO_POP_EXT_X2_ADD16_LG16
@@ -122,15 +116,13 @@ HALT
 ;(Byte data[], Byte sum&)
 ; Byte counter
 PUSHN 1
-PUSH 0
-STORE_LOCAL 0 ; counter
+MACRO_SET_LOCAL 0 0
 PUSH 0
 STORE_ARG 1 ; sum
 :while1_begin
 LOAD_LOCAL 0 ; counter
 PUSH 4
-GREATER_OR_EQ
-JF @while1_endwhile
+MACRO_CONDITIONAL_JF 5 @while1_endwhile
 LOAD_ARG 1 ; sum
 LOAD_ARG16 3 ; data
 LOAD_LOCAL 0 ; counter
@@ -146,15 +138,13 @@ RET
 ;(Addr data[], Addr sum&)
 ; Byte counter
 PUSHN 1
-PUSH 0
-STORE_LOCAL 0 ; counter
+MACRO_SET_LOCAL 0 0
 PUSH16 #0
 STORE_ARG16 2 ; sum
 :while2_begin
 LOAD_LOCAL 0 ; counter
 PUSH 4
-GREATER_OR_EQ
-JF @while2_endwhile
+MACRO_CONDITIONAL_JF 5 @while2_endwhile
 LOAD_ARG16 2 ; sum
 LOAD_ARG16 4 ; data
 LOAD_LOCAL 0 ; counter

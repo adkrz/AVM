@@ -886,6 +886,54 @@ void VM::RunProgram(bool profile)
             val = POP_ADDR();
             write16(memory, address, val);
             break;
+        case I::MACRO_CONDITIONAL_JF:
+            arg = read_next_program_byte(skip);
+            address = read_addr_from_program(skip, 2);
+            switch (arg)
+            {
+            case 0: // EQ
+				signedResult = POP() == POP();
+                break;
+            case 1: // NE
+                signedResult = POP() != POP();
+                break;
+            case 2: // LESS
+                signedResult = POP() < POP();
+                break;
+			case 3: // LESS_OR_EQ
+                signedResult = POP() <= POP();
+                break;
+			case 4: // GREATER
+                signedResult = POP() > POP();
+                break;
+			case 5: // GREATER_OR_EQ
+                signedResult = POP() >= POP();
+                break;
+            case 6: // ZERO
+                signedResult = POP() == 0;
+                break;
+            case 7: // NZERO
+                signedResult = POP() != 0;
+                break;
+            default:
+				std::cerr << "Unknown conditional argument: " << std::to_string(arg) << std::endl;
+				throw std::runtime_error("Unknown conditional argument: " + std::to_string(arg));
+            }
+
+            if (!signedResult)
+            {
+                IP = address;
+                skip = 0;
+            }
+            break;
+
+        case I::MACRO_SET_LOCAL:
+            arg = read_next_program_byte(skip);
+            tmp = memory[IP + 2];
+            skip = 3;
+            memory[FP + arg] = tmp;
+            break;
+
         default:
             std::cerr << "Instruction not implemented: " << std::to_string(instr) << std::endl;
             throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));

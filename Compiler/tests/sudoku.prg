@@ -30,6 +30,21 @@ addr box[]  = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 const addr one = 1;
 const byte size = 9;
 
+// Precompute LUT of matrix positions to 3x3 boxes index -
+// to avoid expensive computation with division: box_index = (r / 3) * 3 + c / 3;
+
+byte box_indexes[] = {
+0, 0, 0, 1, 1, 1, 2, 2, 2,
+0, 0, 0, 1, 1, 1, 2, 2, 2,
+0, 0, 0, 1, 1, 1, 2, 2, 2,
+3, 3, 3, 4, 4, 4, 5, 5, 5,
+3, 3, 3, 4, 4, 4, 5, 5, 5,
+3, 3, 3, 4, 4, 4, 5, 5, 5,
+6, 6, 6, 7, 7, 7, 8, 8, 8,
+6, 6, 6, 7, 7, 7, 8, 8, 8,
+6, 6, 6, 7, 7, 7, 8, 8, 8
+};
+
 function print_sudoku(byte matrix[]) begin
     byte r = 0;
     while r < size do begin
@@ -45,7 +60,7 @@ function print_sudoku(byte matrix[]) begin
     end
 end
 
-function sudokuSolverRec(byte mat[], byte i, byte j, addr row[], addr col[], addr box[]) -> byte
+function sudokuSolverRec(byte mat[], byte i, byte j, addr row[], addr col[], addr box[], byte box_indexes[]) -> byte
 begin
     // base case: Reached nth column of last row
     if i == size-1 && j == size then begin
@@ -63,7 +78,7 @@ begin
     // If cell is already occupied then move forward
     byte index = i * size + j;
     if mat[index] != 0 then begin
-        return call sudokuSolverRec(mat, i, j + 1, row, col, box);
+        return call sudokuSolverRec(mat, i, j + 1, row, col, box, box_indexes);
     end
 
     byte num = 1;
@@ -71,7 +86,7 @@ begin
     while num <= size do begin
 
         // Check if solution with that number is valid:
-        byte box_index = i / 3 * 3 + j / 3; // ensure type - DIV16 not implemented
+        byte box_index = box_indexes[index];
         addr val = one << num;
         if (row[i] & val) || (col[j] & val) || (box[box_index] & val) then ok = 0;
         else ok = 1;
@@ -84,7 +99,7 @@ begin
             col[j] = col[j] | val;
             box[box_index] = box[box_index] | val;
 
-            ok = call sudokuSolverRec(mat, i, j+1, row, col, box);
+            ok = call sudokuSolverRec(mat, i, j+1, row, col, box, box_indexes);
             if ok then return 1;
 
             //Unmask the number num in the corresponding row, column and box masks
@@ -110,7 +125,7 @@ while r < size do begin
             addr val = one << mat[index];
             row[r] = row[r] | val;
             col[c] = col[c] | val;
-            byte box_index = (r / 3) * 3 + c / 3;
+            byte box_index = box_indexes[index];
             box[box_index] = box[box_index] | val;
         end
         c = c + 1;
@@ -118,6 +133,6 @@ while r < size do begin
     r = r + 1;
 end
 
-call sudokuSolverRec(mat, 0, 0, row, col, box);
+call sudokuSolverRec(mat, 0, 0, row, col, box, box_indexes);
 
 call print_sudoku(mat);

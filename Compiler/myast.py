@@ -751,10 +751,10 @@ class Assign(AbstractStatement):
                         self.var = StoreAtPointer(self.line_no, self.var.definition.type)
                         self.var.parent = self
                         return True
-            return False
+            return super().optimize()
 
         else:
-            return self.value.optimize()
+            return super().optimize()
 
 
 class IncLocal(AbstractStatement):

@@ -10,13 +10,12 @@ PUSHN 10
 PUSH 0
 SYSCALL Std.ShowConsoleCursor
 SYSCALL Std.ConsoleClear
-MACRO_SET_LOCAL 0 1
-PUSH16 #5
-STORE_LOCAL16 1 ; length
-MACRO_SET_LOCAL 3 24
-MACRO_SET_LOCAL 4 10
-MACRO_SET_LOCAL 5 0
-MACRO_SET_LOCAL 6 0
+MACRO_SET_LOCAL 0 1 ;direction
+MACRO_SET_LOCAL16 1 #5 ;length
+MACRO_SET_LOCAL 3 24 ;head_x
+MACRO_SET_LOCAL 4 10 ;head_y
+MACRO_SET_LOCAL 5 0 ;fruit_x
+MACRO_SET_LOCAL 6 0 ;fruit_y
 CALL @function_clear_memory
 CALL @function_draw_borders
 CALL @function_write_initial_body
@@ -88,7 +87,7 @@ AND
 :cond2_expr_end
 JF @if22_endif
 MACRO_INC_LOCAL16 1 ;length
-MACRO_SET_LOCAL 5 0
+MACRO_SET_LOCAL 5 0 ;fruit_x
 PUSH 55
 PUSH 11
 SYSCALL Std.SetConsoleCursorPosition
@@ -170,7 +169,7 @@ PUSHN 1
 PUSH 0
 PUSH 16
 SYSCALL Std.SetConsoleColors
-MACRO_SET_LOCAL 0 50
+MACRO_SET_LOCAL 0 50 ;w
 :while2_begin
 LOAD_LOCAL 0 ; w
 PUSH 0
@@ -189,7 +188,7 @@ JMP @while2_endwhile
 :if1_endif
 JMP @while2_begin
 :while2_endwhile
-MACRO_SET_LOCAL 0 22
+MACRO_SET_LOCAL 0 22 ;w
 :while3_begin
 PUSH 1
 LOAD_LOCAL 0 ; w
@@ -216,9 +215,9 @@ RET
 ; Byte L
 ; Addr loc[]
 PUSHN 5
-MACRO_SET_LOCAL 0 20
-MACRO_SET_LOCAL 1 10
-MACRO_SET_LOCAL 2 0
+MACRO_SET_LOCAL 0 20 ;X
+MACRO_SET_LOCAL 1 10 ;Y
+MACRO_SET_LOCAL 2 0 ;L
 :while4_begin
 LOAD_LOCAL 2 ; L
 PUSH 5
@@ -246,9 +245,9 @@ RET
 ; Addr loc[]
 ; Addr value
 PUSHN 6
-MACRO_SET_LOCAL 0 49
+MACRO_SET_LOCAL 0 49 ;X
 :while5_begin
-MACRO_SET_LOCAL 1 21
+MACRO_SET_LOCAL 1 21 ;Y
 :while6_begin
 LOAD_LOCAL 0 ; X
 LOAD_LOCAL 1 ; Y
@@ -424,9 +423,9 @@ RET
 ; Byte X
 ; Addr value
 PUSHN 6
-MACRO_SET_LOCAL 0 21
+MACRO_SET_LOCAL 0 21 ;Y
 :while8_begin
-MACRO_SET_LOCAL 3 49
+MACRO_SET_LOCAL 3 49 ;X
 LOAD_LOCAL 3 ; X
 LOAD_LOCAL 0 ; Y
 LOAD_LOCAL16 1 ; loc

@@ -100,14 +100,3 @@ def peephole_optimize(snippet: CodeSnippet):
                     snippet.remove_line(i + 1)
                     changes += 1
                     break
-
-            if line.startswith("PUSH ") and line_starts_with(i + 1, "STORE_LOCAL "):
-                num = line[5:]
-                target = snippet.codes[i + 1][12:]
-                if ";" in target:
-                    target = target[:target.index(";")]
-                    target = target.strip()
-                snippet.codes[i] = f"MACRO_SET_LOCAL {target} {num}"
-                snippet.remove_line(i + 1)
-                changes += 1
-                break

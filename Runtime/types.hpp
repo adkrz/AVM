@@ -717,9 +717,13 @@ enum I
     /// </summary>
     MACRO_CONDITIONAL_JF,
     /// <summary>
-    /// Combines POP x and STORE_LOCAL 
+    /// Combines PUSH x and STORE_LOCAL 
     /// </summary>
     MACRO_SET_LOCAL,
+    /// <summary>
+    /// Combines PUSH16 #x and STORE_LOCAL16
+    /// </summary>
+    MACRO_SET_LOCAL16,
 };
 
 enum InterruptCodes

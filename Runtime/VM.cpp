@@ -934,6 +934,13 @@ void VM::RunProgram(bool profile)
             memory[FP + arg] = tmp;
             break;
 
+        case I::MACRO_SET_LOCAL16:
+            arg = read_next_program_byte(skip);
+            address = read16(memory, IP + 2);
+            skip = 4;
+			write16(memory, FP + arg, address);
+            break;
+
         default:
             std::cerr << "Instruction not implemented: " << std::to_string(instr) << std::endl;
             throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));

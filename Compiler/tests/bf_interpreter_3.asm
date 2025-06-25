@@ -30,8 +30,7 @@ JMP @while1_begin
 :while1_endwhile
 LOAD_LOCAL16 2 ; memory
 STORE_LOCAL16 7 ; memory_pointer
-PUSH16 #0
-STORE_LOCAL16 9 ; strlen
+MACRO_SET_LOCAL16 9 #0 ;strlen
 :while2_begin
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
@@ -60,7 +59,7 @@ STORE_LOCAL 4 ; instruction
 LOAD_LOCAL 4 ; instruction
 PUSH 91
 MACRO_CONDITIONAL_JF 0 @if1_endif
-MACRO_SET_LOCAL 15 1
+MACRO_SET_LOCAL 15 1 ;count_brackets
 LOAD_LOCAL16 5 ; instruction_pointer
 STORE_LOCAL16 16 ; ip1
 :while4_begin

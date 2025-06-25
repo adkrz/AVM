@@ -716,6 +716,14 @@ class Assign(AbstractStatement):
         ):
             self.parent.replace_child(self, DecLocal(self.line_no, self.var))
             return True
+        elif (isinstance(self.value, Number)
+              and not self.var.definition.is_array
+              and not self.var.definition.struct_def
+              and not self.var.definition.is_arg
+              and not self.var.definition.from_global
+        ):
+            self.parent.replace_child(self, SetLocal(self.line_no, self.var, self.value.value))
+            return True
         elif (isinstance(self.var, VariableUsageLHS)
               and isinstance(self.value, VariableUsageRHS)
               and self.var.definition == self.value.definition
@@ -768,6 +776,20 @@ class IncLocal(AbstractStatement):
 class DecLocal(IncLocal):
     def _instr(self, type):
         return "MACRO_DEC_LOCAL" if type == Type.Byte else f"MACRO_DEC_LOCAL16"
+
+
+class SetLocal(AbstractStatement):
+    def __init__(self, line_no, var: "VariableUsageLHS", constant_value):
+        super().__init__(line_no)
+        self.var = var
+        self.value = constant_value
+
+    def gen_code(self, type_hint: Optional[Type]) -> Optional[CodeSnippet]:
+        offs = offsetof(self.symbol_table, self.scope, self.var.name, False)
+        vtype = self.var.definition.type if not self.var.is_array else Type.Addr
+        instr = f"MACRO_SET_LOCAL {offs} {self.value}" if vtype == Type.Byte else f"MACRO_SET_LOCAL16 {offs} #{self.value}"
+        return CodeSnippet(self.line_no,
+            f"{instr} ;{self.var.name}", self.var.definition.type)
 
 
 class VariableUsage(AbstractStatement):

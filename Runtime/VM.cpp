@@ -138,7 +138,6 @@ void VM::RunProgram(bool profile)
     I instr;
     word arg;
     addr address;
-    addr sp_value;
     int offset;
     addr val;
     word tmp;
@@ -192,8 +191,7 @@ void VM::RunProgram(bool profile)
             SP += POP();
             break;
         case I::PUSH_NEXT_SP:
-            sp_value = SP;
-            PUSHI_ADDR(sp_value + ADDRESS_SIZE);
+            PUSHI_ADDR(SP + ADDRESS_SIZE);
             break;
         case I::PUSH_STACK_START:
             PUSH_ADDR(stackStartPos);
@@ -324,7 +322,6 @@ void VM::RunProgram(bool profile)
             address = read_addr_from_program(skip);
             OP_WITH_CONST_16(*, address);
             break;
-
         case I::EQ:
             LOGICAL_OP(==);
             break;
@@ -344,14 +341,11 @@ void VM::RunProgram(bool profile)
             LOGICAL_OP(>=);
             break;
         case I::ZERO:
-            sp_value = SP;
-            memory[sp_value - 1] = (word)(memory[sp_value - 1] == 0 ? 1 : 0);
+            memory[SP - 1] = (word)(memory[SP - 1] == 0 ? 1 : 0);
             break;
         case I::NZERO:
-            sp_value = SP;
-            memory[sp_value - 1] = (word)(memory[sp_value - 1] != 0 ? 1 : 0);
+            memory[SP - 1] = (word)(memory[SP - 1] != 0 ? 1 : 0);
             break;
-
         case I::EQ16:
             LOGICAL_OP_16(==);
             break;
@@ -431,16 +425,14 @@ void VM::RunProgram(bool profile)
             break;
 
         case I::NOT:
-            sp_value = SP;
-            memory[sp_value - 1] = (word)(memory[sp_value - 1] ? 0 : 1);
+            
+            memory[SP - 1] = (word)(memory[SP - 1] ? 0 : 1);
             break;
         case I::INC:
-            sp_value = SP;
-            memory[sp_value - 1]++;
+            memory[SP - 1]++;
             break;
         case I::DEC:
-            sp_value = SP;
-            memory[sp_value - 1]--;
+            memory[SP - 1]--;
             break;
         case I::INC16:
             offset = SP - ADDRESS_SIZE;
@@ -546,8 +538,7 @@ void VM::RunProgram(bool profile)
             arg = read_next_program_byte(skip);
             address = read_addr_from_program(skip, 2);
             skip = 2 + ADDRESS_SIZE;
-            sp_value = SP;
-            if (memory[sp_value - 1] == arg)
+            if (memory[SP - 1] == arg)
             {
                 POP();
                 IP = address;
@@ -564,8 +555,7 @@ void VM::RunProgram(bool profile)
             arg = read_next_program_byte(skip);
             offset = read_offs_from_program(skip, 2);
             skip = 2 + ADDRESS_SIZE;
-            sp_value = SP;
-            if (memory[sp_value - 1] == arg)
+            if (memory[SP - 1] == arg)
             {
                 POP();
                 IP += offset + 1;
@@ -714,24 +704,24 @@ void VM::RunProgram(bool profile)
             skip = 0;
             break;
         case I::SWAP:
-            sp_value = SP;
-            tmp = memory[sp_value - 1];
-            memory[sp_value - 1] = memory[sp_value - 2];
-            memory[sp_value - 2] = tmp;
+            
+            tmp = memory[SP - 1];
+            memory[SP - 1] = memory[SP - 2];
+            memory[SP - 2] = tmp;
             break;
         case I::SWAP16:
-            sp_value = SP;
-            val = read16(memory, sp_value - ADDRESS_SIZE * 2);
-            write16(memory, sp_value - ADDRESS_SIZE * 2, read16(memory, sp_value - ADDRESS_SIZE));
-            write16(memory, sp_value - ADDRESS_SIZE, val);
+            
+            val = read16(memory, SP - ADDRESS_SIZE * 2);
+            write16(memory, SP - ADDRESS_SIZE * 2, read16(memory, SP - ADDRESS_SIZE));
+            write16(memory, SP - ADDRESS_SIZE, val);
             break;
         case I::DUP:
-            sp_value = SP;
-            PUSH(memory[sp_value - 1]);
+            
+            PUSH(memory[SP - 1]);
             break;
         case I::DUP16:
-            sp_value = SP;
-            PUSH_ADDR(read16(memory, sp_value - ADDRESS_SIZE));
+            
+            PUSH_ADDR(read16(memory, SP - ADDRESS_SIZE));
             break;
         case I::ROLL3:
         {
@@ -992,27 +982,26 @@ InterruptCodes VM::STDLIB(int callNumber)
 {
     word arg, maxLen, len, arg2;
     addr address, srcAddress, targetAddress;
-    addr sp_value;
     int result;
     std::string input;
 
     switch ((Stdlib)callNumber)
     {
     case Stdlib::PrintInt:
-        sp_value = SP;
-        std::cout << (int)memory[sp_value - 1];
+        
+        std::cout << (int)memory[SP - 1];
         break;
     case Stdlib::PrintInt16:
-        sp_value = SP;
-        std::cout << (int)read16(memory, sp_value - ADDRESS_SIZE);
+        
+        std::cout << (int)read16(memory, SP - ADDRESS_SIZE);
         break;
     case Stdlib::PrintNewLine:
         std::cout << std::endl;
         break;
 
     case Stdlib::PrintChar:
-        sp_value = SP;
-        std::cout << (char)memory[sp_value - 1];
+        
+        std::cout << (char)memory[SP - 1];
         break;
     case Stdlib::PrintCharPop:
         std::cout << (char)POP();
@@ -1106,9 +1095,9 @@ InterruptCodes VM::STDLIB(int callNumber)
         break;
     case Stdlib::MemSet:
         arg = POP();
-        sp_value = POP_ADDR(); // not sp value, simply reuse variable
+        SP = POP_ADDR(); // not sp value, simply reuse variable
         address = POP_ADDR();
-        for (int i = 0; i < sp_value; i++)
+        for (int i = 0; i < SP; i++)
         {
             memory[address + i] = arg;
         }

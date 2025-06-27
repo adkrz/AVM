@@ -92,18 +92,18 @@ begin
         else ok = 1;
 
         if ok then begin
-            mat[index] = num;
-
             //Update masks for the corresponding row, column and box
             row[i] = row[i] | val;
             col[j] = col[j] | val;
             box[box_index] = box[box_index] | val;
 
             ok = call sudokuSolverRec(mat, i, j+1, row, col, box, box_indexes);
-            if ok then return 1;
+            if ok then begin
+                mat[index] = num;
+                return 1;
+            end
 
             //Unmask the number num in the corresponding row, column and box masks
-            mat[index] = 0;
             val = ~val;
             row[i] = row[i] & val;
             col[j] = col[j] & val;

@@ -88,7 +88,7 @@ void VM::LoadProgram(word* program, int program_length, int memory_size, const c
 inline offs VM::readoffs(word* list, int pos) { return list[pos + 1] * 256 + list[pos]; }
 
 
-#define PUSH(arg) { memory[SP++] = arg;}
+#define PUSH(arg) { memory[SP] = arg; SP++;}
 
 #define PUSH_ADDR(arg) { write16(memory, SP, arg); SP += ADDRESS_SIZE; }
 
@@ -164,6 +164,9 @@ void VM::RunProgram(bool profile)
                 max_sp = SP;
 			counters[instr]++;
         }
+#else
+        if (profile)
+			std::cerr << "Program was built without profiler support. Use -DWITH_PROFILER to enable profiling." << std::endl;
 #endif
 
         skip = WORD_SIZE;

@@ -9,8 +9,7 @@ STORE_LOCAL16 0 ; jump_cache
 PUSH 20
 PUSHN2
 LOAD_LOCAL16 0 ; jump_cache
-STORE_LOCAL16 2 ; cache_pointer
-LOAD_LOCAL16 2 ; cache_pointer
+STORE_LOCAL_KEEP16 2 ; cache_pointer
 LOAD_GLOBAL16
 INC16
 STORE_LOCAL16 4 ; X

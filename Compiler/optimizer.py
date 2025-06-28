@@ -95,4 +95,12 @@ def peephole_optimize(snippet: CodeSnippet):
                     snippet.remove_line(i+1)
                     changes = 1
                     break
+            if line_starts_with(i, "STORE_LOCAL16 ") and line_starts_with(i + 1, "LOAD_LOCAL16 "):
+                variable1 = snippet.codes[i][14:]
+                variable2 = snippet.codes[i + 1][13:]
+                if variable1 == variable2:
+                    snippet.codes[i] = f"STORE_LOCAL_KEEP16 {variable1}"
+                    snippet.remove_line(i+1)
+                    changes = 1
+                    break
 

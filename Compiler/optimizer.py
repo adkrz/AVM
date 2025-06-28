@@ -75,3 +75,24 @@ def peephole_optimize(snippet: CodeSnippet):
                     snippet.remove_line(i + 1)
                     changes += 1
                     break
+
+            if line_starts_with(i, "STORE_LOCAL ") and line_starts_with(i+1, "LOAD") and line_starts_with(i+2, "LOAD_LOCAL ") and line_equal(i+3, "EXTEND") and line_equal(i+4, "ADD16"):
+                variable1 = snippet.codes[i][12:]
+                variable2 = snippet.codes[i+2][11:]
+                if variable1 == variable2:
+                    # reorder instructions for later optimizations:
+                    snippet.codes[i+1], snippet.codes[i+2] = snippet.codes[i+2], snippet.codes[i+1]
+                    snippet.codes[i + 3] = "MACRO_ADD16_TO_8"
+                    snippet.remove_line(i + 4)
+                    changes = 1
+                    break
+
+            if line_starts_with(i, "STORE_LOCAL ") and line_starts_with(i + 1, "LOAD_LOCAL "):
+                variable1 = snippet.codes[i][12:]
+                variable2 = snippet.codes[i + 1][11:]
+                if variable1 == variable2:
+                    snippet.codes[i] = f"STORE_LOCAL_KEEP {variable1}"
+                    snippet.remove_line(i+1)
+                    changes = 1
+                    break
+

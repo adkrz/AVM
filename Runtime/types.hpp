@@ -637,6 +637,10 @@ enum I
     /// </summary>
     MACRO_ADD8_TO_16,
     /// <summary>
+    /// Combines EXTEND, ADD16
+    /// </summary>
+    MACRO_ADD16_TO_8,
+    /// <summary>
     /// Combines AND, EXTEND
     /// </summary>
     MACRO_ANDX,
@@ -724,6 +728,12 @@ enum I
     /// Combines PUSH16 #x and STORE_LOCAL16
     /// </summary>
     MACRO_SET_LOCAL16,
+
+    /// <summary>
+	/// This is variant of STORE_LOCAL which keeps the value on the stack
+    /// </summary>
+    STORE_LOCAL_KEEP,
+    STORE_LOCAL_KEEP16,
 };
 
 enum InterruptCodes

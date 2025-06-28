@@ -668,6 +668,14 @@ void VM::RunProgram(bool profile)
             write16(memory, FP - arg - 2 * ADDRESS_SIZE, POP_ADDR());
             break;
 #endif
+        case I::STORE_LOCAL_KEEP:
+            arg = read_next_program_byte(skip);
+            memory[FP + arg] = memory[SP - 1];
+            break;
+        case I::STORE_LOCAL_KEEP16:
+            arg = read_next_program_byte(skip);
+            write16(memory, FP + arg, read16(memory, SP - ADDRESS_SIZE));
+            break;
         case I::LOAD_NVRAM:
             address = POP_ADDR();
             if (!nvram.is_open())
@@ -800,6 +808,13 @@ void VM::RunProgram(bool profile)
         {
             address = POP(); // extends to addr
             addr a2 = POP_ADDR();
+            PUSH_ADDR(address + a2);
+        }
+        break;
+        case I::MACRO_ADD16_TO_8:
+        {
+            address = POP_ADDR();
+			addr a2 = POP(); // extends to addr
             PUSH_ADDR(address + a2);
         }
         break;

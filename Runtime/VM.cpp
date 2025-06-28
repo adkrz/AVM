@@ -152,6 +152,9 @@ void VM::RunProgram(bool profile)
     for (int i = 0; i < 256; i++)
 		counters[i] = 0;
     addr max_sp = 0;
+#else
+    if (profile)
+        std::cerr << "Program was built without profiler support. Use -DWITH_PROFILER to enable profiling." << std::endl;
 #endif
 
     while (true)
@@ -164,9 +167,6 @@ void VM::RunProgram(bool profile)
                 max_sp = SP;
 			counters[instr]++;
         }
-#else
-        if (profile)
-			std::cerr << "Program was built without profiler support. Use -DWITH_PROFILER to enable profiling." << std::endl;
 #endif
 
         skip = WORD_SIZE;

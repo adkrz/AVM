@@ -24,8 +24,7 @@ CALL @function_redraw
 POPN 2
 :while10_begin
 SYSCALL Std.ReadKey
-STORE_LOCAL 9 ; key
-LOAD_LOCAL 9 ; key
+STORE_LOCAL_KEEP 9 ; key
 JF @if19_endif
 LOAD_LOCAL 9 ; key
 LOAD_LOCAL 0 ; direction
@@ -39,8 +38,7 @@ LOAD_LOCAL 0 ; direction
 CALL @function_next_head_position
 POPN 1
 STORE_LOCAL 4 ; head_y
-STORE_LOCAL 3 ; head_x
-LOAD_LOCAL 3 ; head_x
+STORE_LOCAL_KEEP 3 ; head_x
 PUSH 1
 GREATER_OR_EQ
 DUP
@@ -106,8 +104,7 @@ LOAD_LOCAL 5 ; fruit_x
 LOAD_LOCAL 6 ; fruit_y
 CALL @function_random_fruit_position
 STORE_LOCAL 6 ; fruit_y
-STORE_LOCAL 5 ; fruit_x
-LOAD_LOCAL 5 ; fruit_x
+STORE_LOCAL_KEEP 5 ; fruit_x
 LOAD_LOCAL 6 ; fruit_y
 CALL @function_draw_fruit
 POPN 2

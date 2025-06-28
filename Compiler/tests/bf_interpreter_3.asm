@@ -55,8 +55,7 @@ LOAD_GLOBAL
 MACRO_CONDITIONAL_JF 7 @while3_endwhile
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
-STORE_LOCAL 4 ; instruction
-LOAD_LOCAL 4 ; instruction
+STORE_LOCAL_KEEP 4 ; instruction
 PUSH 91
 MACRO_CONDITIONAL_JF 0 @if1_endif
 MACRO_SET_LOCAL 15 1 ;count_brackets
@@ -114,8 +113,7 @@ STORE_LOCAL16 5 ; instruction_pointer
 :while5_begin
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
-STORE_LOCAL 4 ; instruction
-LOAD_LOCAL 4 ; instruction
+STORE_LOCAL_KEEP 4 ; instruction
 PUSH 91
 MACRO_CONDITIONAL_JF 0 @if5_else
 LOAD_LOCAL16 7 ; memory_pointer

@@ -29,14 +29,13 @@ STORE_LOCAL16 7 ; memory_pointer
 :while2_begin
 LOAD_LOCAL16 5 ; instruction_pointer
 LOAD_GLOBAL
-STORE_LOCAL 4 ; instruction
-LOAD_LOCAL 4 ; instruction
+STORE_LOCAL_KEEP 4 ; instruction
 PUSH 91
 MACRO_CONDITIONAL_JF 0 @if1_else
 LOAD_LOCAL16 7 ; memory_pointer
 LOAD_GLOBAL
 MACRO_CONDITIONAL_JF 6 @if2_endif
-MACRO_SET_LOCAL 9 1
+MACRO_SET_LOCAL 9 1 ;count_brackets
 :while3_begin
 MACRO_INC_LOCAL16 5 ;instruction_pointer
 LOAD_LOCAL16 5 ; instruction_pointer
@@ -67,7 +66,7 @@ JMP @if1_endif
 LOAD_LOCAL 4 ; instruction
 PUSH 93
 MACRO_CONDITIONAL_JF 0 @if6_else
-MACRO_SET_LOCAL 9 1
+MACRO_SET_LOCAL 9 1 ;count_brackets
 :while4_begin
 MACRO_DEC_LOCAL16 5 ;instruction_pointer
 LOAD_LOCAL16 5 ; instruction_pointer

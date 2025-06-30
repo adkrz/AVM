@@ -796,6 +796,7 @@ void VM::RunProgram(bool profile)
             POINTER = address;;
             PUSH_ADDR(read16(memory, address));
             break;
+#ifdef _MSC_VER
         case I::MACRO_ADD8_TO_16:
         case I::MACRO_ADD16_TO_8:
             address = instr == I::MACRO_ADD8_TO_16 ?  POP() + POP_ADDR() : POP_ADDR() + POP();
@@ -814,6 +815,43 @@ void VM::RunProgram(bool profile)
             else
                 PUSH_ADDR(address);
             break;
+#else
+		// In GCC/Clang, we use separate cases for better performance
+        case I::MACRO_ADD8_TO_16:
+            address = POP() + POP_ADDR();
+            if (memory[IP + 1] == I::LOAD_GLOBAL)
+            {
+                POINTER = address;
+                PUSH(memory[address]);
+                skip++;
+            }
+            else if (memory[IP + 1] == I::STORE_GLOBAL)
+            {
+                POINTER = address;
+                memory[address] = POP();
+                skip++;
+            }
+            else
+                PUSH_ADDR(address);
+            break;
+        case I::MACRO_ADD16_TO_8:
+            address = POP_ADDR() + POP();
+            if (memory[IP + 1] == I::LOAD_GLOBAL)
+            {
+                POINTER = address;
+                PUSH(memory[address]);
+                skip++;
+            }
+            else if (memory[IP + 1] == I::STORE_GLOBAL)
+            {
+                POINTER = address;
+                memory[address] = POP();
+                skip++;
+            }
+            else
+                PUSH_ADDR(address);
+            break;
+#endif
         case I::MACRO_ANDX:
             PUSH_ADDR(POP() & POP());
             break;

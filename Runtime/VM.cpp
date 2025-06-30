@@ -789,35 +789,19 @@ void VM::RunProgram(bool profile)
             return; // end of program
 #endif
         case I::MACRO_POP_EXT_X2_ADD16:
-        {
-            address = POP() * 2; // extends to addr
-            addr a2 = POP_ADDR();
-            PUSH_ADDR(address + a2);
-        }
-        break;
+            PUSH_ADDR(POP() * 2 + POP_ADDR());
+            break;
         case I::MACRO_POP_EXT_X2_ADD16_LG16:
-        {
-            address = POP() * 2; // extends to addr
-            addr a2 = POP_ADDR();
-            address += a2;
+            address = POP() * 2 + POP_ADDR();
             POINTER = address;;
             PUSH_ADDR(read16(memory, address));
-        }
-        break;
+            break;
         case I::MACRO_ADD8_TO_16:
-        {
-            address = POP(); // extends to addr
-            addr a2 = POP_ADDR();
-            PUSH_ADDR(address + a2);
-        }
-        break;
+            PUSH_ADDR(POP() + POP_ADDR());
+            break;
         case I::MACRO_ADD16_TO_8:
-        {
-            address = POP_ADDR();
-			addr a2 = POP(); // extends to addr
-            PUSH_ADDR(address + a2);
-        }
-        break;
+            PUSH_ADDR(POP_ADDR() + POP());
+            break;
         case I::MACRO_ANDX:
             PUSH_ADDR(POP() & POP());
             break;

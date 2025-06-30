@@ -156,31 +156,150 @@ void VM::RunProgram(bool profile)
         std::cerr << "Program was built without profiler support. Use -DWITH_PROFILER to enable profiling." << std::endl;
 #endif
 
-#ifndef _MSC_VER
     // Computed goto jump table for GCC/Clang
     static void* jump_table[] = {
-        &&LABEL_PUSH, &&LABEL_PUSH16, &&LABEL_PUSH16_REL, &&LABEL_PUSHN, &&LABEL_PUSHN2, &&LABEL_PUSH_NEXT_SP, &&LABEL_PUSH_STACK_START,
-        &&LABEL_POP, &&LABEL_POPN, &&LABEL_POPN2, &&LABEL_PUSH_REG, &&LABEL_POP_REG, &&LABEL_ADD, &&LABEL_ADD16, &&LABEL_ADD16C, &&LABEL_SUB16C,
-        &&LABEL_ADDC, &&LABEL_SUBC, &&LABEL_MULC, &&LABEL_SUB, &&LABEL_SUB2, &&LABEL_SUB16, &&LABEL_SUB216, &&LABEL_DIV, &&LABEL_DIV2, &&LABEL_DIV216,
-        &&LABEL_MOD, &&LABEL_MOD16, &&LABEL_MUL, &&LABEL_MUL16, &&LABEL_MUL16C, &&LABEL_EQ, &&LABEL_NE, &&LABEL_LESS, &&LABEL_LESS_OR_EQ,
-        &&LABEL_GREATER, &&LABEL_GREATER_OR_EQ, &&LABEL_ZERO, &&LABEL_NZERO, &&LABEL_EQ16, &&LABEL_NE16, &&LABEL_LESS16, &&LABEL_LESS_OR_EQ16,
-        &&LABEL_GREATER16, &&LABEL_GREATER_OR_EQ16, &&LABEL_ZERO16, &&LABEL_NZERO16, &&LABEL_AND, &&LABEL_OR, &&LABEL_LAND, &&LABEL_LOR,
-        &&LABEL_XOR, &&LABEL_LSH, &&LABEL_RSH, &&LABEL_FLIP, &&LABEL_AND16, &&LABEL_OR16, &&LABEL_XOR16, &&LABEL_LSH16, &&LABEL_RSH16, &&LABEL_FLIP16,
-        &&LABEL_NOT, &&LABEL_INC, &&LABEL_DEC, &&LABEL_INC16, &&LABEL_DEC16, &&LABEL_EXTEND, &&LABEL_DOWNCAST, &&LABEL_JMP, &&LABEL_JMP_REL,
-        &&LABEL_JF, &&LABEL_JF16, &&LABEL_JT, &&LABEL_JT16, &&LABEL_JF_REL, &&LABEL_JT_REL, &&LABEL_JMP2, &&LABEL_JT2, &&LABEL_JF2, &&LABEL_CASE,
-        &&LABEL_ELSE, &&LABEL_CASE_REL, &&LABEL_ELSE_REL, &&LABEL_LOAD_GLOBAL, &&LABEL_STORE_GLOBAL, &&LABEL_STORE_GLOBAL2, &&LABEL_LOAD_GLOBAL16,
-        &&LABEL_STORE_GLOBAL16, &&LABEL_STORE_GLOBAL216, &&LABEL_LOAD_LOCAL, &&LABEL_LOAD_ARG, &&LABEL_LOAD_LOCAL16, &&LABEL_LOAD_ARG16,
-        &&LABEL_STORE_LOCAL, &&LABEL_STORE_ARG, &&LABEL_STORE_LOCAL16, &&LABEL_STORE_ARG16, &&LABEL_STORE_LOCAL_KEEP, &&LABEL_STORE_LOCAL_KEEP16,
-        &&LABEL_LOAD_NVRAM, &&LABEL_STORE_NVRAM, &&LABEL_CALL, &&LABEL_CALL2, &&LABEL_CALL_REL, &&LABEL_RET, &&LABEL_SWAP, &&LABEL_SWAP16,
-        &&LABEL_DUP, &&LABEL_DUP16, &&LABEL_ROLL3, &&LABEL_NEG, &&LABEL_NOP, &&LABEL_DEBUGGER, &&LABEL_INTERRUPT_HANDLER, &&LABEL_SYSCALL,
-        &&LABEL_SYSCALL2, &&LABEL_HALT, &&LABEL_MACRO_POP_EXT_X2_ADD16, &&LABEL_MACRO_POP_EXT_X2_ADD16_LG16, &&LABEL_MACRO_ADD8_TO_16,
-        &&LABEL_MACRO_ADD16_TO_8, &&LABEL_MACRO_ANDX, &&LABEL_MACRO_ORX, &&LABEL_MACRO_LSH16_BY8, &&LABEL_MACRO_INC_LOCAL, &&LABEL_MACRO_DEC_LOCAL,
-        &&LABEL_MACRO_INC_LOCAL16, &&LABEL_MACRO_DEC_LOCAL16, &&LABEL_MACRO_X2, &&LABEL_MACRO_X216, &&LABEL_MACRO_DIV2, &&LABEL_MACRO_X3,
-        &&LABEL_MACRO_DIV3, &&LABEL_GET_PTR, &&LABEL_LOAD_GLOBAL_PTR, &&LABEL_STORE_GLOBAL_PTR, &&LABEL_LOAD_GLOBAL_PTR16, &&LABEL_STORE_GLOBAL_PTR16,
-        &&LABEL_MACRO_CONDITIONAL_JF, &&LABEL_MACRO_SET_LOCAL, &&LABEL_MACRO_SET_LOCAL16
-        // Add more labels if your enum has more entries
+        &&LABEL_NOP,
+&&LABEL_PUSH,
+&&LABEL_PUSHN,
+&&LABEL_PUSHN2,
+&&LABEL_POP,
+&&LABEL_POPN,
+&&LABEL_POPN2,
+&&LABEL_SWAP,
+&&LABEL_DUP,
+&&LABEL_PUSH_REG,
+&&LABEL_POP_REG,
+&&LABEL_ADD,
+&&LABEL_ADDC,
+&&LABEL_SUBC,
+&&LABEL_SUB,
+&&LABEL_SUB2,
+&&LABEL_MUL,
+&&LABEL_MULC,
+&&LABEL_DIV,
+&&LABEL_DIV2,
+&&LABEL_DIV216,
+&&LABEL_MOD,
+&&LABEL_INC,
+&&LABEL_DEC,
+&&LABEL_AND,
+&&LABEL_OR,
+&&LABEL_LAND,
+&&LABEL_LOR,
+&&LABEL_FLIP,
+&&LABEL_NOT,
+&&LABEL_XOR,
+&&LABEL_LSH,
+&&LABEL_RSH,
+&&LABEL_EQ,
+&&LABEL_NE,
+&&LABEL_LESS,
+&&LABEL_LESS_OR_EQ,
+&&LABEL_GREATER,
+&&LABEL_GREATER_OR_EQ,
+&&LABEL_ZERO,
+&&LABEL_NZERO,
+&&LABEL_JMP,
+&&LABEL_JMP2,
+&&LABEL_JF,
+&&LABEL_JF2,
+&&LABEL_JT,
+&&LABEL_JT2,
+&&LABEL_CASE,
+&&LABEL_ELSE,
+&&LABEL_CALL,
+&&LABEL_RET,
+&&LABEL_CALL2,
+&&LABEL_LOAD_GLOBAL,
+&&LABEL_STORE_GLOBAL,
+&&LABEL_LOAD_GLOBAL16,
+&&LABEL_STORE_GLOBAL16,
+&&LABEL_LOAD_LOCAL,
+&&LABEL_LOAD_ARG,
+&&LABEL_LOAD_LOCAL16,
+&&LABEL_LOAD_ARG16,
+&&LABEL_STORE_LOCAL,
+&&LABEL_STORE_ARG,
+&&LABEL_STORE_LOCAL16,
+&&LABEL_STORE_ARG16,
+&&LABEL_INTERRUPT_HANDLER,
+&&LABEL_SYSCALL,
+&&LABEL_SYSCALL2,
+&&LABEL_DEBUGGER,
+&&LABEL_PUSH_NEXT_SP,
+&&LABEL_PUSH16,
+&&LABEL_ADD16,
+&&LABEL_ADD16C,
+&&LABEL_SUB16C,
+&&LABEL_MOD16,
+&&LABEL_SUB16,
+&&LABEL_SUB216,
+&&LABEL_MUL16,
+&&LABEL_MUL16C,
+&&LABEL_INC16,
+&&LABEL_DEC16,
+&&LABEL_EXTEND,
+&&LABEL_DOWNCAST,
+&&LABEL_LESS16,
+&&LABEL_LESS_OR_EQ16,
+&&LABEL_GREATER16,
+&&LABEL_GREATER_OR_EQ16,
+&&LABEL_ZERO16,
+&&LABEL_NZERO16,
+&&LABEL_EQ16,
+&&LABEL_NE16,
+&&LABEL_DUP16,
+&&LABEL_SWAP16,
+&&LABEL_LOAD_NVRAM,
+&&LABEL_STORE_NVRAM,
+&&LABEL_PUSH16_REL,
+&&LABEL_JMP_REL,
+&&LABEL_JF_REL,
+&&LABEL_JT_REL,
+&&LABEL_CASE_REL,
+&&LABEL_ELSE_REL,
+&&LABEL_CALL_REL,
+&&LABEL_PUSH_STACK_START,
+&&LABEL_ROLL3,
+&&LABEL_NEG,
+&&LABEL_STORE_GLOBAL2,
+&&LABEL_STORE_GLOBAL216,
+&&LABEL_HALT,
+&&LABEL_AND16,
+&&LABEL_OR16,
+&&LABEL_XOR16,
+&&LABEL_FLIP16,
+&&LABEL_LSH16,
+&&LABEL_RSH16,
+&&LABEL_JT16,
+&&LABEL_JF16,
+&&LABEL_MACRO_POP_EXT_X2_ADD16,
+&&LABEL_MACRO_POP_EXT_X2_ADD16_LG16,
+&&LABEL_MACRO_ADD8_TO_16,
+&&LABEL_MACRO_ADD16_TO_8,
+&&LABEL_MACRO_ANDX,
+&&LABEL_MACRO_ORX,
+&&LABEL_MACRO_LSH16_BY8,
+&&LABEL_MACRO_INC_LOCAL,
+&&LABEL_MACRO_DEC_LOCAL,
+&&LABEL_MACRO_INC_LOCAL16,
+&&LABEL_MACRO_DEC_LOCAL16,
+&&LABEL_MACRO_X2,
+&&LABEL_MACRO_X216,
+&&LABEL_MACRO_X3,
+&&LABEL_MACRO_DIV2,
+&&LABEL_MACRO_DIV3,
+&&LABEL_GET_PTR,
+&&LABEL_LOAD_GLOBAL_PTR,
+&&LABEL_LOAD_GLOBAL_PTR16,
+&&LABEL_STORE_GLOBAL_PTR,
+&&LABEL_STORE_GLOBAL_PTR16,
+&&LABEL_MACRO_CONDITIONAL_JF,
+&&LABEL_MACRO_SET_LOCAL,
+&&LABEL_MACRO_SET_LOCAL16,
+&&LABEL_STORE_LOCAL_KEEP,
+&&LABEL_STORE_LOCAL_KEEP16,
     };
-#endif
 
     while (true)
     {
@@ -196,7 +315,6 @@ void VM::RunProgram(bool profile)
 
         skip = WORD_SIZE;
 
-#ifndef _MSC_VER
         if ((size_t)instr >= sizeof(jump_table) / sizeof(jump_table[0])) {
             std::cerr << "Instruction not implemented: " << std::to_string(instr) << std::endl;
             throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));
@@ -204,9 +322,7 @@ void VM::RunProgram(bool profile)
         goto *jump_table[(size_t)instr];
 
 #define NEXT_INSTR() do { IP += skip; instr = (I)memory[IP]; skip = WORD_SIZE; goto *jump_table[(size_t)instr]; } while(0)
-#else
-#define NEXT_INSTR() break
-#endif
+
 
         // --- All labels below must match the enum order! ---
 LABEL_PUSH:
@@ -916,31 +1032,7 @@ LABEL_MACRO_SET_LOCAL16:
 
         // Add more labels as needed for your enum
         // End of computed goto block
-#endif // _MSC_VER
-
-#ifdef WITH_PROFILER
-    end :
-    if (profile)
-    {
-        // Sort counters by value (descending)
-        std::map<I, long long> counterMaps;
-        for (int i = 0; i < 256; i++)
-        {
-            if (counters[i] == 0) continue;
-            counterMaps[(I)i] = counters[i];
-        }
-        std::vector<std::pair<I, long long>> sortedCounters(counterMaps.begin(), counterMaps.end());
-        std::sort(sortedCounters.begin(), sortedCounters.end(),
-            [](const auto& a, const auto& b) { return a.second > b.second; });
-
-        // Print sorted counters
-        for (const auto& [instr, count] : sortedCounters)
-        {
-            std::cout << magic_enum::enum_name(instr) << ": " << count << std::endl;
-        }
-        std::cout << "Max stack pointer: " << max_sp << std::endl;
-    }
-#endif
+}
 }
 
 void VM::WriteStringToMemory(const std::string& str, int addr, int maxLen)
@@ -966,11 +1058,11 @@ InterruptCodes VM::STDLIB(int callNumber)
     switch ((Stdlib)callNumber)
     {
     case Stdlib::PrintInt:
-        
+
         std::cout << (int)memory[SP - 1];
         break;
     case Stdlib::PrintInt16:
-        
+
         std::cout << (int)read16(memory, SP - ADDRESS_SIZE);
         break;
     case Stdlib::PrintNewLine:
@@ -978,7 +1070,7 @@ InterruptCodes VM::STDLIB(int callNumber)
         break;
 
     case Stdlib::PrintChar:
-        
+
         std::cout << (char)memory[SP - 1];
         break;
     case Stdlib::PrintCharPop:

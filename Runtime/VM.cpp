@@ -143,18 +143,43 @@ void VM::RunProgram(bool profile)
     word tmp;
     int signedResult;
 #ifdef _MSC_VER
-	int direction; // for MSVC
+    int direction; // for MSVC
 #endif
 
 #ifdef WITH_PROFILER
-
     long long counters[256];
     for (int i = 0; i < 256; i++)
-		counters[i] = 0;
+        counters[i] = 0;
     addr max_sp = 0;
 #else
     if (profile)
         std::cerr << "Program was built without profiler support. Use -DWITH_PROFILER to enable profiling." << std::endl;
+#endif
+
+#ifndef _MSC_VER
+    // Computed goto jump table for GCC/Clang
+    static void* jump_table[] = {
+        &&LABEL_PUSH, &&LABEL_PUSH16, &&LABEL_PUSH16_REL, &&LABEL_PUSHN, &&LABEL_PUSHN2, &&LABEL_PUSH_NEXT_SP, &&LABEL_PUSH_STACK_START,
+        &&LABEL_POP, &&LABEL_POPN, &&LABEL_POPN2, &&LABEL_PUSH_REG, &&LABEL_POP_REG, &&LABEL_ADD, &&LABEL_ADD16, &&LABEL_ADD16C, &&LABEL_SUB16C,
+        &&LABEL_ADDC, &&LABEL_SUBC, &&LABEL_MULC, &&LABEL_SUB, &&LABEL_SUB2, &&LABEL_SUB16, &&LABEL_SUB216, &&LABEL_DIV, &&LABEL_DIV2, &&LABEL_DIV216,
+        &&LABEL_MOD, &&LABEL_MOD16, &&LABEL_MUL, &&LABEL_MUL16, &&LABEL_MUL16C, &&LABEL_EQ, &&LABEL_NE, &&LABEL_LESS, &&LABEL_LESS_OR_EQ,
+        &&LABEL_GREATER, &&LABEL_GREATER_OR_EQ, &&LABEL_ZERO, &&LABEL_NZERO, &&LABEL_EQ16, &&LABEL_NE16, &&LABEL_LESS16, &&LABEL_LESS_OR_EQ16,
+        &&LABEL_GREATER16, &&LABEL_GREATER_OR_EQ16, &&LABEL_ZERO16, &&LABEL_NZERO16, &&LABEL_AND, &&LABEL_OR, &&LABEL_LAND, &&LABEL_LOR,
+        &&LABEL_XOR, &&LABEL_LSH, &&LABEL_RSH, &&LABEL_FLIP, &&LABEL_AND16, &&LABEL_OR16, &&LABEL_XOR16, &&LABEL_LSH16, &&LABEL_RSH16, &&LABEL_FLIP16,
+        &&LABEL_NOT, &&LABEL_INC, &&LABEL_DEC, &&LABEL_INC16, &&LABEL_DEC16, &&LABEL_EXTEND, &&LABEL_DOWNCAST, &&LABEL_JMP, &&LABEL_JMP_REL,
+        &&LABEL_JF, &&LABEL_JF16, &&LABEL_JT, &&LABEL_JT16, &&LABEL_JF_REL, &&LABEL_JT_REL, &&LABEL_JMP2, &&LABEL_JT2, &&LABEL_JF2, &&LABEL_CASE,
+        &&LABEL_ELSE, &&LABEL_CASE_REL, &&LABEL_ELSE_REL, &&LABEL_LOAD_GLOBAL, &&LABEL_STORE_GLOBAL, &&LABEL_STORE_GLOBAL2, &&LABEL_LOAD_GLOBAL16,
+        &&LABEL_STORE_GLOBAL16, &&LABEL_STORE_GLOBAL216, &&LABEL_LOAD_LOCAL, &&LABEL_LOAD_ARG, &&LABEL_LOAD_LOCAL16, &&LABEL_LOAD_ARG16,
+        &&LABEL_STORE_LOCAL, &&LABEL_STORE_ARG, &&LABEL_STORE_LOCAL16, &&LABEL_STORE_ARG16, &&LABEL_STORE_LOCAL_KEEP, &&LABEL_STORE_LOCAL_KEEP16,
+        &&LABEL_LOAD_NVRAM, &&LABEL_STORE_NVRAM, &&LABEL_CALL, &&LABEL_CALL2, &&LABEL_CALL_REL, &&LABEL_RET, &&LABEL_SWAP, &&LABEL_SWAP16,
+        &&LABEL_DUP, &&LABEL_DUP16, &&LABEL_ROLL3, &&LABEL_NEG, &&LABEL_NOP, &&LABEL_DEBUGGER, &&LABEL_INTERRUPT_HANDLER, &&LABEL_SYSCALL,
+        &&LABEL_SYSCALL2, &&LABEL_HALT, &&LABEL_MACRO_POP_EXT_X2_ADD16, &&LABEL_MACRO_POP_EXT_X2_ADD16_LG16, &&LABEL_MACRO_ADD8_TO_16,
+        &&LABEL_MACRO_ADD16_TO_8, &&LABEL_MACRO_ANDX, &&LABEL_MACRO_ORX, &&LABEL_MACRO_LSH16_BY8, &&LABEL_MACRO_INC_LOCAL, &&LABEL_MACRO_DEC_LOCAL,
+        &&LABEL_MACRO_INC_LOCAL16, &&LABEL_MACRO_DEC_LOCAL16, &&LABEL_MACRO_X2, &&LABEL_MACRO_X216, &&LABEL_MACRO_DIV2, &&LABEL_MACRO_X3,
+        &&LABEL_MACRO_DIV3, &&LABEL_GET_PTR, &&LABEL_LOAD_GLOBAL_PTR, &&LABEL_STORE_GLOBAL_PTR, &&LABEL_LOAD_GLOBAL_PTR16, &&LABEL_STORE_GLOBAL_PTR16,
+        &&LABEL_MACRO_CONDITIONAL_JF, &&LABEL_MACRO_SET_LOCAL, &&LABEL_MACRO_SET_LOCAL16
+        // Add more labels if your enum has more entries
+    };
 #endif
 
     while (true)
@@ -165,52 +190,62 @@ void VM::RunProgram(bool profile)
         {
             if (SP > max_sp)
                 max_sp = SP;
-			counters[instr]++;
+            counters[instr]++;
         }
 #endif
 
         skip = WORD_SIZE;
 
-        switch (instr)
-        {
-        case I::PUSH:
+#ifndef _MSC_VER
+        if ((size_t)instr >= sizeof(jump_table) / sizeof(jump_table[0])) {
+            std::cerr << "Instruction not implemented: " << std::to_string(instr) << std::endl;
+            throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));
+        }
+        goto *jump_table[(size_t)instr];
+
+#define NEXT_INSTR() do { IP += skip; instr = (I)memory[IP]; skip = WORD_SIZE; goto *jump_table[(size_t)instr]; } while(0)
+#else
+#define NEXT_INSTR() break
+#endif
+
+        // --- All labels below must match the enum order! ---
+LABEL_PUSH:
             arg = read_next_program_byte(skip);
             PUSH(arg);
-            break;
-        case I::PUSH16:
+            NEXT_INSTR();
+LABEL_PUSH16:
             address = read_addr_from_program(skip);
             PUSH_ADDR(address);
-            break;
-        case I::PUSH16_REL:
+            NEXT_INSTR();
+LABEL_PUSH16_REL:
             offset = read_offs_from_program(skip);
             address = (addr)(IP + offset);
             PUSH_ADDR(address);
-            break;
-        case I::PUSHN:
+            NEXT_INSTR();
+LABEL_PUSHN:
             arg = read_next_program_byte(skip);
             SP += arg;
-            break;
-        case I::PUSHN2:
+            NEXT_INSTR();
+LABEL_PUSHN2:
             SP += POP();
-            break;
-        case I::PUSH_NEXT_SP:
+            NEXT_INSTR();
+LABEL_PUSH_NEXT_SP:
             PUSHI_ADDR(SP + ADDRESS_SIZE);
-            break;
-        case I::PUSH_STACK_START:
+            NEXT_INSTR();
+LABEL_PUSH_STACK_START:
             PUSH_ADDR(stackStartPos);
-            break;
-            break;
-        case I::POP:
+            NEXT_INSTR();
+LABEL_POP:
             POP();
-            break;
-        case I::POPN:
+            NEXT_INSTR();
+LABEL_POPN:
             arg = read_next_program_byte(skip);
             SP -= arg;
-            break;
-        case I::POPN2:
+            NEXT_INSTR();
+LABEL_POPN2:
             SP -= POP();
-            break;
-        case I::PUSH_REG:
+            NEXT_INSTR();
+LABEL_PUSH_REG:
             arg = read_next_program_byte(skip);
             if (arg == 0)
             {
@@ -224,8 +259,8 @@ void VM::RunProgram(bool profile)
             {
                 PUSH_ADDR(FP);
             }
-            break;
-        case I::POP_REG:
+            NEXT_INSTR();
+LABEL_POP_REG:
             arg = read_next_program_byte(skip);
             if (arg == 0)
                 IP = POP_ADDR();
@@ -233,80 +268,78 @@ void VM::RunProgram(bool profile)
                 SP = POP_ADDR();
             else if (arg == 2)
                 FP = POP_ADDR();
-            break;
-        case I::ADD:
+            NEXT_INSTR();
+LABEL_ADD:
             BIN_OP(+);
-            break;
-        case I::ADD16:
+            NEXT_INSTR();
+LABEL_ADD16:
             BIN_OP_16(+);
-            break;
-        case I::ADD16C:
+            NEXT_INSTR();
+LABEL_ADD16C:
             address = read_addr_from_program(skip);
             OP_WITH_CONST_16(+, address);
-            break;
-        case I::SUB16C:
+            NEXT_INSTR();
+LABEL_SUB16C:
             address = read_addr_from_program(skip);
             OP_WITH_CONST_16(-, address);
-            break;
-        case I::ADDC:
+            NEXT_INSTR();
+LABEL_ADDC:
             address = read_next_program_byte(skip);
             OP_WITH_CONST(+, address);
-            break;
-        case I::SUBC:
+            NEXT_INSTR();
+LABEL_SUBC:
             address = read_next_program_byte(skip);
             OP_WITH_CONST(-, address);
-            break;
-        case I::MULC:
+            NEXT_INSTR();
+LABEL_MULC:
             address = read_next_program_byte(skip);
             OP_WITH_CONST(*, address);
-            break;
-        case I::SUB:
+            NEXT_INSTR();
+LABEL_SUB:
             BIN_OP(-);
-            break;
-        case I::SUB2:
+            NEXT_INSTR();
+LABEL_SUB2:
             BIN_OP_INV(-);
-            break;
-        case I::SUB16:
+            NEXT_INSTR();
+LABEL_SUB16:
             BIN_OP_16(-);
-            break;
-        case I::SUB216:
-        {
+            NEXT_INSTR();
+LABEL_SUB216:
             BIN_OP_16_INV(-);
-        }
-        break;
-        case I::DIV:
+            NEXT_INSTR();
+LABEL_DIV:
             if (memory[SP-2] == 0)
             {
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
             }
             BIN_OP(/)
-            break;
-        case I::DIV2:
+            NEXT_INSTR();
+LABEL_DIV2:
             if (memory[SP-1] == 0)
             {
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
             }
             BIN_OP_INV(/)
-            break;
-        case I::DIV216:
-        {
-            auto tmp1 = POP_ADDR();
-            auto tmp2 = POP_ADDR();
-            if (tmp1 == 0)
+            NEXT_INSTR();
+LABEL_DIV216:
             {
-                HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
+                auto tmp1 = POP_ADDR();
+                auto tmp2 = POP_ADDR();
+                if (tmp1 == 0)
+                {
+                    HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
+                }
+                PUSHI(tmp2 / tmp1);
             }
-            PUSHI(tmp2 / tmp1);
-            break;
-        }
-        case I::MOD:
+            NEXT_INSTR();
+LABEL_MOD:
             if (memory[SP - 2] == 0)
             {
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
             }
             BIN_OP(%)
-            break;
-        case I::MOD16:
+            NEXT_INSTR();
+LABEL_MOD16:
             address = POP_ADDR();
             val = POP_ADDR();
             if (val == 0)
@@ -314,157 +347,142 @@ void VM::RunProgram(bool profile)
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
             }
             PUSHI_ADDR(address % val);
-            break;
-        case I::MUL:
+            NEXT_INSTR();
+LABEL_MUL:
             BIN_OP(*);
-            break;
-        case I::MUL16:
+            NEXT_INSTR();
+LABEL_MUL16:
             BIN_OP_16(*);
-            break;
-        case I::MUL16C:
+            NEXT_INSTR();
+LABEL_MUL16C:
             address = read_addr_from_program(skip);
             OP_WITH_CONST_16(*, address);
-            break;
-        case I::EQ:
+            NEXT_INSTR();
+LABEL_EQ:
             LOGICAL_OP(==);
-            break;
-        case I::NE:
+            NEXT_INSTR();
+LABEL_NE:
             LOGICAL_OP(!=);
-            break;
-        case I::LESS:
+            NEXT_INSTR();
+LABEL_LESS:
             LOGICAL_OP(<);
-            break;
-        case I::LESS_OR_EQ:
+            NEXT_INSTR();
+LABEL_LESS_OR_EQ:
             LOGICAL_OP(<=);
-            break;
-        case I::GREATER:
+            NEXT_INSTR();
+LABEL_GREATER:
             LOGICAL_OP(>);
-            break;
-        case I::GREATER_OR_EQ:
+            NEXT_INSTR();
+LABEL_GREATER_OR_EQ:
             LOGICAL_OP(>=);
-            break;
-        case I::ZERO:
+            NEXT_INSTR();
+LABEL_ZERO:
             memory[SP - 1] = (word)(memory[SP - 1] == 0 ? 1 : 0);
-            break;
-        case I::NZERO:
+            NEXT_INSTR();
+LABEL_NZERO:
             memory[SP - 1] = (word)(memory[SP - 1] != 0 ? 1 : 0);
-            break;
-        case I::EQ16:
+            NEXT_INSTR();
+LABEL_EQ16:
             LOGICAL_OP_16(==);
-            break;
-        case I::NE16:
+            NEXT_INSTR();
+LABEL_NE16:
             LOGICAL_OP_16(!=);
-            break;
-        case I::LESS16:
+            NEXT_INSTR();
+LABEL_LESS16:
             LOGICAL_OP_16(<);
-            break;
-        case I::LESS_OR_EQ16:
+            NEXT_INSTR();
+LABEL_LESS_OR_EQ16:
             LOGICAL_OP_16(<=);
-            break;
-        case I::GREATER16:
+            NEXT_INSTR();
+LABEL_GREATER16:
             LOGICAL_OP_16(>);
-            break;
-        case I::GREATER_OR_EQ16:
+            NEXT_INSTR();
+LABEL_GREATER_OR_EQ16:
             LOGICAL_OP_16(>=);
-            break;
-        case I::ZERO16:
+            NEXT_INSTR();
+LABEL_ZERO16:
             PUSHI(POP_ADDR() == 0 ? 1 : 0);
-            break;
-        case I::NZERO16:
+            NEXT_INSTR();
+LABEL_NZERO16:
             PUSHI(POP_ADDR() != 0 ? 1 : 0);
-            break;
-
-        case I::AND:
+            NEXT_INSTR();
+LABEL_AND:
             BIN_OP(&);
-            break;
-        case I::OR:
+            NEXT_INSTR();
+LABEL_OR:
             BIN_OP(|);
-            break;
-        case I::LAND:
+            NEXT_INSTR();
+LABEL_LAND:
             PUSHI((POP() != 0) && (POP() != 0) ? 1 : 0);
-            break;
-        case I::LOR:
+            NEXT_INSTR();
+LABEL_LOR:
             PUSHI((POP() != 0) || (POP() != 0) ? 1 : 0);
-            break;
-        case I::XOR:
+            NEXT_INSTR();
+LABEL_XOR:
             BIN_OP(^);
-            break;
-        case I::LSH:
-        {
+            NEXT_INSTR();
+LABEL_LSH:
             BIN_OP_INV(<<);
-            break;
-        }
-        case I::RSH:
-        {
+            NEXT_INSTR();
+LABEL_RSH:
             BIN_OP_INV(>>);
-            break;
-        }
-        case I::FLIP:
+            NEXT_INSTR();
+LABEL_FLIP:
             PUSHI(~POP());
-            break;
-
-
-        case I::AND16:
+            NEXT_INSTR();
+LABEL_AND16:
             BIN_OP_16(&);
-            break;
-        case I::OR16:
+            NEXT_INSTR();
+LABEL_OR16:
             BIN_OP_16(|);
-            break;
-        case I::XOR16:
+            NEXT_INSTR();
+LABEL_XOR16:
             BIN_OP_16(^);
-            break;
-        case I::LSH16:
-        {
+            NEXT_INSTR();
+LABEL_LSH16:
             BIN_OP_16_INV(<< );
-            break;
-        }
-        case I::RSH16:
-        {
+            NEXT_INSTR();
+LABEL_RSH16:
             BIN_OP_16_INV(>>);
-            break;
-        }
-        case I::FLIP16:
+            NEXT_INSTR();
+LABEL_FLIP16:
             PUSHI_ADDR(~POP_ADDR());
-            break;
-
-        case I::NOT:
-            
+            NEXT_INSTR();
+LABEL_NOT:
             memory[SP - 1] = (word)(memory[SP - 1] ? 0 : 1);
-            break;
-        case I::INC:
+            NEXT_INSTR();
+LABEL_INC:
             memory[SP - 1]++;
-            break;
-        case I::DEC:
+            NEXT_INSTR();
+LABEL_DEC:
             memory[SP - 1]--;
-            break;
-        case I::INC16:
+            NEXT_INSTR();
+LABEL_INC16:
             offset = SP - ADDRESS_SIZE;
             write16(memory, offset, (addr)(read16(memory, offset) + 1));
-            break;
-        case I::DEC16:
+            NEXT_INSTR();
+LABEL_DEC16:
             offset = SP - ADDRESS_SIZE;
             write16(memory, offset, (addr)(read16(memory, offset) - 1));
-            break;
-        case I::EXTEND:
+            NEXT_INSTR();
+LABEL_EXTEND:
             PUSH_ADDR(POP());
-            break;
-        case I::DOWNCAST:
-        {
+            NEXT_INSTR();
+LABEL_DOWNCAST:
             address = POP_ADDR();
             PUSH(address <= 255 ? (word)address : 255);
-            break;
-        }
-        case I::JMP:
+            NEXT_INSTR();
+LABEL_JMP:
             address = read_addr_from_program(skip);
             IP = address;
             skip = 0;
-            break;
-        case I::JMP_REL:
+            NEXT_INSTR();
+LABEL_JMP_REL:
             offset = read_offs_from_program(skip);
             IP += offset;
             skip = 0;
-            break;
-        case I::JF:
+            NEXT_INSTR();
+LABEL_JF:
             if (!POP())
             {
                 IP = read16(memory, IP+1);
@@ -472,8 +490,8 @@ void VM::RunProgram(bool profile)
             }
             else
                 skip += ADDRESS_SIZE;
-            break;
-        case I::JF16:
+            NEXT_INSTR();
+LABEL_JF16:
             if (!POP_ADDR())
             {
                 IP = read16(memory, IP+1);
@@ -481,8 +499,8 @@ void VM::RunProgram(bool profile)
             }
             else
                 skip += ADDRESS_SIZE;
-            break;
-        case I::JT:
+            NEXT_INSTR();
+LABEL_JT:
             if (POP())
             {
                 IP = read16(memory, IP+1);;
@@ -490,8 +508,8 @@ void VM::RunProgram(bool profile)
             }
             else
                 skip += ADDRESS_SIZE;
-            break;
-        case I::JT16:
+            NEXT_INSTR();
+LABEL_JT16:
             if (POP_ADDR())
             {
                 IP = read16(memory, IP+1);;
@@ -499,45 +517,45 @@ void VM::RunProgram(bool profile)
             }
             else
                 skip += ADDRESS_SIZE;
-            break;
-        case I::JF_REL:
+            NEXT_INSTR();
+LABEL_JF_REL:
             offset = read_offs_from_program(skip);
             if (POP() == 0)
             {
                 IP += offset;
                 skip = 0;
             }
-            break;
-        case I::JT_REL:
+            NEXT_INSTR();
+LABEL_JT_REL:
             offset = read_offs_from_program(skip);
             if (POP() != 0)
             {
                 IP += offset;
                 skip = 0;
             }
-            break;
-        case I::JMP2:
+            NEXT_INSTR();
+LABEL_JMP2:
             address = POP_ADDR();
             IP = address;
             skip = 0;
-            break;
-        case I::JT2:
+            NEXT_INSTR();
+LABEL_JT2:
             address = POP_ADDR();
             if (POP())
             {
                 IP = address;
                 skip = 0;
             }
-            break;
-        case I::JF2:
+            NEXT_INSTR();
+LABEL_JF2:
             address = POP_ADDR();
             if (!POP())
             {
                 IP = address;
                 skip = 0;
             }
-            break;
-        case I::CASE:
+            NEXT_INSTR();
+LABEL_CASE:
             arg = read_next_program_byte(skip);
             address = read_addr_from_program(skip, 2);
             skip = 2 + ADDRESS_SIZE;
@@ -547,14 +565,14 @@ void VM::RunProgram(bool profile)
                 IP = address;
                 skip = 0;
             }
-            break;
-        case I::ELSE:
+            NEXT_INSTR();
+LABEL_ELSE:
             POP();
             address = read_addr_from_program(skip);
             IP = address;
             skip = 0;
-            break;
-        case I::CASE_REL:
+            NEXT_INSTR();
+LABEL_CASE_REL:
             arg = read_next_program_byte(skip);
             offset = read_offs_from_program(skip, 2);
             skip = 2 + ADDRESS_SIZE;
@@ -564,137 +582,106 @@ void VM::RunProgram(bool profile)
                 IP += offset + 1;
                 skip = 0;
             }
-            break;
-        case I::ELSE_REL:
+            NEXT_INSTR();
+LABEL_ELSE_REL:
             POP();
             offset = read_offs_from_program(skip);
             IP += offset;
             skip = 0;
-            break;
-        case I::LOAD_GLOBAL:
+            NEXT_INSTR();
+LABEL_LOAD_GLOBAL:
             address = POP_ADDR();
             POINTER = address;
             PUSH(memory[address]);
-            break;
-        case I::STORE_GLOBAL:
+            NEXT_INSTR();
+LABEL_STORE_GLOBAL:
             address = POP_ADDR();
             POINTER = address;;
             arg = POP();
             memory[address] = arg;
-            break;
-        case I::STORE_GLOBAL2:
+            NEXT_INSTR();
+LABEL_STORE_GLOBAL2:
             arg = POP();
             address = POP_ADDR();
             POINTER = address;;
             memory[address] = arg;
-            break;
-        case I::LOAD_GLOBAL16:
+            NEXT_INSTR();
+LABEL_LOAD_GLOBAL16:
             address = POP_ADDR();
             POINTER = address;;
             PUSH_ADDR(read16(memory, address));
-            break;
-        case I::STORE_GLOBAL16:
+            NEXT_INSTR();
+LABEL_STORE_GLOBAL16:
             address = POP_ADDR();
             POINTER = address;;
             val = POP_ADDR();
             write16(memory, address, val);
-            break;
-        case I::STORE_GLOBAL216:
+            NEXT_INSTR();
+LABEL_STORE_GLOBAL216:
             val = POP_ADDR();
             address = POP_ADDR();
             POINTER = address;;
             write16(memory, address, val);
-            break;
-#ifdef _MSC_VER
-		// merged cases optimize better for MSVC
-        case I::LOAD_LOCAL:
-        case I::LOAD_ARG:
-        case I::LOAD_LOCAL16:
-        case I::LOAD_ARG16:
-            arg = read_next_program_byte(skip);
-            direction = (instr == I::LOAD_ARG || instr == I::LOAD_ARG16) ? -1 : 1;
-            offset = (instr == I::LOAD_ARG || instr == I::LOAD_ARG16) ? 2 * ADDRESS_SIZE : 0;
-            if (instr == I::LOAD_LOCAL16 || instr == I::LOAD_ARG16)
-            {
-                PUSH_ADDR(read16(memory, FP + (arg + offset) * direction));
-            }
-            else
-                PUSH(memory[FP + (arg + offset) * direction]);
-            break;
-        case I::STORE_LOCAL:
-        case I::STORE_ARG:
-        case I::STORE_LOCAL16:
-        case I::STORE_ARG16:
-            arg = read_next_program_byte(skip);
-            direction = (instr == I::STORE_ARG || instr == I::STORE_ARG16) ? -1 : 1;
-            offset = (instr == I::STORE_ARG || instr == I::STORE_ARG16) ? 2 * ADDRESS_SIZE : 0;
-            if (instr == I::STORE_LOCAL16 || instr == I::STORE_ARG16)
-                write16(memory, FP + (arg + offset) * direction, POP_ADDR());
-            else
-                memory[FP + (arg + offset) * direction] = POP();
-            break;
-#else
-			// Separate cases for better performance on GCC/Clang
-        case I::LOAD_LOCAL:
+            NEXT_INSTR();
+LABEL_LOAD_LOCAL:
             arg = read_next_program_byte(skip);
             PUSH(memory[FP + arg]);
-            break;
-        case I::LOAD_ARG:
+            NEXT_INSTR();
+LABEL_LOAD_ARG:
             arg = read_next_program_byte(skip);
             PUSH(memory[FP - arg - 2 * ADDRESS_SIZE]);
-            break;
-        case I::LOAD_LOCAL16:
+            NEXT_INSTR();
+LABEL_LOAD_LOCAL16:
             arg = read_next_program_byte(skip);
             PUSH_ADDR(read16(memory, FP + arg));
-            break;
-        case I::LOAD_ARG16:
+            NEXT_INSTR();
+LABEL_LOAD_ARG16:
             arg = read_next_program_byte(skip);
             PUSH_ADDR(read16(memory, FP - arg - 2 * ADDRESS_SIZE));
-            break;
-        case I::STORE_LOCAL:
+            NEXT_INSTR();
+LABEL_STORE_LOCAL:
             arg = read_next_program_byte(skip);
             memory[FP + arg] = POP();
-            break;
-        case I::STORE_ARG:
+            NEXT_INSTR();
+LABEL_STORE_ARG:
             arg = read_next_program_byte(skip);
             memory[FP - arg - 2 * ADDRESS_SIZE] = POP();
-            break;
-        case I::STORE_LOCAL16:
+            NEXT_INSTR();
+LABEL_STORE_LOCAL16:
             arg = read_next_program_byte(skip);
             write16(memory, FP + arg, POP_ADDR());
-            break;
-        case I::STORE_ARG16:
+            NEXT_INSTR();
+LABEL_STORE_ARG16:
             arg = read_next_program_byte(skip);
             write16(memory, FP - arg - 2 * ADDRESS_SIZE, POP_ADDR());
-            break;
-#endif
-        case I::STORE_LOCAL_KEEP:
+            NEXT_INSTR();
+LABEL_STORE_LOCAL_KEEP:
             arg = read_next_program_byte(skip);
             memory[FP + arg] = memory[SP - 1];
-            break;
-        case I::STORE_LOCAL_KEEP16:
+            NEXT_INSTR();
+LABEL_STORE_LOCAL_KEEP16:
             arg = read_next_program_byte(skip);
             write16(memory, FP + arg, read16(memory, SP - ADDRESS_SIZE));
-            break;
-        case I::LOAD_NVRAM:
+            NEXT_INSTR();
+LABEL_LOAD_NVRAM:
             address = POP_ADDR();
             if (!nvram.is_open())
                 OpenNvramFile();
             nvram.seekg(address);
             nvram.read(reinterpret_cast<char*>(&arg), 1);
             PUSH(arg);
-            break;
-        case I::STORE_NVRAM:
+            NEXT_INSTR();
+LABEL_STORE_NVRAM:
             address = POP_ADDR();
             arg = POP();
             if (!nvram.is_open())
                 OpenNvramFile();
             nvram.seekg(address);
             nvram.put(arg);
-            break;
-        case I::CALL:
-        case I::CALL2:
-        case I::CALL_REL:
+            NEXT_INSTR();
+LABEL_CALL:
+LABEL_CALL2:
+LABEL_CALL_REL:
             if (instr == I::CALL_REL)
             {
                 offset = read_offs_from_program(skip);
@@ -706,55 +693,51 @@ void VM::RunProgram(bool profile)
             }
             CALL(address);
             skip = 0;
-            break;
-        case I::RET:
+            NEXT_INSTR();
+LABEL_RET:
             SP = FP;
             FP = POP_ADDR();
             address = POP_ADDR();
             IP = (addr)(address + ADDRESS_SIZE + 1); // skip address of call and go to next instruction
             skip = 0;
-            break;
-        case I::SWAP:
-            
+            NEXT_INSTR();
+LABEL_SWAP:
             tmp = memory[SP - 1];
             memory[SP - 1] = memory[SP - 2];
             memory[SP - 2] = tmp;
-            break;
-        case I::SWAP16:
-            
+            NEXT_INSTR();
+LABEL_SWAP16:
             val = read16(memory, SP - ADDRESS_SIZE * 2);
             write16(memory, SP - ADDRESS_SIZE * 2, read16(memory, SP - ADDRESS_SIZE));
             write16(memory, SP - ADDRESS_SIZE, val);
-            break;
-        case I::DUP:
-            
+            NEXT_INSTR();
+LABEL_DUP:
             PUSH(memory[SP - 1]);
-            break;
-        case I::DUP16:
-            
+            NEXT_INSTR();
+LABEL_DUP16:
             PUSH_ADDR(read16(memory, SP - ADDRESS_SIZE));
-            break;
-        case I::ROLL3:
-        {
-            auto a = POP();
-            auto b = POP();
-            auto c = POP();
-            PUSH(a);
-            PUSH(c);
-            PUSH(b);
-        }
-        break;
-        case I::NEG:
+            NEXT_INSTR();
+LABEL_ROLL3:
+            {
+                auto a = POP();
+                auto b = POP();
+                auto c = POP();
+                PUSH(a);
+                PUSH(c);
+                PUSH(b);
+            }
+            NEXT_INSTR();
+LABEL_NEG:
             PUSHI(-POP());
-            break;
-        case I::NOP:
-            break;
-        case I::DEBUGGER:
+            NEXT_INSTR();
+LABEL_NOP:
+            NEXT_INSTR();
+LABEL_DEBUGGER:
 #ifdef _WIN32
             DebugBreak();
 #endif
-            break;
-        case I::INTERRUPT_HANDLER:
+            NEXT_INSTR();
+LABEL_INTERRUPT_HANDLER:
             arg = read_next_program_byte(skip);
             address = read_addr_from_program(skip, 2);
             skip = 2 + ADDRESS_SIZE;
@@ -765,9 +748,9 @@ void VM::RunProgram(bool profile)
                 {
                     handlers.erase((InterruptCodes)arg);
                 }
-            break;
-        case I::SYSCALL:
-        case I::SYSCALL2:
+            NEXT_INSTR();
+LABEL_SYSCALL:
+LABEL_SYSCALL2:
             arg = instr == I::SYSCALL ? read_next_program_byte(skip) : POP();
             {
                 auto result = STDLIB(arg);
@@ -776,9 +759,8 @@ void VM::RunProgram(bool profile)
                     HANDLE_EXCEPTION(result);
                 }
             }
-            break;
-        case I::HALT:
-
+            NEXT_INSTR();
+LABEL_HALT:
             if (nvram.is_open())
             {
                 nvram.close();
@@ -788,16 +770,16 @@ void VM::RunProgram(bool profile)
 #else
             return; // end of program
 #endif
-        case I::MACRO_POP_EXT_X2_ADD16:
+LABEL_MACRO_POP_EXT_X2_ADD16:
             PUSH_ADDR(POP() * 2 + POP_ADDR());
-            break;
-        case I::MACRO_POP_EXT_X2_ADD16_LG16:
+            NEXT_INSTR();
+LABEL_MACRO_POP_EXT_X2_ADD16_LG16:
             address = POP() * 2 + POP_ADDR();
             POINTER = address;;
             PUSH_ADDR(read16(memory, address));
-            break;
-        case I::MACRO_ADD8_TO_16:
-        case I::MACRO_ADD16_TO_8:
+            NEXT_INSTR();
+LABEL_MACRO_ADD8_TO_16:
+LABEL_MACRO_ADD16_TO_8:
             address = instr == I::MACRO_ADD8_TO_16 ?  POP() + POP_ADDR() : POP_ADDR() + POP();
             if (memory[IP + 1] == I::LOAD_GLOBAL)
             {
@@ -813,90 +795,80 @@ void VM::RunProgram(bool profile)
             }
             else
                 PUSH_ADDR(address);
-            break;
-        case I::MACRO_ANDX:
+                NEXT_INSTR();
+LABEL_MACRO_ANDX:
             PUSH_ADDR(POP() & POP());
-            break;
-        case I::MACRO_ORX:
+            NEXT_INSTR();
+LABEL_MACRO_ORX:
             PUSH_ADDR(POP() | POP());
-            break;
-        case I::MACRO_LSH16_BY8:
-        {
-            auto tmp1 = POP();
-            auto tmp2 = POP_ADDR();
-            signedResult = tmp2 << tmp1;
-            PUSHI_ADDR(signedResult);
-            break;
-        }
-        case I::MACRO_INC_LOCAL:
+            NEXT_INSTR();
+LABEL_MACRO_LSH16_BY8:
+            {
+                auto tmp1 = POP();
+                auto tmp2 = POP_ADDR();
+                signedResult = tmp2 << tmp1;
+                PUSHI_ADDR(signedResult);
+            }
+            NEXT_INSTR();
+LABEL_MACRO_INC_LOCAL:
             arg = read_next_program_byte(skip);
             memory[FP + arg] += 1;
-            break;
-        case I::MACRO_DEC_LOCAL:
+            NEXT_INSTR();
+LABEL_MACRO_DEC_LOCAL:
             arg = read_next_program_byte(skip);
             memory[FP + arg] -= 1;
-            break;
-        case I::MACRO_INC_LOCAL16:
+            NEXT_INSTR();
+LABEL_MACRO_INC_LOCAL16:
             arg = read_next_program_byte(skip);
             write16(memory, FP + arg, read16(memory, FP + arg) + 1);
-            break;
-        case I::MACRO_DEC_LOCAL16:
+            NEXT_INSTR();
+LABEL_MACRO_DEC_LOCAL16:
             arg = read_next_program_byte(skip);
             write16(memory, FP + arg, read16(memory, FP + arg) - 1);
-            break;
-        case I::MACRO_X2:
-        {
-			OP_WITH_CONST(<< , 1);
-            break;
-        }
-        case I::MACRO_X216:
-        {
-			OP_WITH_CONST_16(<< , 1);
-            break;
-        }
-        case I::MACRO_DIV2:
-        {
+            NEXT_INSTR();
+LABEL_MACRO_X2:
+            OP_WITH_CONST(<< , 1);
+            NEXT_INSTR();
+LABEL_MACRO_X216:
+            OP_WITH_CONST_16(<< , 1);
+            NEXT_INSTR();
+LABEL_MACRO_DIV2:
             OP_WITH_CONST(>> , 1);
-            break;
-        }
-        case I::MACRO_X3:
-        {
+            NEXT_INSTR();
+LABEL_MACRO_X3:
             OP_WITH_CONST(* , 3);
-            break;
-        }
-        case I::MACRO_DIV3:
-        {
+            NEXT_INSTR();
+LABEL_MACRO_DIV3:
             OP_WITH_CONST(/ , 3);
-            break;
-        }
-        case I::GET_PTR:
+            NEXT_INSTR();
+LABEL_GET_PTR:
             PUSH_ADDR(POINTER);
-            break;
-        case I::LOAD_GLOBAL_PTR:
+            NEXT_INSTR();
+LABEL_LOAD_GLOBAL_PTR:
             address = POINTER;
             PUSH(memory[address]);
-            break;
-        case I::STORE_GLOBAL_PTR:
+            NEXT_INSTR();
+LABEL_STORE_GLOBAL_PTR:
             address = POINTER;
             arg = POP();
             memory[address] = arg;
-            break;
-        case I::LOAD_GLOBAL_PTR16:
+            NEXT_INSTR();
+LABEL_LOAD_GLOBAL_PTR16:
             address = POINTER;
             PUSH_ADDR(read16(memory, address));
-            break;
-        case I::STORE_GLOBAL_PTR16:
+            NEXT_INSTR();
+LABEL_STORE_GLOBAL_PTR16:
             address = POINTER;
             val = POP_ADDR();
             write16(memory, address, val);
-            break;
-        case I::MACRO_CONDITIONAL_JF:
+            NEXT_INSTR();
+LABEL_MACRO_CONDITIONAL_JF:
             arg = read_next_program_byte(skip);
             address = read_addr_from_program(skip, 2);
             switch (arg)
             {
             case 0: // EQ
-				signedResult = POP() == POP();
+                signedResult = POP() == POP();
                 break;
             case 1: // NE
                 signedResult = POP() != POP();
@@ -904,13 +876,13 @@ void VM::RunProgram(bool profile)
             case 2: // LESS
                 signedResult = POP() < POP();
                 break;
-			case 3: // LESS_OR_EQ
+            case 3: // LESS_OR_EQ
                 signedResult = POP() <= POP();
                 break;
-			case 4: // GREATER
+            case 4: // GREATER
                 signedResult = POP() > POP();
                 break;
-			case 5: // GREATER_OR_EQ
+            case 5: // GREATER_OR_EQ
                 signedResult = POP() >= POP();
                 break;
             case 6: // ZERO
@@ -920,39 +892,31 @@ void VM::RunProgram(bool profile)
                 signedResult = POP() != 0;
                 break;
             default:
-				std::cerr << "Unknown conditional argument: " << std::to_string(arg) << std::endl;
-				throw std::runtime_error("Unknown conditional argument: " + std::to_string(arg));
+                std::cerr << "Unknown conditional argument: " << std::to_string(arg) << std::endl;
+                throw std::runtime_error("Unknown conditional argument: " + std::to_string(arg));
             }
-
             if (!signedResult)
             {
                 IP = address;
                 skip = 0;
             }
-            break;
-
-        case I::MACRO_SET_LOCAL:
+            NEXT_INSTR();
+LABEL_MACRO_SET_LOCAL:
             arg = read_next_program_byte(skip);
             tmp = memory[IP + 2];
             skip = 3;
             memory[FP + arg] = tmp;
-            break;
-
-        case I::MACRO_SET_LOCAL16:
+            NEXT_INSTR();
+LABEL_MACRO_SET_LOCAL16:
             arg = read_next_program_byte(skip);
             address = read16(memory, IP + 2);
             skip = 4;
-			write16(memory, FP + arg, address);
-            break;
+            write16(memory, FP + arg, address);
+            NEXT_INSTR();
 
-        default:
-            std::cerr << "Instruction not implemented: " << std::to_string(instr) << std::endl;
-            throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));
-        }
-        IP += skip;
-    }
-
-
+        // Add more labels as needed for your enum
+        // End of computed goto block
+#endif // _MSC_VER
 
 #ifdef WITH_PROFILER
     end :
@@ -962,9 +926,9 @@ void VM::RunProgram(bool profile)
         std::map<I, long long> counterMaps;
         for (int i = 0; i < 256; i++)
         {
-			if (counters[i] == 0) continue;
+            if (counters[i] == 0) continue;
             counterMaps[(I)i] = counters[i];
-		}
+        }
         std::vector<std::pair<I, long long>> sortedCounters(counterMaps.begin(), counterMaps.end());
         std::sort(sortedCounters.begin(), sortedCounters.end(),
             [](const auto& a, const auto& b) { return a.second > b.second; });

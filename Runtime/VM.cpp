@@ -797,10 +797,22 @@ void VM::RunProgram(bool profile)
             PUSH_ADDR(read16(memory, address));
             break;
         case I::MACRO_ADD8_TO_16:
-            PUSH_ADDR(POP() + POP_ADDR());
-            break;
         case I::MACRO_ADD16_TO_8:
-            PUSH_ADDR(POP_ADDR() + POP());
+            address = instr == I::MACRO_ADD8_TO_16 ?  POP() + POP_ADDR() : POP_ADDR() + POP();
+            if (memory[IP + 1] == I::LOAD_GLOBAL)
+            {
+                POINTER = address;
+                PUSH(memory[address]);
+                skip++;
+            }
+            else if (memory[IP + 1] == I::STORE_GLOBAL)
+            {
+                POINTER = address;
+                memory[address] = POP();
+                skip++;
+            }
+            else
+                PUSH_ADDR(address);
             break;
         case I::MACRO_ANDX:
             PUSH_ADDR(POP() & POP());

@@ -60,8 +60,14 @@ function print_sudoku(byte matrix[]) begin
     end
 end
 
-function sudokuSolverRec(byte mat[], byte i, byte j, addr row[], addr col[], addr box[], byte box_indexes[]) -> byte
+function sudokuSolverRec(byte i, byte j) -> byte
 begin
+    global mat;
+    global row;
+    global col;
+    global box;
+    global box_indexes;
+
     // base case: Reached nth column of last row
     if i == size-1 && j == size then begin
     return 1;
@@ -78,7 +84,7 @@ begin
     // If cell is already occupied then move forward
     byte index = i * size + j;
     if mat[index] != 0 then begin
-        return call sudokuSolverRec(mat, i, j + 1, row, col, box, box_indexes);
+        return call sudokuSolverRec(i, j + 1);
     end
 
     byte num = 1;
@@ -97,7 +103,7 @@ begin
             col[j] = col[j] | val;
             box[box_index] = box[box_index] | val;
 
-            ok = call sudokuSolverRec(mat, i, j+1, row, col, box, box_indexes);
+            ok = call sudokuSolverRec(i, j+1);
             if ok then begin
                 mat[index] = num;
                 return 1;
@@ -133,6 +139,6 @@ while r < size do begin
     r = r + 1;
 end
 
-call sudokuSolverRec(mat, 0, 0, row, col, box, box_indexes);
+call sudokuSolverRec(0, 0);
 
 call print_sudoku(mat);

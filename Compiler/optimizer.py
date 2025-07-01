@@ -76,7 +76,7 @@ def peephole_optimize(snippet: CodeSnippet):
                     changes += 1
                     break
 
-            if line_starts_with(i, "STORE_LOCAL ") and line_starts_with(i+1, "LOAD") and line_starts_with(i+2, "LOAD_LOCAL ") and line_equal(i+3, "EXTEND") and line_equal(i+4, "ADD16"):
+            if line_starts_with(i, "STORE_LOCAL ") and (line_starts_with(i+1, "LOAD") or line_starts_with(i+1, "MACRO_LOAD")) and line_starts_with(i+2, "LOAD_LOCAL ") and line_equal(i+3, "EXTEND") and line_equal(i+4, "ADD16"):
                 variable1 = snippet.codes[i][12:]
                 variable2 = snippet.codes[i+2][11:]
                 if variable1 == variable2:

@@ -1013,6 +1013,18 @@ void VM::RunProgram(bool profile)
 			write16(memory, FP + arg, address);
             break;
 
+        case I::MACRO_LOAD_GLOBAL_VAR:
+			arg = read_next_program_byte(skip);
+			address = stackStartPos + arg;
+			PUSH(memory[address]);
+            break;
+
+        case I::MACRO_LOAD_GLOBAL_VAR16:
+            arg = read_next_program_byte(skip);
+            address = stackStartPos + arg;
+			PUSH_ADDR(read16(memory, address));
+            break;
+
         default:
             std::cerr << "Instruction not implemented: " << std::to_string(instr) << std::endl;
             throw std::runtime_error("Instruction not implemented: " + std::to_string(instr));

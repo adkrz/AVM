@@ -104,3 +104,30 @@ def peephole_optimize(snippet: CodeSnippet):
                     changes = 1
                     break
 
+            if line == "PUSH_STACK_START" and line_starts_with(i + 1, "PUSH16 #") and line_equal(i+2, "ADD16") and line_equal(i+3, "LOAD_GLOBAL16"):
+                variable = snippet.codes[i + 1][8:]
+                snippet.codes[i] = f"MACRO_LOAD_GLOBAL_VAR16 {variable}"
+                snippet.remove_line(i + 3)
+                snippet.remove_line(i + 2)
+                snippet.remove_line(i + 1)
+                changes += 1
+                break
+            if line == "PUSH_STACK_START" and line_starts_with(i + 1, "PUSH16 #") and line_equal(i+2, "ADD16") and line_equal(i+3, "LOAD_GLOBAL"):
+                variable = snippet.codes[i + 1][8:]
+                snippet.codes[i] = f"MACRO_LOAD_GLOBAL_VAR {variable}"
+                snippet.remove_line(i + 3)
+                snippet.remove_line(i + 2)
+                snippet.remove_line(i + 1)
+                changes += 1
+                break
+            if line == "PUSH_STACK_START" and line_equal(i+1, "LOAD_GLOBAL16"):
+                snippet.codes[i] = f"MACRO_LOAD_GLOBAL_VAR16 0"
+                snippet.remove_line(i + 1)
+                changes += 1
+                break
+            if line == "PUSH_STACK_START" and line_equal(i+1, "LOAD_GLOBAL"):
+                snippet.codes[i] = f"MACRO_LOAD_GLOBAL_VAR 0"
+                snippet.remove_line(i + 1)
+                changes += 1
+                break
+

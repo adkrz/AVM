@@ -734,6 +734,15 @@ enum I
     /// </summary>
     STORE_LOCAL_KEEP,
     STORE_LOCAL_KEEP16,
+
+    /// <summary>
+	/// Comines PUSH_STACK_START, PUSH16 #x, ADD16, LOAD_GLOBAL16
+    /// </summary>
+    MACRO_LOAD_GLOBAL_VAR16,
+    /// <summary>
+    /// Comines PUSH_STACK_START, PUSH16 #x, ADD16, LOAD_GLOBAL
+    /// </summary>
+    MACRO_LOAD_GLOBAL_VAR
 };
 
 enum InterruptCodes

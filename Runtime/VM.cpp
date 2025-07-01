@@ -727,12 +727,39 @@ void VM::RunProgram(bool profile)
             write16(memory, SP - ADDRESS_SIZE, val);
             break;
         case I::DUP:
-            
-            PUSH(memory[SP - 1]);
+			// Opcode prediction: DUP is often followed by a conditional jump
+            if (memory[IP + 1] == I::JT && memory[SP - 1])
+            {
+				address = read_addr_from_program(skip, 2);
+				IP = address;
+                skip = 0;
+            }
+            else if (memory[IP + 1] == I::JF && !memory[SP - 1])
+            {
+                address = read_addr_from_program(skip, 2);
+                IP = address;
+                skip = 0;
+            }
+            else
+                PUSH(memory[SP - 1]);
             break;
         case I::DUP16:
-            
-            PUSH_ADDR(read16(memory, SP - ADDRESS_SIZE));
+            // Opcode prediction: DUP16 is often followed by a conditional jump
+			val = read16(memory, SP - ADDRESS_SIZE);
+            if (memory[IP + 1] == I::JT16 && val)
+            {
+                address = read_addr_from_program(skip, 2);
+                IP = address;
+                skip = 0;
+            }
+            else if (memory[IP + 1] == I::JF16 && !val)
+            {
+                address = read_addr_from_program(skip, 2);
+                IP = address;
+                skip = 0;
+            }
+            else
+                PUSH_ADDR(val);
             break;
         case I::ROLL3:
         {
@@ -800,6 +827,7 @@ void VM::RunProgram(bool profile)
         case I::MACRO_ADD8_TO_16:
         case I::MACRO_ADD16_TO_8:
             address = instr == I::MACRO_ADD8_TO_16 ?  POP() + POP_ADDR() : POP_ADDR() + POP();
+            // Opcode prediction: such addition is often followed by a load/store
             if (memory[IP + 1] == I::LOAD_GLOBAL)
             {
                 POINTER = address;
@@ -819,6 +847,7 @@ void VM::RunProgram(bool profile)
 		// In GCC/Clang, we use separate cases for better performance
         case I::MACRO_ADD8_TO_16:
             address = POP() + POP_ADDR();
+            // Opcode prediction: such addition is often followed by a load/store
             if (memory[IP + 1] == I::LOAD_GLOBAL)
             {
                 POINTER = address;
@@ -836,6 +865,7 @@ void VM::RunProgram(bool profile)
             break;
         case I::MACRO_ADD16_TO_8:
             address = POP_ADDR() + POP();
+            // Opcode prediction: such addition is often followed by a load/store
             if (memory[IP + 1] == I::LOAD_GLOBAL)
             {
                 POINTER = address;

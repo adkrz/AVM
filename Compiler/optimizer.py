@@ -36,6 +36,15 @@ def peephole_optimize(snippet: CodeSnippet):
                 snippet.remove_line(i + 1)
                 changes += 1
                 break
+            if line == "EXTEND" and line_equal(i + 1, "MACRO_X216") and line_equal(i + 2, "ADD16") and line_equal(i + 3, "LOAD_GLOBAL16") and line_starts_with(i + 4, "LOAD_LOCAL16 "):
+                variable = snippet.codes[i+4][13:]
+                snippet.codes[i] = f"MACRO_POP_EXT_X2_ADD16_LG16_LL16 {variable}"
+                snippet.remove_line(i + 4)
+                snippet.remove_line(i + 3)
+                snippet.remove_line(i + 2)
+                snippet.remove_line(i + 1)
+                changes += 1
+                break
             if line == "EXTEND" and line_equal(i + 1, "MACRO_X216") and line_equal(i + 2, "ADD16") and line_equal(i + 3,
                                                                                                                   "LOAD_GLOBAL16"):
                 snippet.codes[i] = "MACRO_POP_EXT_X2_ADD16_LG16"

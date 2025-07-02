@@ -822,6 +822,13 @@ void VM::RunProgram(bool profile)
             address = POP() * 2 + POP_ADDR();
             POINTER = address;;
             PUSH_ADDR(read16(memory, address));
+			// Opcode prediction: this macro is often followed by LOAD_LOCAL16
+            if (memory[IP + 1] == I::LOAD_LOCAL16)
+            {
+				arg = memory[IP + 2];
+                PUSH_ADDR(read16(memory, FP + arg));
+                skip+=2;
+            }
             break;
 #ifdef _MSC_VER
         case I::MACRO_ADD8_TO_16:

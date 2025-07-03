@@ -170,7 +170,7 @@ class BinaryOperation(AbstractExpression):
         elif self.op == BinOpType.Mul:
             return CodeSnippet(self.line_no, "MUL" if target_type == Type.Byte else "MUL16", target_type)
         elif self.op == BinOpType.Div:
-            return CodeSnippet(self.line_no, "DIV2" if target_type == Type.Byte else "DIV16", target_type)
+            return CodeSnippet(self.line_no, "DIV2" if target_type == Type.Byte else "DIV216", target_type)
         elif self.op == BinOpType.Equals:
             return CodeSnippet(self.line_no, "EQ" if target_type == Type.Byte else "EQ16", target_type)
         elif self.op == BinOpType.NotEqual:

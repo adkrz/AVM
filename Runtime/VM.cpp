@@ -296,7 +296,7 @@ void VM::RunProgram(bool profile)
             {
                 HANDLE_EXCEPTION(InterruptCodes::DivisionByZeroError);
             }
-            PUSHI(tmp2 / tmp1);
+            PUSHI_ADDR(tmp2 / tmp1);
             break;
         }
         case I::MOD:

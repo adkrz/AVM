@@ -192,6 +192,7 @@ class BinaryOperation(AbstractExpression):
         elif self.op == BinOpType.Mod:
             cs = CodeSnippet(self.line_no, "SWAP" if target_type == Type.Byte else "SWAP16", target_type)
             cs.add_line("MOD" if target_type == Type.Byte else "MOD16")
+            return cs
         elif self.op == BinOpType.Lsh:
             return CodeSnippet(self.line_no, "LSH" if target_type == Type.Byte else "LSH16", target_type)
         elif self.op == BinOpType.Rsh:

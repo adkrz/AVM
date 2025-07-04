@@ -1,6 +1,6 @@
 # Compiler and flags
 CXX := g++
-CXXFLAGS := -std=c++20 -Wall -Wextra -O2
+CXXFLAGS := -std=c++20 -Wall -Wextra -g
 
 # Source files and output
 SRCS := Compiler.cpp Runtime.cpp VM.cpp

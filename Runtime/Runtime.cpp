@@ -37,8 +37,6 @@ int main(int argc, char** argv)
     auto ext = to_lower(path.extension().generic_string());
     auto directory = path.parent_path();
     auto basename = path.stem();
-    auto nvr_file = directory / basename;
-    nvr_file += "_nvram.bin";
 
     if (ext == ".asm")
     {
@@ -112,7 +110,7 @@ int main(int argc, char** argv)
     }
 
     VM vm;
-    vm.LoadProgram(program.data(), (int)program.size(), 65535, nvr_file.string().c_str());
+    vm.LoadProgram(program.data(), (int)program.size());
 
     using std::chrono::high_resolution_clock;
     using std::chrono::duration_cast;

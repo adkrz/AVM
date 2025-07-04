@@ -11,15 +11,81 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
     std::string line;
     int lineNo = 0;
     std::vector<word> program;
-    addr address = VM::PROGRAM_BEGIN;
+    addr address = 0;
 
     std::map<std::string, addr> labels;
     std::map<addr, std::string> labelsToFill;
-    std::map<addr, std::string> relLabelsToFill;
 
     std::map<std::string, int> constants;
     std::map<std::string, unsigned short int> constants16;
-    bool relativeMode = false;
+    //bool relativeMode = false;
+
+    auto check = [&](const std::vector<std::string_view> vct, size_t index){
+        if (index>=vct.size())
+            throw std::runtime_error("Invalid token count in line " + std::to_string(lineNo));
+        return vct[index];
+    };
+
+    auto processInt8 = [&](const std::vector<std::string_view> vct, size_t index){
+            auto token = check(vct, index);
+            uint8_t ii;
+            auto result = std::from_chars(token.data(), token.data() + token.size(), ii);
+            if (result.ec == std::errc())
+            {
+                program.push_back((word)ii);
+                address++;
+            }
+        };
+    auto processUInt32 = [&](const std::vector<std::string_view> vct, size_t index){
+            auto token = check(vct, index);
+            uint32_t i32 = 0;
+            auto result = std::from_chars(token.data(), token.data() + token.size(), i32);
+            if (result.ec == std::errc::invalid_argument)
+                throw std::runtime_error("Invalid number {" + std::string(token) + "} at line {" + std::to_string(lineNo) + "}");
+            program.push_back((word)i32);
+            program.push_back((word)(i32 >> 8));
+            program.push_back((word)(i32 >> 16));
+            program.push_back((word)(i32 >> 24));
+            address += 4;
+        };
+    auto processInt32 = [&](const std::vector<std::string_view> vct, size_t index){
+            auto token = check(vct, index);
+            int32_t i32 = 0;
+            auto result = std::from_chars(token.data(), token.data() + token.size(), i32);
+            if (result.ec == std::errc::invalid_argument)
+                throw std::runtime_error("Invalid number {" + std::string(token) + "} at line {" + std::to_string(lineNo) + "}");
+            program.push_back((word)i32);
+            program.push_back((word)(i32 >> 8));
+            program.push_back((word)(i32 >> 16));
+            program.push_back((word)(i32 >> 24));
+            address += 4;
+        };
+    auto processLabelReference = [&](const std::vector<std::string_view> vct, size_t index){
+            auto token = check(vct, index);
+            auto l = std::string(token.substr(1)); // cut @
+            labelsToFill[address] = l;
+            for (int ii = 0; ii < VM::ADDRESS_SIZE; ii++)
+            {
+                program.push_back(0);
+                address++;
+            }
+        };
+    auto processSyscall = [&](const std::vector<std::string_view> vct, size_t index){
+            auto token = check(vct, index);
+            auto tokenU = to_upper(token);
+            auto ic = magic_enum::enum_cast<Stdlib>(tokenU.substr(4), magic_enum::case_insensitive);
+                if (ic.has_value())
+                {
+                    program.push_back((word)ic.value());
+                    address++;
+                }
+                else
+                    throw std::runtime_error("Invalid stdlib code {" + tokenU + "} at line {" + std::to_string(lineNo) + "}");
+        };
+    auto processInstruction = [&](I instr){
+            program.push_back((word)instr);
+            address++;
+    };
 
     while (std::getline(inputFile, line))
     {
@@ -27,35 +93,8 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
 
         auto trimmed = strip_line(line);
         if (trimmed.length() == 0) continue;
-        auto trimmedU = to_upper(trimmed);
-
-        if (trimmedU.starts_with("CONST "))
-        {
-            auto tokens = split(trimmed, ' ');
-            if (tokens.size() != 3)
-                throw std::runtime_error("Invalid const at line" + std::to_string(lineNo) + ", expected CONST NAME intValue");
-            int cValue = 0;
-            auto cName = std::string(tokens[1]);
-            auto result = std::from_chars(tokens[2].data(), tokens[2].data() + tokens[2].size(), cValue);
-            if (result.ec == std::errc::invalid_argument)
-                throw std::runtime_error("Invalid const at line" + std::to_string(lineNo) + ", expected CONST NAME intValue");
-            constants[cName] = cValue;
-            continue;
-        }
-        else if (trimmedU.starts_with("CONST16 "))
-        {
-            auto tokens = split(trimmed, ' ');
-            if (tokens.size() != 3)
-                throw std::runtime_error("Invalid const16 at line" + std::to_string(lineNo) + ", expected CONST16 NAME intValue");
-            auto cName = std::string(tokens[1]);
-            int cValue = 0;
-            auto result = std::from_chars(tokens[2].data(), tokens[2].data() + tokens[2].size(), cValue);
-            if (result.ec == std::errc::invalid_argument)
-                throw std::runtime_error("Invalid const16 at line" + std::to_string(lineNo) + ", expected CONST16 NAME intValue");
-            constants16[cName] = cValue;
-            continue;
-        }
-        else if (trimmed.starts_with("\""))
+        
+        if (trimmed.starts_with("\""))
         {
             trimmed = trimmed.substr(1, trimmed.length() - 2);
             auto escaped = ParseEscapeCodes(trimmed);
@@ -77,128 +116,59 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
             }
             continue;
         }
-
-        for (const auto token : split(trimmed, ' '))
+        else if (trimmed.starts_with(":"))
         {
-            if (token.starts_with(':'))
-            {
-                auto l = std::string(token.substr(1));
-                if (labels.count(l))
-                    throw std::runtime_error("Duplicate label " + l);
-                labels[l] = address;
-                continue;
-            }
-            else if (token.starts_with('@'))
-            {
-                auto l = std::string(token.substr(1));
-                if (relativeMode)
-                    relLabelsToFill[address] = l;
-                else
-                    labelsToFill[address] = l;
-                for (int ii = 0; ii < VM::ADDRESS_SIZE; ii++)
-                {
-                    program.push_back(0);
-                    address++;
-                }
-                relativeMode = false;
-                continue;
-            }
+            auto l = std::string(trimmed.substr(1));
+            if (labels.count(l))
+                throw std::runtime_error("Duplicate label " + l);
+            labels[l] = address;
+            continue;
+        }
 
-            auto tokenU = to_upper(token);
+        auto tokens = split(trimmed, ' ');
+        if (!tokens.size())
+            continue;
 
-            if (tokenU.starts_with("INT."))
-            {
-                // Output interrupt code
-                auto ic = magic_enum::enum_cast<InterruptCodes>(tokenU.substr(4), magic_enum::case_insensitive);
-                if (ic.has_value())
-                {
-                    program.push_back((word)ic.value());
-                    address++;
-                    continue;
-                }
-                else
-                    throw std::runtime_error("Invalid interrupt code {" + tokenU + "} at line {" + std::to_string(lineNo) + "}");
-            }
-            if (tokenU.starts_with("STD."))
-            {
-                // Output stdlib code
-                auto ic = magic_enum::enum_cast<Stdlib>(tokenU.substr(4), magic_enum::case_insensitive);
-                if (ic.has_value())
-                {
-                    program.push_back((word)ic.value());
-                    address++;
-                    continue;
-                }
-                else
-                    throw std::runtime_error("Invalid stdlib code {" + tokenU + "} at line {" + std::to_string(lineNo) + "}");
-            }
-            if (tokenU.starts_with("CONST."))
-            {
-                auto ts = std::string(token.substr(6));
-                if (!constants.count(ts))
-                    throw std::runtime_error("Unknown constant {" + tokenU + "} at line {" + std::to_string(lineNo) + "}");
-                program.push_back((word)constants[ts]);
-                address++;
-                continue;
-            }
-            if (tokenU.starts_with("CONST16."))
-            {
-                auto ts = std::string(token.substr(8));
-                if (!constants16.count(ts))
-                    throw std::runtime_error("Unknown constant16 {" + tokenU + "} at line {" + std::to_string(lineNo) + "}");
-                program.push_back((word)constants16[ts]);
-                address++;
-                continue;
-            }
-            if (token.starts_with("#"))
-            {
-                // 16 bit int
-                unsigned short int i16 = 0;
-                auto ts = token.substr(1);
-                auto result = std::from_chars(ts.data(), ts.data() + ts.size(), i16);
-                if (result.ec == std::errc::invalid_argument)
-                    throw std::runtime_error("Invalid number {" + std::string(token) + "} at line {" + std::to_string(lineNo) + "}");
-                program.push_back((word)i16);
-                program.push_back((word)(i16 >> 8));
-                address += 2;
-                continue;
-            }
+        auto instr = magic_enum::enum_cast<I>(tokens[0], magic_enum::case_insensitive);
 
-            int ii;
-            auto result = std::from_chars(token.data(), token.data() + token.size(), ii);
-            if (result.ec == std::errc())
-            {
-                // Output ordinary integer 8bit
-                program.push_back((word)ii);
-                address++;
-                continue;
-            }
+        if (!instr.has_value())
+        {
+            throw std::runtime_error("Invalid code {" + std::string(tokens[0]) + "} at line {" + std::to_string(lineNo) + "}");
+        }
 
-            // Output instruction:
-            auto instr = magic_enum::enum_cast<I>(tokenU, magic_enum::case_insensitive);
-            if (instr.has_value())
-            {
-                if (tokenU.ends_with("_REL"))
-                    relativeMode = true;
-                program.push_back((word)instr.value());
-                address++;
-                continue;
-            }
+        auto i = instr.value();
+        processInstruction(i);
 
-            auto err = "Invalid code {" + std::string(token) + "} at line {" + std::to_string(lineNo) + "}";
-			std::cerr << err << std::endl;
-            throw std::runtime_error(err);
+        switch (i)
+        {
+            case I::NOP:
+            case I::HALT:
+            case I::PRINT_FRAMES:
+                break;;
+            case I::NEW_FRAME:
+                processInt8(tokens, 1);
+                break;
+            case I::MOV_RU:
+                processInt8(tokens, 1);
+                processUInt32(tokens, 2);
+                break;
+            case I::MOV_RI:
+                processInt8(tokens, 1);
+                processInt32(tokens, 2);
+                break;
+            case I::MOV_RR:
+                processInt8(tokens, 1);
+                processInt8(tokens, 2);
+                break;
+            default:
+                throw std::runtime_error("Missing implementation of instruction " + std::string(tokens[0]));
         }
 
     }
 
     for (auto& pair : labelsToFill)
     {
-        write16(program.data(), pair.first - VM::PROGRAM_BEGIN, labels[pair.second]);
-    }
-    for (auto& pair : relLabelsToFill)
-    {
-        write16(program.data(), pair.first - VM::PROGRAM_BEGIN, (offs)(labels[pair.second] - pair.first + 1));
+        writeU32(program.data(), pair.first, labels[pair.second]);
     }
 
     program.push_back((word)I::HALT);

@@ -9,8 +9,6 @@ enum I
     // byte reg_count
     NEW_FRAME,
 
-    // reg_no, uint32
-    MOV_RU,
     // reg_no, int32
     MOV_RI,
     // destination reg no, src reg no
@@ -24,8 +22,6 @@ enum I
     
     //LEA,
 
-    // reg no, uint32
-    ADD_RU,
     // reg no, int32
     ADD_RI,
     // reg no, byte

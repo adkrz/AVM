@@ -47,15 +47,9 @@ void VM::RunProgram(bool profile)
                 arg8 = program[IP++];
                 current_frame = new Frame(arg8, current_frame);
                 break;
-            case I::MOV_RU:
-                arg8 = program[IP++];
-                arg32 = readU32(program, IP);
-                IP += 4;
-                current_frame->registers[arg8] = arg32;
-                break;
             case I::MOV_RI:
                 arg8 = program[IP++];
-                argi32 = readI32(program, IP);
+                argi32 = readU32(program, IP);
                 IP += 4;
                 current_frame->registers[arg8] = argi32;
                 break;
@@ -64,15 +58,9 @@ void VM::RunProgram(bool profile)
                 arg8a = program[IP++];
                 current_frame->registers[arg8] = current_frame->registers[arg8a];
                 break;
-            case I::ADD_RU:
-                arg8 = program[IP++];
-                arg32 = readU32(program, IP);
-                IP += 4;
-                current_frame->registers[arg8] += arg32;
-                break;
             case I::ADD_RI:
                 arg8 = program[IP++];
-                argi32 = readI32(program, IP);
+                argi32 = readU32(program, IP);
                 IP += 4;
                 current_frame->registers[arg8] += argi32;
                 break;

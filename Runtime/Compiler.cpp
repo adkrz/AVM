@@ -36,30 +36,33 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
                 address++;
             }
         };
-    auto processUInt32 = [&](const std::vector<std::string_view> vct, size_t index){
-            auto token = check(vct, index);
-            uint32_t i32 = 0;
-            auto result = std::from_chars(token.data(), token.data() + token.size(), i32);
-            if (result.ec == std::errc::invalid_argument)
-                throw std::runtime_error("Invalid number {" + std::string(token) + "} at line {" + std::to_string(lineNo) + "}");
-            program.push_back((word)i32);
-            program.push_back((word)(i32 >> 8));
-            program.push_back((word)(i32 >> 16));
-            program.push_back((word)(i32 >> 24));
-            address += 4;
-        };
     auto processInt32 = [&](const std::vector<std::string_view> vct, size_t index){
             auto token = check(vct, index);
-            int32_t i32 = 0;
-            auto result = std::from_chars(token.data(), token.data() + token.size(), i32);
-            if (result.ec == std::errc::invalid_argument)
-                throw std::runtime_error("Invalid number {" + std::string(token) + "} at line {" + std::to_string(lineNo) + "}");
-            program.push_back((word)i32);
-            program.push_back((word)(i32 >> 8));
-            program.push_back((word)(i32 >> 16));
-            program.push_back((word)(i32 >> 24));
+            if (token[0] == 'u')
+            {
+                uint32_t i32 = 0;
+                auto result = std::from_chars(token.data() + 1, token.data() + token.size(), i32);
+                if (result.ec == std::errc::invalid_argument)
+                    throw std::runtime_error("Invalid number {" + std::string(token) + "} at line {" + std::to_string(lineNo) + "}");
+                program.push_back((word)i32);
+                program.push_back((word)(i32 >> 8));
+                program.push_back((word)(i32 >> 16));
+                program.push_back((word)(i32 >> 24));
+            }
+            else
+            {
+                int32_t i32 = 0;
+                auto result = std::from_chars(token.data(), token.data() + token.size(), i32);
+                if (result.ec == std::errc::invalid_argument)
+                    throw std::runtime_error("Invalid number {" + std::string(token) + "} at line {" + std::to_string(lineNo) + "}");
+                program.push_back((word)i32);
+                program.push_back((word)(i32 >> 8));
+                program.push_back((word)(i32 >> 16));
+                program.push_back((word)(i32 >> 24));
+            }
             address += 4;
         };
+
     auto processLabelReference = [&](const std::vector<std::string_view> vct, size_t index){
             auto token = check(vct, index);
             auto l = std::string(token.substr(1)); // cut @
@@ -148,11 +151,6 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
             case I::NEW_FRAME:
             case I::JMP_R:
                 processInt8(tokens, 1);
-                break;
-            case I::MOV_RU:
-            case I::ADD_RU:
-                processInt8(tokens, 1);
-                processUInt32(tokens, 2);
                 break;
             case I::MOV_RI:
             case I::ADD_RI:

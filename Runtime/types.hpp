@@ -6,27 +6,49 @@ enum I
     /// </summary>
     NOP,
 
+    // byte reg_count
     NEW_FRAME,
 
+    // reg_no, uint32
     MOV_RU,
+    // reg_no, int32
     MOV_RI,
+    // destination reg no, src reg no
     MOV_RR,
-    MOV_MR,
-    MOV_RM,
-    MOV_MM,
-    MOV8_MR,
-    MOV8_RM,
-    
-    LEA,
 
-    ADD_RI,
+    //MOV_MR,
+    //MOV_RM,
+    //MOV_MM,
+    //MOV8_MR,
+    //MOV8_RM,
+    
+    //LEA,
+
+    // reg no, uint32
     ADD_RU,
+    // reg no, int32
+    ADD_RI,
+    // reg no, byte
     ADD_RI8,
+    // destination reg no, src reg no
     ADD_RR,
 
-    CALL_I,
-    CALL_R,
-    RET,
+    // label
+    JMP,
+    // reg no with address
+    JMP_R,
+    // reg no, label
+    JF,
+    // reg no, reg no with address
+    JF_R,
+    // reg no, label
+    JT,
+    // reg no, reg no with address
+    JT_R,
+
+    //CALL_U,
+    //CALL_R,
+    //RET,
 
     HALT,
     PRINT_FRAMES

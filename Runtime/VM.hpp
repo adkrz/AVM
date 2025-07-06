@@ -17,7 +17,7 @@ class VM
 #define readI32(list, pos) (*reinterpret_cast<int32_t*>(list + pos))
 
 public:
-	void LoadProgram(word* program, int program_length);
+	void LoadProgram(word* program);
 	void RunProgram(bool profile=false);
 
     static const int ADDRESS_SIZE = 4;

@@ -110,7 +110,7 @@ int main(int argc, char** argv)
     }
 
     VM vm;
-    vm.LoadProgram(program.data(), (int)program.size());
+    vm.LoadProgram(program.data());
 
     using std::chrono::high_resolution_clock;
     using std::chrono::duration_cast;

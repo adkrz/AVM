@@ -18,7 +18,7 @@
 #endif
 
 
-void VM::LoadProgram(word* program, int program_length)
+void VM::LoadProgram(word* program)
 {
     this->program = program;
 }
@@ -32,6 +32,9 @@ void VM::RunProgram(bool profile)
     reg arg32;
     int32_t argi32;
     int64_t IP = 0;
+
+    if (profile)
+        std::cerr << "Profiler not implemented" << std::endl;
 
     while (true)
     {
@@ -82,6 +85,40 @@ void VM::RunProgram(bool profile)
                 arg8 = program[IP++];
                 arg8a = program[IP++];
                 current_frame->registers[arg8] += current_frame->registers[arg8a];
+                break;
+            case I::JMP:
+                IP = readU32(program, IP);;
+                break;
+            case I::JMP_R:
+                IP = current_frame->registers[program[IP]];
+                break;
+            case I::JT:
+                arg8 = program[IP++];
+                arg32 = readU32(program, IP);
+                if (current_frame->registers[arg8])
+                    IP = arg32;
+                else IP++;
+                break;
+            case I::JF:
+                arg8 = program[IP++];
+                arg32 = readU32(program, IP);
+                if (!current_frame->registers[arg8])
+                    IP = arg32;
+                else IP++;
+                break;
+            case I::JT_R:
+                arg8 = program[IP++];
+                arg8a = program[IP++];
+                if (current_frame->registers[arg8])
+                    IP = current_frame->registers[arg8a];
+                else IP++;
+                break;
+            case I::JF_R:
+                arg8 = program[IP++];
+                arg8a = program[IP++];
+                if (!current_frame->registers[arg8])
+                    IP = current_frame->registers[arg8a];
+                else IP++;
                 break;
             case I::PRINT_FRAMES:
                 current_frame->print();

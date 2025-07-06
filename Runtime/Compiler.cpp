@@ -146,6 +146,7 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
             case I::PRINT_FRAMES:
                 break;;
             case I::NEW_FRAME:
+            case I::JMP_R:
                 processInt8(tokens, 1);
                 break;
             case I::MOV_RU:
@@ -161,8 +162,18 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
             case I::MOV_RR:
             case I::ADD_RI8:
             case I::ADD_RR:
+            case I::JT_R:
+            case I::JF_R:
                 processInt8(tokens, 1);
                 processInt8(tokens, 2);
+                break;
+            case I::JMP:
+                processLabelReference(tokens, 1);
+                break;
+            case I::JT:
+            case I::JF:
+                processInt8(tokens, 1);
+                processLabelReference(tokens, 2);
                 break;
             default:
                 throw std::runtime_error("Missing implementation of instruction " + std::string(tokens[0]));

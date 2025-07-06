@@ -149,14 +149,18 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
                 processInt8(tokens, 1);
                 break;
             case I::MOV_RU:
+            case I::ADD_RU:
                 processInt8(tokens, 1);
                 processUInt32(tokens, 2);
                 break;
             case I::MOV_RI:
+            case I::ADD_RI:
                 processInt8(tokens, 1);
                 processInt32(tokens, 2);
                 break;
             case I::MOV_RR:
+            case I::ADD_RI8:
+            case I::ADD_RR:
                 processInt8(tokens, 1);
                 processInt8(tokens, 2);
                 break;

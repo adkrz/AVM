@@ -20,6 +20,7 @@ enum I
     LEA,
 
     ADD_RI,
+    ADD_RU,
     ADD_RI8,
     ADD_RR,
 

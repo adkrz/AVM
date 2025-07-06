@@ -29,11 +29,14 @@ class Frame
 {
 public:
     Frame(int size, Frame* previous);
+    ~Frame();
     std::vector<reg> registers;
     Frame* previous = nullptr;
+    Frame* next = nullptr;
     uint32_t ip_backup;
-    reg return_value;
 
     void print();
+
+    Frame* create_frame(int size);
 };
 

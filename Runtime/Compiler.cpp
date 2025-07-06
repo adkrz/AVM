@@ -65,6 +65,8 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
 
     auto processLabelReference = [&](const std::vector<std::string_view> vct, size_t index){
             auto token = check(vct, index);
+            if (token[0] != '@')
+                throw std::runtime_error("Expected label reference starting with @");
             auto l = std::string(token.substr(1)); // cut @
             labelsToFill[address] = l;
             for (int ii = 0; ii < VM::ADDRESS_SIZE; ii++)
@@ -147,13 +149,17 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
             case I::NOP:
             case I::HALT:
             case I::PRINT_FRAMES:
-                break;;
+            case I::CALL:
+            case I::RET:
+                break;
             case I::NEW_FRAME:
             case I::JMP_R:
+            case I::PREPARE_CALL_R:
                 processInt8(tokens, 1);
                 break;
             case I::MOV_RI:
             case I::ADD_RI:
+            case I::COPY_CONST_TO_FUNC:
                 processInt8(tokens, 1);
                 processInt32(tokens, 2);
                 break;
@@ -162,10 +168,13 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
             case I::ADD_RR:
             case I::JT_R:
             case I::JF_R:
+            case I::COPY_TO_FUNC:
+            case I::COPY_FROM_FUNC:
                 processInt8(tokens, 1);
                 processInt8(tokens, 2);
                 break;
             case I::JMP:
+            case I::PREPARE_CALL:
                 processLabelReference(tokens, 1);
                 break;
             case I::JT:

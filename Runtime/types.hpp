@@ -42,10 +42,27 @@ enum I
     // reg no, reg no with address
     JT_R,
 
-    //CALL_U,
-    //CALL_R,
-    //RET,
-
+    // arg: label of function
+    // prepare next stack frame, but does not execute anything
+    // If function starts with NEW_FRAME, uses this information
+    PREPARE_CALL,
+    // reg no containing funcion address
+    PREPARE_CALL_R,
+    // no args -> everything done in PREPARE_CALL
+    CALL,
+    // copy local registers to prepared frame
+    // args: local reg no, function reg no
+    COPY_TO_FUNC,
+    // write constant value to prepared function frame
+    // function reg no, int32
+    COPY_CONST_TO_FUNC,
+    // after function return: copy data (e.g. ret value) from function regs back to us
+    // function reg no, local reg no
+    COPY_FROM_FUNC,
+    // Restore previous stack frame. The old prepared frame is still available and can be reached via COPY_FROM_FUNC
+    // no args
+    RET,
+    
     HALT,
     PRINT_FRAMES
 };

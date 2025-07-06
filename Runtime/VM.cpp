@@ -31,7 +31,8 @@ void VM::RunProgram(bool profile)
     uint8_t arg8a;
     reg arg32;
     int32_t argi32;
-    int64_t IP = 0;
+    int32_t IP = 0;
+    int32_t aboutToCall = 0;
 
     if (profile)
         std::cerr << "Profiler not implemented" << std::endl;
@@ -85,28 +86,72 @@ void VM::RunProgram(bool profile)
                 arg32 = readU32(program, IP);
                 if (current_frame->registers[arg8])
                     IP = arg32;
-                else IP++;
+                else IP+=ADDRESS_SIZE;
                 break;
             case I::JF:
                 arg8 = program[IP++];
                 arg32 = readU32(program, IP);
                 if (!current_frame->registers[arg8])
                     IP = arg32;
-                else IP++;
+                else IP+=ADDRESS_SIZE;
                 break;
             case I::JT_R:
                 arg8 = program[IP++];
                 arg8a = program[IP++];
                 if (current_frame->registers[arg8])
                     IP = current_frame->registers[arg8a];
-                else IP++;
+                else IP+=ADDRESS_SIZE;
                 break;
             case I::JF_R:
                 arg8 = program[IP++];
                 arg8a = program[IP++];
                 if (!current_frame->registers[arg8])
                     IP = current_frame->registers[arg8a];
-                else IP++;
+                else IP+=ADDRESS_SIZE;
+                break;
+            case I::PREPARE_CALL:
+            case I::PREPARE_CALL_R:
+                if (instr == I::PREPARE_CALL)
+                {
+                    aboutToCall = readU32(program, IP);
+                    IP += ADDRESS_SIZE;
+                }
+                else
+                {
+                    aboutToCall = current_frame->registers[program[IP++]];
+                }
+                arg8 = 0; // frame size
+                if (program[aboutToCall] == I::NEW_FRAME)
+                {
+                    arg8 = program[aboutToCall+1];
+                    aboutToCall += 2;
+                }
+                current_frame->create_frame(arg8);
+                break;
+            case I::CALL:
+                current_frame->ip_backup = IP;
+                IP = aboutToCall;
+                current_frame = current_frame->next;
+                break;
+            case I::RET:
+                current_frame = current_frame->previous;
+                IP = current_frame->ip_backup;
+                break;
+            case I::COPY_TO_FUNC:
+                arg8 = program[IP++];
+                arg8a = program[IP++];
+                current_frame->next->registers[arg8a] = current_frame->registers[arg8];
+                break;
+            case I::COPY_CONST_TO_FUNC:
+                arg8 = program[IP++];
+                arg32 = readU32(program, IP);
+                IP += 4;
+                current_frame->next->registers[arg8] = arg32;
+                break;
+            case I::COPY_FROM_FUNC:
+                arg8 = program[IP++];
+                arg8a = program[IP++];
+                current_frame->registers[arg8a] = current_frame->next->registers[arg8];
                 break;
             case I::PRINT_FRAMES:
                 current_frame->print();
@@ -121,19 +166,31 @@ void VM::RunProgram(bool profile)
 }
 
 Frame::Frame(int size, Frame* previous):
+    registers(size),
     previous(previous)
 {
-    registers.resize(size);
+}
+
+Frame::~Frame()
+{
+    if (next)
+        delete next;
 }
 
 void Frame::print()
 {
     for (size_t i =0; i<registers.size(); i++)
         std::cout << "R" << i << ": " << registers[i] << " (" << readI32(registers.data(), i) << ")" << std::endl;
-    std::cout << "RET: " << return_value  << " (" << *reinterpret_cast<int32_t*>(&return_value) << ")" << std::endl;
     if (previous)
     {
         std::cout << "Previous frame: " << std::endl;
         previous->print();
     }
+}
+
+Frame* Frame::create_frame(int size)
+{
+    if (next) delete next;
+    next = new Frame(size, this);
+    return next;
 }

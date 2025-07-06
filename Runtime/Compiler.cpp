@@ -182,6 +182,30 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
                 processInt8(tokens, 1);
                 processLabelReference(tokens, 2);
                 break;
+            case I::COMPARE:
+                processInt8(tokens, 1);
+                processInt8(tokens, 2);
+                processInt8(tokens, 3);
+                processInt8(tokens, 4);
+                break;
+            case I::COMPARE_I:
+                processInt8(tokens, 1);
+                processInt8(tokens, 2);
+                processInt32(tokens, 3);
+                processInt8(tokens, 4);
+                break;
+            case I::COMPARE_JF:
+                processInt8(tokens, 1);
+                processInt8(tokens, 2);
+                processInt8(tokens, 3);
+                processLabelReference(tokens, 4);
+                break;
+            case I::COMPARE_I_JF:
+                processInt8(tokens, 1);
+                processInt8(tokens, 2);
+                processInt32(tokens, 3);
+                processLabelReference(tokens, 4);
+                break;
             default:
                 throw std::runtime_error("Missing implementation of instruction " + std::string(tokens[0]));
         }

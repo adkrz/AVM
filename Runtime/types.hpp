@@ -42,6 +42,19 @@ enum I
     // reg no, reg no with address
     JT_R,
 
+    // Compare codes (byte):
+    // 0 ==, 1 !=, 2 >, 3 >=, 4 <, 5 <=
+    
+    // ccode, reg1, reg2, result reg
+    COMPARE,
+    // ccode, reg, int32, result reg
+    COMPARE_I,
+    // ccode, reg1, reg2, label
+    COMPARE_JF,
+    // ccode, reg, int32, label
+    COMPARE_I_JF,
+
+
     // arg: label of function
     // prepare next stack frame, but does not execute anything
     // If function starts with NEW_FRAME, uses this information

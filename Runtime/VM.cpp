@@ -153,6 +153,60 @@ void VM::RunProgram(bool profile)
                 arg8a = program[IP++];
                 current_frame->registers[arg8a] = current_frame->next->registers[arg8];
                 break;
+            case I::COMPARE:
+            case I::COMPARE_I:
+            case I::COMPARE_JF:
+            case I::COMPARE_I_JF:
+                arg8 = program[IP++]; // compare type
+                {
+                    int32_t tmp1 = current_frame->registers[program[IP++]];
+                    int32_t tmp2;
+                    if (instr == I::COMPARE || instr == I::COMPARE_JF)
+                    {
+                        tmp2 = current_frame->registers[program[IP++]];
+                    }
+                    else
+                    {
+                        tmp2 = readU32(program, IP);
+                        IP += 4;
+                    }
+                    reg result = 0;
+                    switch (arg8)
+                    {
+                    case 0:
+                        result = tmp1 == tmp2;
+                        break;
+                    case 1:
+                        result = tmp1 != tmp2;
+                        break;
+                    case 2:
+                        result = tmp1 > tmp2;
+                        break;
+                    case 3:
+                        result = tmp1 >= tmp2;
+                        break;
+                    case 4:
+                        result = tmp1 < tmp2;
+                        break;
+                    case 5:
+                        result = tmp1 <= tmp2;
+                        break;
+                    default:
+                        break;
+                    }
+                    if (instr == I::COMPARE || instr == I::COMPARE_I)
+                    {
+                        current_frame->registers[program[IP++]] = result;
+                    }
+                    else
+                    {
+                        // JF:
+                        if (!result)
+                            IP = readU32(program, IP);
+                        else IP+=ADDRESS_SIZE;
+                    }
+                }
+                break;
             case I::PRINT_FRAMES:
                 current_frame->print();
                 break;

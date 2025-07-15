@@ -31,8 +31,8 @@ void VM::RunProgram(bool profile)
     uint8_t arg8a;
     reg arg32;
     int32_t argi32;
-    int32_t IP = 0;
-    int32_t aboutToCall = 0;
+    uint32_t IP = 0;
+    uint32_t aboutToCall = 0;
 
     if (profile)
         std::cerr << "Profiler not implemented" << std::endl;
@@ -52,7 +52,7 @@ void VM::RunProgram(bool profile)
                 arg8 = program[IP++];
                 argi32 = readU32(program, IP);
                 IP += 4;
-                current_frame->registers[arg8] = argi32;
+                current_frame->registers[arg8].i = argi32;
                 break;
             case I::MOV_RR:
                 arg8 = program[IP++];
@@ -63,50 +63,50 @@ void VM::RunProgram(bool profile)
                 arg8 = program[IP++];
                 argi32 = readU32(program, IP);
                 IP += 4;
-                current_frame->registers[arg8] += argi32;
+                current_frame->registers[arg8].i += argi32;
                 break;
             case I::ADD_RI8:
                 arg8 = program[IP++];
                 arg8a = program[IP++];
-                current_frame->registers[arg8] += arg8a;
+                current_frame->registers[arg8].i += arg8a;
                 break;
             case I::ADD_RR:
                 arg8 = program[IP++];
                 arg8a = program[IP++];
-                current_frame->registers[arg8] += current_frame->registers[arg8a];
+                current_frame->registers[arg8].i += current_frame->registers[arg8a].i;
                 break;
             case I::JMP:
-                IP = readU32(program, IP);;
+                IP = readU32(program, IP);
                 break;
             case I::JMP_R:
-                IP = current_frame->registers[program[IP]];
+                IP = current_frame->registers[program[IP]].addr;
                 break;
             case I::JT:
                 arg8 = program[IP++];
                 arg32 = readU32(program, IP);
-                if (current_frame->registers[arg8])
+                if (current_frame->registers[arg8].i)
                     IP = arg32;
                 else IP+=ADDRESS_SIZE;
                 break;
             case I::JF:
                 arg8 = program[IP++];
                 arg32 = readU32(program, IP);
-                if (!current_frame->registers[arg8])
+                if (!current_frame->registers[arg8].i)
                     IP = arg32;
                 else IP+=ADDRESS_SIZE;
                 break;
             case I::JT_R:
                 arg8 = program[IP++];
                 arg8a = program[IP++];
-                if (current_frame->registers[arg8])
-                    IP = current_frame->registers[arg8a];
+                if (current_frame->registers[arg8].i)
+                    IP = current_frame->registers[arg8a].addr;
                 else IP+=ADDRESS_SIZE;
                 break;
             case I::JF_R:
                 arg8 = program[IP++];
                 arg8a = program[IP++];
-                if (!current_frame->registers[arg8])
-                    IP = current_frame->registers[arg8a];
+                if (!current_frame->registers[arg8].i)
+                    IP = current_frame->registers[arg8a].addr;
                 else IP+=ADDRESS_SIZE;
                 break;
             case I::PREPARE_CALL:
@@ -118,7 +118,7 @@ void VM::RunProgram(bool profile)
                 }
                 else
                 {
-                    aboutToCall = current_frame->registers[program[IP++]];
+                    aboutToCall = current_frame->registers[program[IP++]].addr;
                 }
                 arg8 = 0; // frame size
                 if (program[aboutToCall] == I::NEW_FRAME)
@@ -146,7 +146,7 @@ void VM::RunProgram(bool profile)
                 arg8 = program[IP++];
                 arg32 = readU32(program, IP);
                 IP += 4;
-                current_frame->next->registers[arg8] = arg32;
+                current_frame->next->registers[arg8].u = arg32;
                 break;
             case I::COPY_FROM_FUNC:
                 arg8 = program[IP++];
@@ -159,11 +159,11 @@ void VM::RunProgram(bool profile)
             case I::COMPARE_I_JF:
                 arg8 = program[IP++]; // compare type
                 {
-                    int32_t tmp1 = current_frame->registers[program[IP++]];
+                    int32_t tmp1 = current_frame->registers[program[IP++]].i;
                     int32_t tmp2;
                     if (instr == I::COMPARE || instr == I::COMPARE_JF)
                     {
-                        tmp2 = current_frame->registers[program[IP++]];
+                        tmp2 = current_frame->registers[program[IP++]].i;
                     }
                     else
                     {
@@ -196,7 +196,7 @@ void VM::RunProgram(bool profile)
                     }
                     if (instr == I::COMPARE || instr == I::COMPARE_I)
                     {
-                        current_frame->registers[program[IP++]] = result;
+                        current_frame->registers[program[IP++]].u = result;
                     }
                     else
                     {
@@ -206,6 +206,38 @@ void VM::RunProgram(bool profile)
                         else IP+=ADDRESS_SIZE;
                     }
                 }
+                break;
+            case I::LOCAL_ALLOC:
+                arg8 = program[IP++];
+                arg32 = readU32(program, IP);
+                IP += ADDRESS_SIZE;
+                current_frame->allocate(arg8, arg32);
+                break;
+            case I::LOAD:
+            {
+                arg8 = program[IP++]; // reg no with base address
+                arg32 = readU32(program, IP); // scale
+                IP += ADDRESS_SIZE;
+                arg8a = program[IP++]; // reg no with no of elements
+                auto arg32a = readU32(program, IP); //offset
+                IP += ADDRESS_SIZE;
+                auto arg8b = program[IP++]; // target reg to write to
+                uint32_t* ptr = (uint32_t*)(current_frame->registers[arg8].ptr + arg32 * current_frame->registers[arg8a].u + arg32a);
+                current_frame->registers[arg8b].u = *ptr;
+            }
+                break;
+            case I::STORE:
+            {
+                arg8 = program[IP++]; // reg no with base address
+                arg32 = readU32(program, IP); // scale
+                IP += ADDRESS_SIZE;
+                arg8a = program[IP++]; // reg no with no of elements
+                auto arg32a = readU32(program, IP); //offset
+                IP += ADDRESS_SIZE;
+                auto arg8b = program[IP++]; // src reg to read from
+                uint32_t* ptr = (uint32_t*)(current_frame->registers[arg8].ptr + arg32 * current_frame->registers[arg8a].u + arg32a);
+                *ptr = current_frame->registers[arg8b].u;
+            }
                 break;
             case I::PRINT_FRAMES:
                 current_frame->print();
@@ -219,9 +251,20 @@ void VM::RunProgram(bool profile)
     }
 }
 
+HeapEntry::HeapEntry(size_t size, HeapEntry* next): ptr(malloc(size)), next(next)
+{
+}
+
+HeapEntry::~HeapEntry()
+{
+    if (next)
+        delete next;
+}
+
 Frame::Frame(int size, Frame* previous):
     registers(size),
-    previous(previous)
+    previous(previous),
+    localHeap(nullptr)
 {
 }
 
@@ -229,12 +272,14 @@ Frame::~Frame()
 {
     if (next)
         delete next;
+    if (localHeap)
+        delete localHeap;
 }
 
 void Frame::print()
 {
     for (size_t i =0; i<registers.size(); i++)
-        std::cout << "R" << i << ": " << registers[i] << " (" << readI32(registers.data(), i) << ")" << std::endl;
+        std::cout << "R" << i << ": " << registers[i].u << " (" << registers[i].i << ")" << std::endl;
     if (previous)
     {
         std::cout << "Previous frame: " << std::endl;
@@ -247,4 +292,10 @@ Frame* Frame::create_frame(int size)
     if (next) delete next;
     next = new Frame(size, this);
     return next;
+}
+
+void Frame::allocate(uint8_t targetRegister, size_t size)
+{
+    localHeap = new HeapEntry(size, localHeap);
+    registers[targetRegister].ptr = localHeap->ptr;
 }

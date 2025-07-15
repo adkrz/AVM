@@ -206,6 +206,30 @@ std::vector<word> Compiler::ReadAndCompile(std::ifstream& inputFile)
                 processInt32(tokens, 3);
                 processLabelReference(tokens, 4);
                 break;
+            case I::LOCAL_ALLOC:
+                processInt8(tokens, 1);
+                processInt32(tokens, 2);
+                break;
+            case I::LOAD:
+            case I::STORE:
+                processInt8(tokens, 1);
+                processInt32(tokens, 2);
+                processInt8(tokens, 3);
+                processInt32(tokens, 4);
+                processInt8(tokens, 5);
+                break;
+            case I::COMPARE_M_I:
+            case I::COMPARE_M_R:
+                processInt8(tokens, 1);
+                processInt8(tokens, 2);
+                processInt32(tokens, 3);
+                processInt8(tokens, 4);
+                processInt32(tokens, 5);
+                if (i == I::COMPARE_M_I)
+                    processInt32(tokens, 6);
+                    else
+                    processInt8(tokens, 6);
+                break;
             default:
                 throw std::runtime_error("Missing implementation of instruction " + std::string(tokens[0]));
         }

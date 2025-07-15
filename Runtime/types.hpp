@@ -14,14 +14,6 @@ enum I
     // destination reg no, src reg no
     MOV_RR,
 
-    //MOV_MR,
-    //MOV_RM,
-    //MOV_MM,
-    //MOV8_MR,
-    //MOV8_RM,
-    
-    //LEA,
-
     // reg no, int32
     ADD_RI,
     // reg no, byte
@@ -53,13 +45,19 @@ enum I
     COMPARE_JF,
     // ccode, reg, int32, label
     COMPARE_I_JF,
+    // compare memory address to immediate value
+    // arg: ccode, register with base address, u32 scale, register with no of elements, u32 offset, int32 immediate
+    COMPARE_M_I,
+    // compare memory address to register value
+    // arg: ccode, register with base address, u32 scale, register with no of elements, u32 offset, reg to compare to
+    COMPARE_M_R,
 
 
     // arg: label of function
     // prepare next stack frame, but does not execute anything
     // If function starts with NEW_FRAME, uses this information
     PREPARE_CALL,
-    // reg no containing funcion address
+    // reg no containing function address
     PREPARE_CALL_R,
     // no args -> everything done in PREPARE_CALL
     CALL,
@@ -75,6 +73,14 @@ enum I
     // Restore previous stack frame. The old prepared frame is still available and can be reached via COPY_FROM_FUNC
     // no args
     RET,
+
+    // allocate data in the current execution frame (will be freed when function exits)
+    // arg: register to write pointer to, u32 size
+    LOCAL_ALLOC,
+    // arg: register with base address, u32 scale, register with no of elements, u32 offset, target register
+    LOAD,
+    // arg: register with base address, u32 scale, register with no of elements, u32 offset, src register
+    STORE,
     
     HALT,
     PRINT_FRAMES
